@@ -14,8 +14,7 @@
 static std::vector<std::uint64_t> generateRandomVector(std::uint64_t len) {
     std::vector<std::uint64_t> vec(len, 0);
     std::srand(std::time(nullptr));
-    std::transform(vec.cbegin(), vec.cend(), vec.begin(),
-                   [](const std::uint64_t v) { return std::rand(); });
+    std::generate(vec.begin(), vec.end(), []() { return std::rand(); });
     return vec;
 }
 
@@ -29,8 +28,8 @@ static std::vector<std::uint64_t> generateRandomVector(std::uint64_t len,
 
 std::vector<std::uint64_t>
 makeVectorUniqueNoOrderPreserve(std::vector<std::uint64_t> input) {
-    std::set<std::uint64_t> set(input.begin(), input.end());
-    input.assign(set.begin(), set.end());
+    std::unordered_set<std::uint64_t> set(input.cbegin(), input.cend());
+    input.assign(set.cbegin(), set.cend());
     std::shuffle(input.begin(), input.end(), std::default_random_engine{});
     return input;
 }
@@ -45,7 +44,7 @@ TEST(LRUTests, LRUAddingMultipleUniqueValuesReturnsInCorrectOrder) {
     LRU<std::uint64_t, 10000> lru{};
     auto randomVec =
         makeVectorUniqueNoOrderPreserve(generateRandomVector(10000));
-    std::for_each(randomVec.begin(), randomVec.end(),
+    std::for_each(randomVec.cbegin(), randomVec.cend(),
                   [&lru](std::uint64_t val) { lru.logUse(val); });
     ASSERT_EQ(randomVec.size(), lru.getSize());
     for (std::size_t i = 0; i < randomVec.size(); ++i) {
@@ -56,14 +55,14 @@ TEST(LRUTests, LRUAddingMultipleUniqueValuesReturnsInCorrectOrder) {
 TEST(LRUTests, LRUAddingFewNonUniqueValuesReturnsInCorrectOrder) {
     LRU<bool, 2> lru{};
     auto inputList = std::vector<bool>{true, true, false, true};
-    std::for_each(inputList.begin(), inputList.end(),
+    std::for_each(inputList.cbegin(), inputList.cend(),
                   [&lru](bool val) { lru.logUse(val); });
     ASSERT_EQ(false, lru.popLRU());
     ASSERT_EQ(true, lru.popLRU());
 }
 
 static bool existsDuplicate(const std::vector<std::uint64_t>& vec) {
-    std::unordered_set<int> s(vec.begin(), vec.end());
+    std::unordered_set<int> s(vec.cbegin(), vec.cend());
     return s.size() != vec.size();
 }
 
@@ -71,7 +70,7 @@ TEST(LRUTests, LRUAddingManyNonUniqueValuesReturnsInCorrectOrder) {
     LRU<std::uint64_t, 100000> lru{};
     auto inputList = generateRandomVector(100000, 1000);
     ASSERT_TRUE(existsDuplicate(inputList)); // pigeon-hole principle
-    std::for_each(inputList.begin(), inputList.end(),
+    std::for_each(inputList.cbegin(), inputList.cend(),
                   [&lru](std::uint64_t val) { lru.logUse(val); });
 
     std::vector<std::uint64_t> popped{};
