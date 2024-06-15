@@ -93,9 +93,10 @@ int main(int argc, char** argv) {
             // TODO: Error handling
             // strtol() => returns long int => returns 0 if not converted
             cycles = strtol(optarg, &endptr, 10); // Cycles in decimal
+            break;
         case 'h':
             print_help(progname);
-            return EXIT_SUCESS;
+            return EXIT_SUCCESS;
             break;
         case 128:
             // TODO: Error handling w errno :o
