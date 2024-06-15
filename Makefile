@@ -2,7 +2,7 @@
 # CONFIGURATION BEGIN
 # ---------------------------------------
 
-MAIN := src/sc_main.cpp
+MAIN := src/main.c
 ASSIGNMENT := src/cache.hpp
 TARGET := cache
 SCPATH = ../systemc
