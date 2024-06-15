@@ -46,4 +46,7 @@ $(TARGET): $(MAIN) $(ASSIGNMENT)
 clean:
 	rm -f $(TARGET)
 
+test:
+	cmake -S . -B build && cmake --build build && cd build && ctest --output-on-failure
+
 .PHONY: all debug release clean
