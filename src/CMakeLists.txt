@@ -1,4 +1,6 @@
 add_executable(
-  GRA_Cache
-  main.c
+        GRA_Cache
+        sc_main.cpp
+        memory.hpp
+        cache.hpp
 )
