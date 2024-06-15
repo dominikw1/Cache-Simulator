@@ -7,6 +7,6 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
-add_executable(tests template.cpp LRUTests.cpp)
-target_link_libraries(tests gtest_main)
+add_executable(tests template.cpp LRUTests.cpp CacheInternalTests.cpp Utils.cpp)
+target_link_libraries(tests gtest_main gtest GRA_Cache_lib)
 gtest_discover_tests(tests)
