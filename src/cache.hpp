@@ -37,12 +37,12 @@ SC_MODULE(CACHE) {
     int latency;
     int directMapped;
 
-    MEMORY memory;
+    const MEMORY& memory;
 
     SC_CTOR(CACHE);
 
     CACHE(sc_module_name name, int directMapped, unsigned cacheLines, unsigned cacheLineSize,
-          int cacheLatency, int memoryLatency) : sc_module(name), memory("memory", memoryLatency) {
+          int cacheLatency, int memoryLatency, const MEMORY& ram) : sc_module{name}, memory{ram} {
         this->latency = cacheLatency;
         this->directMapped = directMapped;
 
