@@ -12,11 +12,11 @@ template <typename T> class ReadOnlySpan {
     ReadOnlySpan(const T* arr, std::size_t size) : arrayPtr{arr}, arraySize{size} {}
     const T& operator[](std::size_t i) const { return *arrayPtr[i]; }
     std::size_t size() const { return arraySize; }
-    const T* begin() { return arrayPtr; }
-    const T* end() { return arrayPtr + arraySize; }
+    const T* begin() const { return arrayPtr; }
+    const T* end() const { return arrayPtr + arraySize; }
     const T& operator++() {
         arrayPtr = ++arrayPtr;
         return *arrayPtr;
     }
-    const T& top() { return arrayPtr[0]; }
+    const T& top() const { return arrayPtr[0]; }
 };
