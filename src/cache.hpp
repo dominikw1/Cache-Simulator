@@ -25,7 +25,7 @@ struct Result {
 
 SC_MODULE(CACHE) {
     sc_in<bool> clk;
-    sc_in<Request> request;
+    //sc_in<Request> request;
     sc_out<size_t> hit;
     sc_out<size_t> miss;
 
@@ -37,18 +37,16 @@ SC_MODULE(CACHE) {
     int latency;
     int directMapped;
 
-    const MEMORY& memory;
-
     SC_CTOR(CACHE);
 
     CACHE(sc_module_name name, int directMapped, unsigned cacheLines, unsigned cacheLineSize,
-          int cacheLatency, int memoryLatency, const MEMORY& ram) : sc_module{name}, memory{ram} {
+          int cacheLatency, int memoryLatency) : sc_module{name} {
         this->latency = cacheLatency;
         this->directMapped = directMapped;
 
-        memory.weBus(weBus);
-        memory.dataBus(dataBus);
-        memory.addressBus(addressBus);
+        //memory.weBus(weBus);
+        //memory.dataBus(dataBus);
+        //memory.addressBus(addressBus);
 
 
 
