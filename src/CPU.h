@@ -18,11 +18,11 @@ SC_MODULE(CPU) {
     sc_core::sc_signal<std::uint32_t> addressSignal;
     sc_core::sc_signal<std::uint32_t> dataSignal;
 
-    const ReadOnlySpan<Request> requests;
+    ReadOnlySpan<Request> requests;
     const std::uint32_t latency;
 
   public:
-    CPU(::sc_core::sc_module_name name, std::uint32_t latency, const ReadOnlySpan<Request> requests);
+    CPU(::sc_core::sc_module_name name, std::uint32_t latency, ReadOnlySpan<Request> requests);
     typedef CPU SC_CURRENT_USER_MODULE;
 
   private:
