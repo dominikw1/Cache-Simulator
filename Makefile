@@ -3,7 +3,7 @@
 # ---------------------------------------
 
 MAIN := src/main.c
-ASSIGNMENT := src/cache.hpp
+ASSIGNMENT := src/cache.hpp src/CacheInternal.cpp src/CPU.cpp src/Simulation.cpp
 TARGET := cache
 SCPATH = ../systemc
 CXXFLAGS := -std=c++14  -I$(SCPATH)/include -L$(SCPATH)/lib -lsystemc -lm
