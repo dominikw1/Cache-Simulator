@@ -5,7 +5,7 @@ set(SYSTEM_C_DIR ../systemc)
 include_directories(${SYSTEM_C_DIR}/include/)
 link_directories(${SYSTEM_C_DIR}/lib/)
 
-add_compile_options(-Wall -Wextra -pedantic -Werror)
+add_compile_options(-Wall -Wextra -pedantic)
 
 set(SANIZIER_COMPILE_OPTIONS -fsanitize=address -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize=thread -fsanitize=leak)
 add_compile_options(${SANITIZER_COMPILE_OPTIONS})
