@@ -5,9 +5,11 @@
 
 struct Result run_simulation(int cycles, int directMapped, 
     unsigned cacheLines, unsigned cacheLineSize, unsigned cacheLatency, unsigned memoryLatency, 
-    size_t numRequests , struct Request requests[numRequests], const char* tracefile) {
+    size_t numRequests , struct Request requests[], const char* tracefile) {
 
-    return NULL;
+    struct Result result;
+    result.cycles = 0;
+    return result;
 
 }
 
