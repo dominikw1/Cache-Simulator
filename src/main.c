@@ -8,8 +8,21 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "Simulation.h"
+#include "request.h"
+#include "result.h"
+#include "simulation.cpp"
 
+extern struct Result run_simulation(
+    int cycles,
+    int directMapped,
+    unsigned cacheLines,
+    unsigned cacheLineSize,
+    unsigned cacheLatency,
+    unsigned memoryLatency,
+    size_t numRequests ,
+    struct Request requests[numRequests],
+    const char* tracefile
+    );
 
 // Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
 const char* usage_msg = // TODO: finalise usage message
@@ -50,13 +63,6 @@ void print_help(const char* progname) {
     fprintf(stderr, "\n%s", help_msg);
 }
 
-struct Request { 
-    uint32_t addr; 
-    uint32_t data; 
-    int we;
-} Request;
-
-// TODO: Call to run_simulation(cacheSize, directmapped, requests)
 
 int main(int argc, char** argv) {
 
@@ -234,6 +240,10 @@ int main(int argc, char** argv) {
             return EXIT_FAILURE;
         }
     }
+
+    struct Result result = run_simulation(cycles, directMapped, 
+                                cacheLines, cacheLineSize, cacheLatency, memoryLatency, 
+                                numRequests, requests, tracefile);
 
     return EXIT_SUCCESS;
 }
