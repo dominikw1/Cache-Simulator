@@ -1,11 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include <errno.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
-// Taken and adapted from GRA Week 3 "Nutzereingaben"
+#include "Simulation.h"
+
+
+// Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
 const char* usage_msg = // TODO: finalise usage message
     "usage: %s <filename> [-c/--cycles c] [--directmapped] [--fullassociative] "
     "[--cacheline-size s] [--cachelines n] [--cache-latency l] "
@@ -44,6 +50,12 @@ void print_help(const char* progname) {
     fprintf(stderr, "\n%s", help_msg);
 }
 
+struct Request { 
+    uint32_t addr; 
+    uint32_t data; 
+    int we;
+} Request;
+
 // TODO: Call to run_simulation(cacheSize, directmapped, requests)
 
 int main(int argc, char** argv) {
@@ -55,18 +67,104 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    // TODO: Extract file data and save to requests
-    const char* filename = argv[1];
-    // TODO: Error handling
-
     // TODO: Set useful default values
     int cycles = 0;
     int directMapped = 0; // 0 => fullassociative, x => directmapped
-    unsigned cacheLines = 2048;
-    unsigned cacheLineSize = 32;
-    unsigned cacheLatency = 1; // in cycles
-    unsigned memoryLatency = 100;
+    unsigned int cacheLines = 2048;
+    unsigned int cacheLineSize = 32;
+    unsigned int cacheLatency = 1; // in cycles
+    unsigned int memoryLatency = 100;       // TODO: Wenn Memory < Cache latency => Warning
     const char* tracefile = NULL;
+
+    // TODO: Extract file data and save to requests
+    const char* filename = argv[1];
+    if (filename == NULL) {
+        // TODO: Error Message
+        perror("Filename does not exist.");
+        print_usage(progname);
+        return EXIT_FAILURE;
+    }
+
+    FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        perror("Error opening file.\n");
+        print_usage(progname);
+        return EXIT_FAILURE;
+    }
+
+    // Lines 97-118 taken and adapted from GRA Week 3 "File IO" files.c l.17-34
+    struct stat file_info;
+    if (fstat(fileno(file), &file_info) != 0) {
+        perror ("Error determining file size");
+        fclose(file);
+        print_usage(progname);
+        return EXIT_FAILURE;
+    }
+
+    if (!S_ISREG(file_info.st_mode)) {
+        fprintf(stderr, "%s is not a regular file\n", filename);
+        fclose(file);
+        print_usage(progname);
+        return EXIT_FAILURE;
+    }
+
+    size_t numRequests = 0;
+    struct Request *requests = malloc(file_info.st_size);
+    if (requests == NULL) {
+        perror("Error allocating memory buffer for file.");
+        fclose(file);
+        print_usage(progname);
+        return EXIT_FAILURE;
+    }
+
+    // TODO: Check for invalid file format and save file content to requests
+    // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
+    int read_line = 0;
+
+    do {
+        char we;
+        uint32_t addr;
+        uint32_t data;
+
+        read_line = fscanf(file, "%c,%i,%i\n", 
+                        &we, &addr, &data);
+        // TODO: Handle wrong file format
+        /*if (read < 3 && !feof(file)) {
+            if (we == 'R' && data != NULL) {
+                // Fehler: Wert in dritter Spalte ist bei R nicht leer
+                
+            }
+            // TODO: Wrong file format
+            return EXIT_FAILURE;
+        }
+        if (read == 2 && !feof(file)) {
+            if (we == 'W' && data == NULL) {
+                // Fehler: Schreibzugriff aber kein Datum gegeben
+            }
+        }
+        // Fehler: Wert in dritter Spalte ist bei R nicht leer
+        */
+
+        requests[numRequests].addr = addr;
+        requests[numRequests].data = data;
+        if (we == 'R') {
+            requests[numRequests].we = 0;
+        } else if (we == 'W') {
+            requests[numRequests].we = 1;
+        } // Fehlerbehandlung: Nicht R/W
+        numRequests++;
+
+        if (ferror(file)) {
+            printf("Error reading file.\n");
+            print_usage(progname);
+            return EXIT_FAILURE;
+        }
+
+    } while (!feof(file));  // TODO: feof nachschlagen!!
+
+    fclose(file);
+
+    // TODO: Error handling
 
     // PARSING
     int opt;
@@ -74,7 +172,7 @@ int main(int argc, char** argv) {
     int option_index;
     const char* optstring = "c:h";
     static struct option long_options[] = {
-        // TODO: Change nums to "smarter" values
+        // TODO: Change nums to "smarter" values => MICROS verwenden für Zahlen
         {"cycles", required_argument, 0, 'c'},
         {"directmapped", no_argument, 0, 128},
         {"fullassociative", no_argument, 0, 129},
@@ -129,7 +227,7 @@ int main(int argc, char** argv) {
             break;
 
         case '?':
-            print_usage(argv[0]);
+            print_usage(progname);
             return EXIT_FAILURE;
         default:
             // TODO: Default Error Message
