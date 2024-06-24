@@ -3,7 +3,6 @@
 #define MEMORY_HPP
 
 #include <systemc>
-#include "systemc.h"
 
 using namespace sc_core;
 

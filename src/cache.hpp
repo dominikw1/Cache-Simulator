@@ -2,7 +2,6 @@
 #ifndef CACHE_HPP
 #define CACHE_HPP
 
-#include "systemc.h"
 #include <systemc>
 
 #include "Request.h"

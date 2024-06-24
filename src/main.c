@@ -10,7 +10,6 @@
 
 #include "Request.h"
 #include "Result.h"
-#include "Simulation.h"
 
 extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
                                     unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,

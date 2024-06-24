@@ -2,24 +2,39 @@
 # CONFIGURATION BEGIN
 # ---------------------------------------
 
-MAIN := src/main.c
-ASSIGNMENT := src/CacheInternal.cpp src/CPU.cpp src/Simulation.cpp 
+# entry point for the program and target name
+C_SRCS = src/main.c 
+CPP_SRCS = src/CacheInternal.cpp src/CPU.cpp src/Simulation.cpp
+
+# Object files
+C_OBJS = $(C_SRCS:.c=.o)
+CPP_OBJS = $(CPP_SRCS:.cpp=.o)
+
+# assignment task file
+# HEADERS := src/CacheInternal.h src/CPU.h src/InternalRequests.h src/memory.hpp src/ReadOnlySpan.h src/Request.h src/Result.h src/Simulation.h 
+
+# target name
 TARGET := cache
+
+# Path to your systemc installation
 SCPATH = ../systemc
+
+# Additional flags for the compiler
 CXXFLAGS := -std=c++14  -I$(SCPATH)/include -L$(SCPATH)/lib -lsystemc -lm
 
 
-# ---------------------------------------
-# CONFIGURATION END
-# ---------------------------------------
 
-# Determine if clang or gcc is available
 CXX := $(shell command -v g++ || command -v clang++)
 ifeq ($(strip $(CXX)),)
     $(error Neither clang++ nor g++ is available. Exiting.)
 endif
 
-# Add rpath except for MacOS
+CC := $(shell command -v gcc || command -v clang)
+ifeq ($(strip $(CC)),)
+    $(error Neither clang nor gcc is available. Exiting.)
+endif
+
+
 UNAME_S := $(shell uname -s)
 
 ifneq ($(UNAME_S), Darwin)
@@ -27,24 +42,26 @@ ifneq ($(UNAME_S), Darwin)
 endif
 
 
-# Default to release build for both app and library
 all: debug
 
-# Debug build
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 debug: CXXFLAGS += -g
 debug: $(TARGET)
 
-# Release build
 release: CXXFLAGS += -O2
 release: $(TARGET)
 
-# recipe for building the program
-$(TARGET): $(MAIN) $(ASSIGNMENT)
-	$(CXX) $(LDFLAGS) -o $@ $(MAIN) $(ASSIGNMENT) $(CXXFLAGS)
+$(TARGET): $(C_OBJS) $(CPP_OBJS)
+	$(CXX) $(CXXFLAGS) $(C_OBJS) $(CPP_OBJS) $(LDFLAGS) -o $(TARGET)
 
-# clean up
 clean:
 	rm -f $(TARGET)
+	rm -rf src/*.o
 
 test:
 	cmake -S . -B build && cmake --build build && cd build && ctest --output-on-failure
