@@ -2,10 +2,19 @@
 
 #include "CPU.h"
 #include "ReadOnlySpan.h"
+#include "Request.h"
+#include "Result.h"
 #include "cache.hpp"
 
-void doSimulation() {
-    const Request testRequestArray[4] = {Request{0, 10, 1}, Request{0, 0, 0}, Request{0, -1u, 1}, Request{0, 0, 0}};
-    CPU cpu{"CPU", 3, ReadOnlySpan<Request>{testRequestArray, 4}};
-    CACHE cache{"Cache", 0, 10, 100, 1, 4};
+Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize, unsigned int cacheLatency,
+                      unsigned int memoryLatency, size_t numRequests, struct Request requests[], const char* tracefile) {
+
+    CPU cpu{"CPU", 3, ReadOnlySpan<Request>{requests, 4}};
+    CACHE cache{"Cache", directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency};
+    return Result{};
+}
+
+int sc_main(int argc, char* argv[]) {
+    std::cout << "ERROR" << std::endl;
+    return 1;
 }

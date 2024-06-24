@@ -1,68 +1,57 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <errno.h>
 #include <getopt.h>
-#include <unistd.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
-#include "request.h"
-#include "result.h"
-#include "simulation.cpp"
+#include "Request.h"
+#include "Result.h"
+#include "Simulation.h"
 
-extern struct Result run_simulation(
-    int cycles,
-    int directMapped,
-    unsigned cacheLines,
-    unsigned cacheLineSize,
-    unsigned cacheLatency,
-    unsigned memoryLatency,
-    size_t numRequests ,
-    struct Request requests[],
-    const char* tracefile
-    );
+extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
+                                    unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
+                                    struct Request requests[], const char* tracefile);
 
 // Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
-const char* usage_msg =
-    "usage: %s <filename> [-c/--cycles c] [--directmapped] [--fullassociative] "
-    "[--cacheline-size s] [--cachelines n] [--cache-latency l] "
-    "[--memorylatency m] [--tf=<filename>] [-h/--help]\n"
-    "   -c c / --cycles c       Set the number of cycles to be simulated to c\n"
-    "   --directmapped          Simulate a direct-mapped cache\n"
-    "   --fullassociative       Simulate a fully associative cache\n"
-    "   --cacheline-size s      Set the cache line size to s bytes\n"
-    "   --cachelines n          Set the number of cachelines to n\n"
-    "   --cache-latency l       Set the cache latency to l cycles\n"
-    "   --memory-latency m      Set the memory latency to m cycles\n"
-    "   --tf=<filename>         File name for a trace file containing all signals. If not set, no trace file will be created\n"
-    "   -h / --help             Show help message and exit\n";
+const char* usage_msg = "usage: %s <filename> [-c/--cycles c] [--directmapped] [--fullassociative] "
+                        "[--cacheline-size s] [--cachelines n] [--cache-latency l] "
+                        "[--memorylatency m] [--tf=<filename>] [-h/--help]\n"
+                        "   -c c / --cycles c       Set the number of cycles to be simulated to c\n"
+                        "   --directmapped          Simulate a direct-mapped cache\n"
+                        "   --fullassociative       Simulate a fully associative cache\n"
+                        "   --cacheline-size s      Set the cache line size to s bytes\n"
+                        "   --cachelines n          Set the number of cachelines to n\n"
+                        "   --cache-latency l       Set the cache latency to l cycles\n"
+                        "   --memory-latency m      Set the memory latency to m cycles\n"
+                        "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
+                        "trace file will be created\n"
+                        "   -h / --help             Show help message and exit\n";
 
-const char* help_msg =
-    "Positional arguments:\n"
-    "   <filename>   The name of the file to be processed\n"
-    "\n"
-    "Optional arguments:\n"
-    "   -c c / --cycles c       The number of cycles used for the simulation (default: c = 0)\n"
-    "   --directmapped          Simulates a direct-mapped cache\n"
-    "   --fullassociative       Simulates a fully associative cache (Set as default)\n"
-    "   --cacheline-size s      The size of a cache line in bytes (default: 32)\n"
-    "   --cachelines n          The number of cache lines (default: 2048)\n"
-    "   --cache-latency l       The cache latency in cycles (default: 1)\n"
-    "   --memory-latency m      The memory latency in cycles (default: 100)\n"
-    "   --tf=<filename>         The name for a trace file containing all signals. If not set, no trace file will be created\n"
-    "   -h / --help             Show this help message and exit\n";
+const char* help_msg = "Positional arguments:\n"
+                       "   <filename>   The name of the file to be processed\n"
+                       "\n"
+                       "Optional arguments:\n"
+                       "   -c c / --cycles c       The number of cycles used for the simulation (default: c = 0)\n"
+                       "   --directmapped          Simulates a direct-mapped cache\n"
+                       "   --fullassociative       Simulates a fully associative cache (Set as default)\n"
+                       "   --cacheline-size s      The size of a cache line in bytes (default: 32)\n"
+                       "   --cachelines n          The number of cache lines (default: 2048)\n"
+                       "   --cache-latency l       The cache latency in cycles (default: 1)\n"
+                       "   --memory-latency m      The memory latency in cycles (default: 100)\n"
+                       "   --tf=<filename>         The name for a trace file containing all signals. If not set, no "
+                       "trace file will be created\n"
+                       "   -h / --help             Show this help message and exit\n";
 
-void print_usage(const char* progname) {
-    fprintf(stderr, usage_msg, progname, progname, progname);
-}
+void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, progname, progname); }
 
 void print_help(const char* progname) {
     print_usage(progname);
     fprintf(stderr, "\n%s", help_msg);
 }
-
 
 int main(int argc, char** argv) {
 
@@ -78,8 +67,8 @@ int main(int argc, char** argv) {
     int directMapped = 0; // 0 => fullassociative, x => directmapped
     unsigned int cacheLines = 2048;
     unsigned int cacheLineSize = 32;
-    unsigned int cacheLatency = 1; // in cycles
-    unsigned int memoryLatency = 100;       // TODO: Wenn Memory < Cache latency => Warning
+    unsigned int cacheLatency = 1;    // in cycles
+    unsigned int memoryLatency = 100; // TODO: Wenn Memory < Cache latency => Warning
     const char* tracefile = NULL;
 
     // TODO: Extract file data and save to requests
@@ -101,7 +90,7 @@ int main(int argc, char** argv) {
     // Lines 97-118 taken and adapted from GRA Week 3 "File IO" files.c l.17-34
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
-        perror ("Error determining file size");
+        perror("Error determining file size");
         fclose(file);
         print_usage(progname);
         return EXIT_FAILURE;
@@ -115,7 +104,7 @@ int main(int argc, char** argv) {
     }
 
     size_t numRequests = 0;
-    struct Request *requests = (struct Request*) malloc(file_info.st_size);
+    struct Request* requests = (struct Request*)malloc(file_info.st_size);
     if (requests == NULL) {
         perror("Error allocating memory buffer for file.");
         fclose(file);
@@ -132,13 +121,12 @@ int main(int argc, char** argv) {
         uint32_t addr;
         uint32_t data;
 
-        read_line = fscanf(file, "%c,%i,%i\n", 
-                        &we, &addr, &data);
+        read_line = fscanf(file, "%c,%i,%i\n", &we, &addr, &data);
         // TODO: Handle wrong file format
         /*if (read < 3 && !feof(file)) {
             if (we == 'R' && data != NULL) {
                 // Fehler: Wert in dritter Spalte ist bei R nicht leer
-                
+
             }
             // TODO: Wrong file format
             return EXIT_FAILURE;
@@ -166,7 +154,7 @@ int main(int argc, char** argv) {
             return EXIT_FAILURE;
         }
 
-    } while (!feof(file));  // TODO: feof nachschlagen!!
+    } while (!feof(file)); // TODO: feof nachschlagen!!
 
     fclose(file);
 
@@ -177,21 +165,19 @@ int main(int argc, char** argv) {
     char* endptr;
     int option_index;
     const char* optstring = "c:h";
-    static struct option long_options[] = {
-        // TODO: Change nums to "smarter" values => MICROS verwenden für Zahlen
-        {"cycles", required_argument, 0, 'c'},
-        {"directmapped", no_argument, 0, 128},
-        {"fullassociative", no_argument, 0, 129},
-        {"cacheline-size", required_argument, 0, 130},
-        {"cachelines", required_argument, 0, 131},
-        {"cache-latency", required_argument, 0, 132},
-        {"memory-latency", required_argument, 0, 133},
-        {"tf=", required_argument, 0, 134},
-        {"help", no_argument, 0, 'h'},
-        {0, 0, 0, 0}};
+    static struct option long_options[] = {// TODO: Change nums to "smarter" values => MICROS verwenden für Zahlen
+                                           {"cycles", required_argument, 0, 'c'},
+                                           {"directmapped", no_argument, 0, 128},
+                                           {"fullassociative", no_argument, 0, 129},
+                                           {"cacheline-size", required_argument, 0, 130},
+                                           {"cachelines", required_argument, 0, 131},
+                                           {"cache-latency", required_argument, 0, 132},
+                                           {"memory-latency", required_argument, 0, 133},
+                                           {"tf=", required_argument, 0, 134},
+                                           {"help", no_argument, 0, 'h'},
+                                           {0, 0, 0, 0}};
 
-    while ((opt = getopt_long(argc, argv, optstring, long_options,
-                              &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, optstring, long_options, &option_index)) != -1) {
         switch (opt) {
         case 'c':
             // TODO: Error handling
@@ -211,8 +197,7 @@ int main(int argc, char** argv) {
             break;
         case 130:
             // TODO: Error handling
-            cacheLineSize =
-                strtoul(optarg, &endptr, 10); // cacheline-size in decimal
+            cacheLineSize = strtoul(optarg, &endptr, 10); // cacheline-size in decimal
             break;
         case 131:
             // TODO: Error handling
@@ -241,9 +226,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    struct Result result = run_simulation(cycles, directMapped, 
-                                cacheLines, cacheLineSize, cacheLatency, memoryLatency, 
-                                numRequests, requests, tracefile);
+    struct Result result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
+                                          numRequests, requests, tracefile);
 
     return EXIT_SUCCESS;
 }

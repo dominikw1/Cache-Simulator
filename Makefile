@@ -3,7 +3,7 @@
 # ---------------------------------------
 
 MAIN := src/main.c
-ASSIGNMENT := src/cache.hpp src/CacheInternal.cpp src/CPU.cpp src/Simulation.cpp
+ASSIGNMENT := src/CacheInternal.cpp src/CPU.cpp src/Simulation.cpp 
 TARGET := cache
 SCPATH = ../systemc
 CXXFLAGS := -std=c++14  -I$(SCPATH)/include -L$(SCPATH)/lib -lsystemc -lm
@@ -40,7 +40,7 @@ release: $(TARGET)
 
 # recipe for building the program
 $(TARGET): $(MAIN) $(ASSIGNMENT)
-	$(CXX) $(LDFLAGS) -o $@ $(MAIN) $(CXXFLAGS)
+	$(CXX) $(LDFLAGS) -o $@ $(MAIN) $(ASSIGNMENT) $(CXXFLAGS)
 
 # clean up
 clean:

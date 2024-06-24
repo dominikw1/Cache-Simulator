@@ -2,30 +2,18 @@
 #ifndef CACHE_HPP
 #define CACHE_HPP
 
-#include <systemc>
 #include "systemc.h"
+#include <systemc>
 
+#include "Request.h"
+#include "Result.h"
 #include "memory.hpp"
 
 using namespace sc_core;
 
-
-struct Request {
-    uint32_t addr;
-    uint32_t data;
-    int we;
-};
-
-struct Result {
-    size_t cycles;
-    size_t misses;
-    size_t hits;
-    size_t primitiveGateCount;
-};
-
 SC_MODULE(CACHE) {
     sc_in<bool> clk;
-    //sc_in<Request> request;
+    // sc_in<Request> request;
     sc_out<size_t> hit;
     sc_out<size_t> miss;
 
@@ -39,16 +27,15 @@ SC_MODULE(CACHE) {
 
     SC_CTOR(CACHE);
 
-    CACHE(sc_module_name name, int directMapped, unsigned cacheLines, unsigned cacheLineSize,
-          int cacheLatency, int memoryLatency) : sc_module{name} {
+    CACHE(sc_module_name name, int directMapped, unsigned cacheLines, unsigned cacheLineSize, unsigned int cacheLatency,
+          unsigned int memoryLatency)
+        : sc_module{name} {
         this->latency = cacheLatency;
         this->directMapped = directMapped;
 
-        //memory.weBus(weBus);
-        //memory.dataBus(dataBus);
-        //memory.addressBus(addressBus);
-
-
+        // memory.weBus(weBus);
+        // memory.dataBus(dataBus);
+        // memory.addressBus(addressBus);
 
         SC_THREAD(update);
         sensitive << clk.pos(); // TODO: Or request?
@@ -63,12 +50,8 @@ SC_MODULE(CACHE) {
         if (directMapped) {
             // TODO: Immer DataBus setzen oder nur wenn we = 1?
         } else {
-
         }
     }
-
-
 };
-
 
 #endif
