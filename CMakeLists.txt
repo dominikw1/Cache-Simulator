@@ -7,7 +7,7 @@ link_directories(${SYSTEM_C_DIR}/lib/)
 
 add_compile_options(-Wall -Wextra -pedantic)
 
-set(SANIZIER_COMPILE_OPTIONS -fsanitize=address -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize=thread -fsanitize=leak)
+set(SANIZIER_COMPILE_OPTIONS -fsanitize=address -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize=leak)
 add_compile_options(${SANITIZER_COMPILE_OPTIONS})
 add_link_options(${SANITIZER_COMPILE_OPTIONS})
 
