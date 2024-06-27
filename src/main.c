@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include <getopt.h>
 #include <sys/stat.h>
@@ -10,6 +11,13 @@
 #include "Request.h"
 #include "Result.h"
 
+#define DIRECTMAPPED 128
+#define FULLASSOCIATIVE 129
+#define CACHELINE_SIZE 130
+#define CACHELINES 131
+#define CACHE_LATENCY 132
+#define MEMORY_LATENCY 133
+#define TRACEFILE 134
 
 extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
                                     unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
@@ -67,10 +75,14 @@ int main(int argc, char** argv) {
     unsigned int cacheLines = 2048;
     unsigned int cacheLineSize = 32;
     unsigned int cacheLatency = 1;    // in cycles
-    unsigned int memoryLatency = 100; // TODO: Wenn Memory < Cache latency => Warning
+    unsigned int memoryLatency = 100;
     const char* tracefile = NULL;
 
-    // TODO: Extract file data and save to requests
+    if (memoryLatency < cacheLatency) {
+        // TODO: Wenn Memory < Cache latency => Warning
+    }
+
+    // Extract file data
     const char* filename = argv[1];
     if (filename == NULL) {
         // TODO: Error Message
@@ -89,7 +101,7 @@ int main(int argc, char** argv) {
     // Lines 97-118 taken and adapted from GRA Week 3 "File IO" files.c l.17-34
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
-        perror("Error determining file size");
+        perror("Error determining file size.");
         fclose(file);
         print_usage(progname);
         return EXIT_FAILURE;
@@ -111,7 +123,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    // TODO: Check for invalid file format and save file content to requests
+    // Check for invalid file format and save file content to requests
     // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
     int read_line = 0;
 
@@ -123,25 +135,25 @@ int main(int argc, char** argv) {
         read_line = fscanf(file, "%c,%i,%i\n", &we, &addr, &data);
         // TODO: Finalise error messages
         if (read_line < 3 && !feof(file)) {
-            if (addr == NULL) {
-                perror("Wrong file format! No address given.")
+            if (read_line < 2) {   // Address was not read from file
+                perror("Wrong file format! No address given.");
                 fclose(file);
                 print_usage(progname);
                 return EXIT_FAILURE;
-            } else if (we == NULL) {
-                perror("Wrong file format! No operation given.")
+            } else if (read_line < 1) { // WE was not read from file
+                perror("Wrong file format! No operation given.");
                 fclose(file);
                 print_usage(progname);
                 return EXIT_FAILURE;
             }
 
-            if (we == 'W' && data == NULL) {
+            if (we == 'W' && read_line < 3) {   // Write should have data written in the file
                 perror("Wrong file format! No data saved.");
                 fclose(file);
                 print_usage(progname);
                 return EXIT_FAILURE;
             }
-            if (we == 'R' && data != NULL) {
+            if (we == 'R' && read_line == 3) {  // Read should not have data written in the file
                 perror("Wrong file format! When reading from a file, data should be empty.");
                 fclose(file);
                 print_usage(progname);
@@ -156,7 +168,7 @@ int main(int argc, char** argv) {
         } else if (we == 'W') {
             requests[numRequests].we = 1;
         } else {
-            perror("Not a valid operation.")
+            perror("Not a valid operation.");
             fclose(file);
             print_usage(progname);
             return EXIT_FAILURE;
@@ -166,15 +178,14 @@ int main(int argc, char** argv) {
 
         if (ferror(file)) {
             printf("Error reading file.\n");
+            fclose(file);
             print_usage(progname);
             return EXIT_FAILURE;
         }
 
-    } while (!feof(file)); // TODO: feof nachschlagen!!
+    } while (!feof(file));
 
     fclose(file);
-
-    // TODO: Error handling
 
     // PARSING
     int opt;
@@ -183,18 +194,19 @@ int main(int argc, char** argv) {
     const char* optstring = "c:h";
     static struct option long_options[] = {// TODO: Change nums to "smarter" values => MICROS verwenden für Zahlen
                                            {"cycles", required_argument, 0, 'c'},
-                                           {"directmapped", no_argument, 0, 128},
-                                           {"fullassociative", no_argument, 0, 129},
-                                           {"cacheline-size", required_argument, 0, 130},
-                                           {"cachelines", required_argument, 0, 131},
-                                           {"cache-latency", required_argument, 0, 132},
-                                           {"memory-latency", required_argument, 0, 133},
-                                           {"tf=", required_argument, 0, 134},
+                                           {"directmapped", no_argument, 0, DIRECTMAPPED},
+                                           {"fullassociative", no_argument, 0, FULLASSOCIATIVE},
+                                           {"cacheline-size", required_argument, 0, CACHELINE_SIZE},
+                                           {"cachelines", required_argument, 0, CACHELINES},
+                                           {"cache-latency", required_argument, 0, CACHE_LATENCY},
+                                           {"memory-latency", required_argument, 0, MEMORY_LATENCY},
+                                           {"tf=", required_argument, 0, TRACEFILE},
                                            {"help", no_argument, 0, 'h'},
                                            {0, 0, 0, 0}};
 
     while ((opt = getopt_long(argc, argv, optstring, long_options, &option_index)) != -1) {
         switch (opt) {
+
         case 'c':
             // TODO: Error handling
             // strtol() => returns long int => returns 0 if not converted
@@ -204,30 +216,30 @@ int main(int argc, char** argv) {
             print_help(progname);
             return EXIT_SUCCESS;
             break;
-        case 128:
+        case DIRECTMAPPED:
             // TODO: Error handling w errno :o
             directMapped = 1;
             break;
-        case 129:
+        case FULLASSOCIATIVE:
             // Default value is set to fullassociative
             break;
-        case 130:
+        case CACHELINE_SIZE:
             // TODO: Error handling
             cacheLineSize = strtoul(optarg, &endptr, 10); // cacheline-size in decimal
             break;
-        case 131:
+        case CACHELINES:
             // TODO: Error handling
             cacheLines = strtoul(optarg, &endptr, 10);
             break;
-        case 132:
+        case CACHE_LATENCY:
             // TODO: Error handling
             cacheLatency = strtoul(optarg, &endptr, 10);
             break;
-        case 133:
+        case MEMORY_LATENCY:
             // TODO: Error handling
             memoryLatency = strtoul(optarg, &endptr, 10); // memory-latency
             break;
-        case 134:
+        case TRACEFILE:
             // TODO: Create Tracefile
             tracefile = "";
             // TODO: Error handling
