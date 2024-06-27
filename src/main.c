@@ -10,6 +10,7 @@
 
 #include "Request.h"
 #include "Result.h"
+#include "Simulation.cpp"
 
 #define DIRECTMAPPED 128
 #define FULLASSOCIATIVE 129
