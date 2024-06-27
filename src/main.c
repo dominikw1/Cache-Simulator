@@ -10,7 +10,6 @@
 
 #include "Request.h"
 #include "Result.h"
-#include "Simulation.cpp"
 
 #define DIRECTMAPPED 128
 #define FULLASSOCIATIVE 129
@@ -116,7 +115,7 @@ int main(int argc, char** argv) {
     }
 
     size_t numRequests = 0;
-    struct Request *requests = (struct Request *) malloc(file_info.st_size);
+    struct Request *requests = (struct Request *) malloc(sizeof(struct Request)*file_info.st_size);
     if (requests == NULL) {
         perror("Error allocating memory buffer for file.");
         fclose(file);
