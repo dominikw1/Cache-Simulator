@@ -121,22 +121,33 @@ int main(int argc, char** argv) {
         uint32_t data;
 
         read_line = fscanf(file, "%c,%i,%i\n", &we, &addr, &data);
-        // TODO: Handle wrong file format
-        /*if (read < 3 && !feof(file)) {
-            if (we == 'R' && data != NULL) {
-                // Fehler: Wert in dritter Spalte ist bei R nicht leer
+        // TODO: Finalise error messages
+        if (read_line < 3 && !feof(file)) {
+            if (addr == NULL) {
+                perror("Wrong file format! No address given.")
+                fclose(file);
+                print_usage(progname);
+                return EXIT_FAILURE;
+            } else if (we == NULL) {
+                perror("Wrong file format! No operation given.")
+                fclose(file);
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
 
-            }
-            // TODO: Wrong file format
-            return EXIT_FAILURE;
-        }
-        if (read == 2 && !feof(file)) {
             if (we == 'W' && data == NULL) {
-                // Fehler: Schreibzugriff aber kein Datum gegeben
+                perror("Wrong file format! No data saved.");
+                fclose(file);
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
+            if (we == 'R' && data != NULL) {
+                perror("Wrong file format! When reading from a file, data should be empty.");
+                fclose(file);
+                print_usage(progname);
+                return EXIT_FAILURE;
             }
         }
-        // Fehler: Wert in dritter Spalte ist bei R nicht leer
-        */
 
         requests[numRequests].addr = addr;
         requests[numRequests].data = data;
@@ -144,7 +155,13 @@ int main(int argc, char** argv) {
             requests[numRequests].we = 0;
         } else if (we == 'W') {
             requests[numRequests].we = 1;
-        } // Fehlerbehandlung: Nicht R/W
+        } else {
+            perror("Not a valid operation.")
+            fclose(file);
+            print_usage(progname);
+            return EXIT_FAILURE;
+        }
+
         numRequests++;
 
         if (ferror(file)) {
