@@ -9,14 +9,15 @@
 
 // TODO: consider constraining the type somehow. Maybe also reconsider making
 // this a template
-template <typename T, std::uint64_t SIZE> class LRU {
+template <typename T> class LRU {
   public:
     void logUse(T usage);
     // Return by value since T is small
     T popLRU();
     std::size_t getSize() { return cache.size(); }
-
+    LRU(std::size_t size): size{size} {}
   private:
+    const std::size_t size;
     // TODO: consider writing custom (ARENA) memory allocator
     std::list<T> cache;
     // necessary because of dependant type
@@ -27,7 +28,7 @@ template <typename T, std::uint64_t SIZE> class LRU {
 
 // precondition: either usage is in the cache already OR there is enough space
 // left
-template <typename T, uint64_t SIZE> void inline LRU<T, SIZE>::logUse(T usage) {
+template <typename T> void inline LRU<T>::logUse(T usage) {
     if (mapping.count(usage) != 0) {
         const auto& it = mapping[usage];
         cache.erase(it);
@@ -40,7 +41,7 @@ template <typename T, uint64_t SIZE> void inline LRU<T, SIZE>::logUse(T usage) {
 }
 
 // Precondition: Non-Empty cache
-template <typename T, uint64_t SIZE> inline T LRU<T, SIZE>::popLRU() {
+template <typename T> inline T LRU<T>::popLRU() {
     assert(!cache.empty());
     const auto retVal = cache.back();
     cache.pop_back();
