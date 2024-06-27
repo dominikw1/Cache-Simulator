@@ -1,15 +1,15 @@
 #include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <errno.h>
 #include <getopt.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "Request.h"
 #include "Result.h"
+
 
 extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
                                     unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    // TODO: Set useful default values + update usage and help message
+    // TODO: Set useful default values
     int cycles = 0;
     int directMapped = 0; // 0 => fullassociative, x => directmapped
     unsigned int cacheLines = 2048;
@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
     }
 
     size_t numRequests = 0;
-    struct Request* requests = (struct Request*)malloc(file_info.st_size);
+    struct Request *requests = (struct Request *) malloc(file_info.st_size);
     if (requests == NULL) {
         perror("Error allocating memory buffer for file.");
         fclose(file);
@@ -227,6 +227,7 @@ int main(int argc, char** argv) {
 
     struct Result result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
                                           numRequests, requests, tracefile);
+    free(requests);
 
     return EXIT_SUCCESS;
 }
