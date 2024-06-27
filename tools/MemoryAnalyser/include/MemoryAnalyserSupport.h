@@ -8,7 +8,7 @@ const std::string filename = "memory_analysis.csv";
 
 extern "C" void logRead(void* address) {
     std::ofstream ofs(filename, std::ios_base::app);
-    ofs << "R," << address << "\n";
+    ofs << "R," << address <<","<< "\n";
     ofs.close();
 }
 
