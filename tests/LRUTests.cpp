@@ -11,13 +11,13 @@
 #include <vector>
 
 TEST(LRUTests, LRUAddingSingleValueReturnsSameValue) {
-    LRU<std::uint64_t, 100> lru{};
+    LRU<std::uint64_t> lru{100};
     lru.logUse(10);
     ASSERT_EQ(10, lru.popLRU());
 }
 
 TEST(LRUTests, LRUAddingMultipleUniqueValuesReturnsInCorrectOrder) {
-    LRU<std::uint64_t, 10000> lru{};
+    LRU<std::uint64_t> lru{10000};
     auto randomVec =
         makeVectorUniqueNoOrderPreserve(generateRandomVector(10000));
     std::for_each(randomVec.cbegin(), randomVec.cend(),
@@ -29,7 +29,7 @@ TEST(LRUTests, LRUAddingMultipleUniqueValuesReturnsInCorrectOrder) {
 }
 
 TEST(LRUTests, LRUAddingFewNonUniqueValuesReturnsInCorrectOrder) {
-    LRU<bool, 2> lru{};
+    LRU<bool> lru{2};
     auto inputList = std::vector<bool>{true, true, false, true};
     std::for_each(inputList.cbegin(), inputList.cend(),
                   [&lru](bool val) { lru.logUse(val); });
@@ -43,7 +43,7 @@ static bool existsDuplicate(const std::vector<std::uint64_t>& vec) {
 }
 
 TEST(LRUTests, LRUAddingManyNonUniqueValuesReturnsInCorrectOrder) {
-    LRU<std::uint64_t, 100000> lru{};
+    LRU<std::uint64_t> lru{100000};
     auto inputList = generateRandomVector(100000, 1000);
     ASSERT_TRUE(existsDuplicate(inputList)); // pigeon-hole principle
     std::for_each(inputList.cbegin(), inputList.cend(),

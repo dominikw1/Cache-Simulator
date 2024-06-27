@@ -34,7 +34,7 @@ template <typename T> void inline LRU<T>::logUse(T usage) {
         cache.erase(it);
         cache.push_front(usage);
     } else {
-        assert(cache.size() < SIZE);
+        assert(cache.size() < size);
         cache.push_front(usage);
     }
     mapping[usage] = cache.begin();
