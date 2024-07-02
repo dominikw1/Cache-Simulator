@@ -3,7 +3,7 @@
 #include <systemc>
 
 #include "ReadOnlySpan.h"
-#include "cache.hpp"
+#include "Cache.h"
 #include <cstdint>
 
 SC_MODULE(CPU) {

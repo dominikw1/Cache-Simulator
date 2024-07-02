@@ -3,7 +3,7 @@
 #include "ReadOnlySpan.h"
 #include "Request.h"
 #include "Result.h"
-#include "cache.hpp"
+#include "Cache.h"
 
 #include <systemc>
 struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
