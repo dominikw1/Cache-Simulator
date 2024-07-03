@@ -214,7 +214,7 @@ int main(int argc, char** argv) {
                 } else if (c > INT32_MAX) {
                     fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
                 } else {
-                    perror("Error parsing number for option -c.");
+                    perror("Error parsing number for option -c/--cycles.");
                 }
                 print_usage(progname);
                 return EXIT_FAILURE;
@@ -244,7 +244,7 @@ int main(int argc, char** argv) {
                 } else if (s > INT32_MAX) {
                     fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
                 } else {
-                    perror("Error parsing number for option -c.");
+                    perror("Error parsing number for option --cacheline-size.");
                 }
                 print_usage(progname);
                 return EXIT_FAILURE;
@@ -263,7 +263,7 @@ int main(int argc, char** argv) {
                 } else if (n > INT32_MAX) {
                     fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
                 } else {
-                    perror("Error parsing number for option -c.");
+                    perror("Error parsing number for option --cachelines.");
                 }
                 print_usage(progname);
                 return EXIT_FAILURE;
@@ -282,7 +282,7 @@ int main(int argc, char** argv) {
                 } else if (l > INT32_MAX) {
                     fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
                 } else {
-                    perror("Error parsing number for option -c.");
+                    perror("Error parsing number for option --cache-latency.");
                 }
                 print_usage(progname);
                 return EXIT_FAILURE;
@@ -301,7 +301,7 @@ int main(int argc, char** argv) {
                 } else if (m > INT32_MAX) {
                     fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
                 } else {
-                    perror("Error parsing number for option -c.");
+                    perror("Error parsing number for option --memory-latency.");
                 }
                 print_usage(progname);
                 return EXIT_FAILURE;
