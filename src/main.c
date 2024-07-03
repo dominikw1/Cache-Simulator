@@ -5,7 +5,6 @@
 
 #include <getopt.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <errno.h>
 
 #include "Request.h"
@@ -77,15 +76,11 @@ int main(int argc, char** argv) {
     unsigned int cacheLatency = 1;    // in cycles
     unsigned int memoryLatency = 100;
     const char* tracefile = NULL;
-
-    if (memoryLatency < cacheLatency) {
-        // TODO: Wenn Memory < Cache latency => Warning
-    }
+    // TODO: Implement option Cache Replacement Policy
 
     // Extract file data
     const char* filename = argv[1];
     if (filename == NULL) {
-        // TODO: Error Message
         perror("Filename does not exist.");
         print_usage(progname);
         return EXIT_FAILURE;
@@ -125,40 +120,41 @@ int main(int argc, char** argv) {
 
     // Check for invalid file format and save file content to requests
     // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
-    int read_line = 0;
+    int read_line;
 
     do {
         char we;
         uint32_t addr;
         uint32_t data;
 
+        // TODO: Consider using strtol instead of fscanf
         read_line = fscanf(file, "%c,%i,%i\n", &we, &addr, &data);
-        // TODO: Finalise error messages
+
         if (read_line < 3 && !feof(file)) {
-            if (read_line < 2) {   // Address was not read from file
+            if (read_line == -1) {
+                perror("Wrong file format! An Error occurred while reading the file.");
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
+            if (read_line < 2) { // Address was not read from file
                 perror("Wrong file format! No address given.");
                 fclose(file);
                 print_usage(progname);
                 return EXIT_FAILURE;
-            } else if (read_line < 1) { // WE was not read from file
-                perror("Wrong file format! No operation given.");
-                fclose(file);
-                print_usage(progname);
-                return EXIT_FAILURE;
             }
+        }
 
-            if (we == 'W' && read_line < 3) {   // Write should have data written in the file
-                perror("Wrong file format! No data saved.");
-                fclose(file);
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
-            if (we == 'R' && read_line == 3) {  // Read should not have data written in the file
-                perror("Wrong file format! When reading from a file, data should be empty.");
-                fclose(file);
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
+        if (we == 'W' && read_line < 3) {   // Write should have data written in the file
+            perror("Wrong file format! No data saved.");
+            fclose(file);
+            print_usage(progname);
+            return EXIT_FAILURE;
+        }
+        if (we == 'R' && read_line == 3) {  // Read should not have data written in the file
+            perror("Wrong file format! When reading from a file, data should be empty.");
+            fclose(file);
+            print_usage(progname);
+            return EXIT_FAILURE;
         }
 
         requests[numRequests].addr = addr;
@@ -192,70 +188,146 @@ int main(int argc, char** argv) {
     char* endptr;
     int option_index;
     const char* optstring = "c:h";
-    static struct option long_options[] = {// TODO: Change nums to "smarter" values => MICROS verwenden für Zahlen
-                                           {"cycles", required_argument, 0, 'c'},
-                                           {"directmapped", no_argument, 0, DIRECTMAPPED},
-                                           {"fullassociative", no_argument, 0, FULLASSOCIATIVE},
-                                           {"cacheline-size", required_argument, 0, CACHELINE_SIZE},
-                                           {"cachelines", required_argument, 0, CACHELINES},
-                                           {"cache-latency", required_argument, 0, CACHE_LATENCY},
-                                           {"memory-latency", required_argument, 0, MEMORY_LATENCY},
-                                           {"tf=", required_argument, 0, TRACEFILE},
-                                           {"help", no_argument, 0, 'h'},
-                                           {0, 0, 0, 0}};
+    static struct option long_options[] = {
+        {"cycles", required_argument, 0, 'c'},
+        {"directmapped", no_argument, 0, DIRECTMAPPED},
+        {"fullassociative", no_argument, 0, FULLASSOCIATIVE},
+        {"cacheline-size", required_argument, 0, CACHELINE_SIZE},
+        {"cachelines", required_argument, 0, CACHELINES},
+        {"cache-latency", required_argument, 0, CACHE_LATENCY},
+        {"memory-latency", required_argument, 0, MEMORY_LATENCY},
+        {"tf=", required_argument, 0, TRACEFILE},
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}};
 
     while ((opt = getopt_long(argc, argv, optstring, long_options, &option_index)) != -1) {
-        switch (opt) {
+        errno = 0;
 
+        switch (opt) {
         case 'c':
-            // TODO: Error handling
-            // strtol() => returns long int => returns 0 if not converted
-            cycles = strtol(optarg, &endptr, 10); // Cycles in decimal
+            endptr = NULL;
+            unsigned long c = strtoul(optarg, &endptr, 10); // Cycles in decimal
+            // TODO: Further error handling
+            if (*endptr != '\0' || c == 0 || errno != 0) {
+                if (errno == 0 && c == 0) {
+                    fprintf(stderr, "Invalid Input: Cycles cannot be smaller than 1.\n");
+                } else if (c > INT32_MAX) {
+                    fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
+                } else {
+                    perror("Error parsing number for option -c.");
+                }
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
+            cycles = (int) c;
             break;
+
         case 'h':
             print_help(progname);
             return EXIT_SUCCESS;
-            break;
+
         case DIRECTMAPPED:
-            // TODO: Error handling w errno :o
             directMapped = 1;
             break;
+
         case FULLASSOCIATIVE:
             // Default value is set to fullassociative
             break;
+
         case CACHELINE_SIZE:
-            // TODO: Error handling
-            cacheLineSize = strtoul(optarg, &endptr, 10); // cacheline-size in decimal
+            endptr = NULL;
+            unsigned long s = strtoul(optarg, &endptr, 10);
+            // TODO: Further error handling
+            if (*endptr != '\0' || s == 0 || errno != 0) {
+                if (errno == 0 && s == 0) {
+                    fprintf(stderr, "Invalid Input: Cacheline size should be at least 1.\n");
+                } else if (s > INT32_MAX) {
+                    fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
+                } else {
+                    perror("Error parsing number for option -c.");
+                }
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
+            // TODO: Only support powers of two
+            cacheLineSize = (int) s;
             break;
+
         case CACHELINES:
-            // TODO: Error handling
-            cacheLines = strtoul(optarg, &endptr, 10);
+            endptr = NULL;
+            unsigned long n = strtoul(optarg, &endptr, 10);
+            // TODO: Further error handling
+            if (*endptr != '\0' || n == 0 || errno != 0) {
+                if (errno == 0 && n == 0) {
+                    fprintf(stderr, "Invalid Input: Number of cache-lines must be at least 1.\n");
+                } else if (n > INT32_MAX) {
+                    fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
+                } else {
+                    perror("Error parsing number for option -c.");
+                }
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
+
+            cacheLines = (int) n;
             break;
+
         case CACHE_LATENCY:
-            // TODO: Error handling
-            cacheLatency = strtoul(optarg, &endptr, 10);
+            endptr = NULL;
+            unsigned long l = strtoul(optarg, &endptr, 10); // Cycles in decimal
+            // TODO: Further error handling
+            if (*endptr != '\0' || l == 0 || errno != 0) {
+                if (errno == 0 && l == 0) {
+                    fprintf(stderr, "Invalid Input: Cache-latency cannot be zero or negativ.\n");
+                } else if (l > INT32_MAX) {
+                    fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
+                } else {
+                    perror("Error parsing number for option -c.");
+                }
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
+
+            cacheLatency = (int) l;
             break;
+
         case MEMORY_LATENCY:
-            // TODO: Error handling
-            memoryLatency = strtoul(optarg, &endptr, 10); // memory-latency
+            endptr = NULL;
+            unsigned long m = strtoul(optarg, &endptr, 10); // Cycles in decimal
+            // TODO: Further error handling
+            if (*endptr != '\0' || m == 0 || errno != 0) {
+                if (errno == 0 && m == 0) {
+                    fprintf(stderr, "Invalid Input: Memory-latency cannot be zero or negativ.\n");
+                } else if (m > INT32_MAX) {
+                    fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
+                } else {
+                    perror("Error parsing number for option -c.");
+                }
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
+
+            memoryLatency = (int) m;
             break;
+
         case TRACEFILE:
             // TODO: Create Tracefile
             tracefile = "";
             // TODO: Error handling
             break;
 
-        case '?':
-            print_usage(progname);
-            return EXIT_FAILURE;
         default:
-            // TODO: Default Error Message
+            print_usage(progname);
             return EXIT_FAILURE;
         }
     }
 
-    struct Result result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
-                                          numRequests, requests, tracefile);
+    if (memoryLatency < cacheLatency) {
+        // TODO: Wenn Memory < Cache latency => Warning
+    }
+
+    run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
+                   numRequests, requests, tracefile);
     free(requests);
 
     return EXIT_SUCCESS;
