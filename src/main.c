@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <getopt.h>
 #include <sys/stat.h>
@@ -311,9 +312,42 @@ int main(int argc, char** argv) {
             break;
 
         case TRACEFILE:
-            // TODO: Create Tracefile
-            tracefile = "";
-            // TODO: Error handling
+            FILE* t_file = fopen(optarg, "r");
+
+            if (t_file == NULL) {
+                perror("Error opening file.\n");
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
+
+            // Lines 97-118 taken and adapted from GRA Week 3 "File IO" files.c l.322-336
+            struct stat t_file_info;
+            if (fstat(fileno(t_file), &t_file_info) != 0) {
+                perror("Error determining file size.");
+                fclose(t_file);
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
+
+            if (!S_ISREG(t_file_info.st_mode)) {
+                fprintf(stderr, "%s is not a regular file\n", optarg);
+                fclose(t_file);
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
+
+            if (S_ISDIR(t_file_info.st_mode)) {
+                fprintf(stderr, "Filename is a directory.\n");
+                fclose(t_file);
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
+
+            char* tracefile_copy = NULL;
+            strncpy(tracefile_copy, optarg, strlen(optarg));
+            tracefile = tracefile_copy;
+
+            fclose(t_file);
             break;
 
         default:
