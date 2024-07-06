@@ -14,9 +14,6 @@ template <typename T> class ReadOnlySpan {
     std::size_t size() const { return arraySize; }
     const T* begin() const { return arrayPtr; }
     const T* end() const { return arrayPtr + arraySize; }
-    const T& operator++() {
-        arrayPtr = ++arrayPtr;
-        return *arrayPtr;
-    }
+    const T& operator++() { return *(++arrayPtr); }
     const T& top() const { return arrayPtr[0]; }
 };
