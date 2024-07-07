@@ -11,6 +11,7 @@ SC_MODULE(CPU) {
   public:
     // CPU -> Cache
     sc_core::sc_out<bool> weBus;
+    sc_core::sc_out<bool> validDataRequest;
     sc_core::sc_out<std::uint32_t> addressBus;
     sc_core::sc_out<std::uint32_t> dataOutBus;
 
@@ -26,6 +27,7 @@ SC_MODULE(CPU) {
     sc_core::sc_in<bool> instrReadyBus;
 
     // CPU -> Instr Cache
+    sc_core::sc_out<bool> validInstrRequest;
     sc_core::sc_out<std::uint32_t> pcBus;
 
   private:
@@ -37,6 +39,7 @@ SC_MODULE(CPU) {
     CPU(::sc_core::sc_module_name name);
     typedef CPU SC_CURRENT_USER_MODULE;
 
+    void startWorking(); // temporary, find a better solution!!!
   private:
     void dispatchInstruction();
     void receiveData();

@@ -16,7 +16,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 enable_testing()
 
+set(SYSTEMC_HOME ${CMAKE_CURRENT_SOURCE_DIR}/../systemc)
+message(SYSTEMC_HOME="${SYSTEMC_HOME}")
+
 add_subdirectory(src)
 add_subdirectory(tests)
-
-

@@ -7,6 +7,15 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
-add_executable(tests template.cpp LRUTests.cpp CacheInternalTests.cpp Utils.cpp)
-target_link_libraries(tests gtest_main gtest GRA_Cache_lib)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_definitions(-g -Wall -Wextra -pedantic)
+
+
+add_executable(tests template.cpp LRUTests.cpp CacheInternalTests.cpp Utils.cpp CPUTests.cpp)
+target_link_libraries(tests -lasan -lubsan)
+
+
+
+target_link_libraries(tests gtest_main gtest ${SYSTEMC_HOME}/lib/libsystemc.so GRA_Cache_lib)
 gtest_discover_tests(tests)
