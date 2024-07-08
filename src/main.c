@@ -65,6 +65,7 @@ int main(int argc, char** argv) {
     const char* progname = argv[0];
 
     if (argc == 1) {
+        fprintf(stderr, "Positional argument missing!\n");
         print_usage(progname);
         return EXIT_FAILURE;
     }
@@ -89,7 +90,7 @@ int main(int argc, char** argv) {
 
     FILE* file = fopen(filename, "r");
     if (file == NULL) {
-        perror("Error opening file.\n");
+        perror("Error opening file");
         print_usage(progname);
         return EXIT_FAILURE;
     }
@@ -133,12 +134,12 @@ int main(int argc, char** argv) {
 
         if (read_line < 3 && !feof(file)) {
             if (read_line == -1) {
-                perror("Wrong file format! An Error occurred while reading the file.");
+                fprintf(stderr, "Wrong file format! An Error occurred while reading the file.\n");
                 print_usage(progname);
                 return EXIT_FAILURE;
             }
             if (read_line < 2) { // Address was not read from file
-                perror("Wrong file format! No address given.");
+                fprintf(stderr, "Wrong file format! No address given.\n");
                 fclose(file);
                 print_usage(progname);
                 return EXIT_FAILURE;
@@ -146,13 +147,13 @@ int main(int argc, char** argv) {
         }
 
         if (we == 'W' && read_line < 3) {   // Write should have data written in the file
-            perror("Wrong file format! No data saved.");
+            fprintf(stderr, "Wrong file format! No data saved.\n");
             fclose(file);
             print_usage(progname);
             return EXIT_FAILURE;
         }
         if (we == 'R' && read_line == 3) {  // Read should not have data written in the file
-            perror("Wrong file format! When reading from a file, data should be empty.");
+            fprintf(stderr, "Wrong file format! When reading from a file, data should be empty.\n");
             fclose(file);
             print_usage(progname);
             return EXIT_FAILURE;
@@ -165,7 +166,7 @@ int main(int argc, char** argv) {
         } else if (we == 'W') {
             requests[numRequests].we = 1;
         } else {
-            perror("Not a valid operation.");
+            fprintf(stderr, "Not a valid operation.\n");
             fclose(file);
             print_usage(progname);
             return EXIT_FAILURE;
