@@ -8,9 +8,9 @@
 #include "Result.h"
 #include "Memory.h"
 #include "CacheInternal.h"
-#include "LRU.h"
+#include "LRUPolicy.h"
 
-enum CachePolicy {
+enum class CachePolicy {
     DIRECT_MAPPED, FULL_ASSOCIATIVE
 };
 
@@ -36,7 +36,7 @@ private:
 
     MEMORY memory;
     CacheInternal cacheInternal;
-    LRU<uint32_t> lru;
+    LRUPolicy<uint32_t> lru;
 
     unsigned int latency;
 
@@ -173,7 +173,7 @@ uint32_t CACHE<DIRECT_MAPPED>::getIndex(uint32_t address) {
     }
 
     // If cache full -> use LRU logic
-    return lru.popLRU();
+    return lru.pop();
 }
 
 template<>

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "../src/LRU.h"
+#include "../src/LRUPolicy.h"
 #include "Utils.h"
 
 #include <algorithm>
@@ -10,31 +10,28 @@
 #include <unordered_set>
 #include <vector>
 
-TEST(LRUTests, LRUAddingSingleValueReturnsSameValue) {
-    LRU<std::uint64_t> lru{100};
-    lru.logUse(10);
-    ASSERT_EQ(10, lru.popLRU());
+TEST(LRUPolicyTests, LRUPolicyAddingSingleValueReturnsSameValue) {
+    LRUPolicy<std::uint64_t> LRUPolicy{100};
+    LRUPolicy.logUse(10);
+    ASSERT_EQ(10, LRUPolicy.popLRUPolicy());
 }
 
-TEST(LRUTests, LRUAddingMultipleUniqueValuesReturnsInCorrectOrder) {
-    LRU<std::uint64_t> lru{10000};
-    auto randomVec =
-        makeVectorUniqueNoOrderPreserve(generateRandomVector(10000));
-    std::for_each(randomVec.cbegin(), randomVec.cend(),
-                  [&lru](std::uint64_t val) { lru.logUse(val); });
-    ASSERT_EQ(randomVec.size(), lru.getSize());
+TEST(LRUPolicyTests, LRUPolicyAddingMultipleUniqueValuesReturnsInCorrectOrder) {
+    LRUPolicy<std::uint64_t> LRUPolicy{10000};
+    auto randomVec = makeVectorUniqueNoOrderPreserve(generateRandomVector(10000));
+    std::for_each(randomVec.cbegin(), randomVec.cend(), [&LRUPolicy](std::uint64_t val) { LRUPolicy.logUse(val); });
+    ASSERT_EQ(randomVec.size(), LRUPolicy.getSize());
     for (std::size_t i = 0; i < randomVec.size(); ++i) {
-        ASSERT_EQ(randomVec[i], lru.popLRU());
+        ASSERT_EQ(randomVec[i], LRUPolicy.popLRUPolicy());
     }
 }
 
-TEST(LRUTests, LRUAddingFewNonUniqueValuesReturnsInCorrectOrder) {
-    LRU<bool> lru{2};
+TEST(LRUPolicyTests, LRUPolicyAddingFewNonUniqueValuesReturnsInCorrectOrder) {
+    LRUPolicy<bool> LRUPolicy{2};
     auto inputList = std::vector<bool>{true, true, false, true};
-    std::for_each(inputList.cbegin(), inputList.cend(),
-                  [&lru](bool val) { lru.logUse(val); });
-    ASSERT_EQ(false, lru.popLRU());
-    ASSERT_EQ(true, lru.popLRU());
+    std::for_each(inputList.cbegin(), inputList.cend(), [&LRUPolicy](bool val) { LRUPolicy.logUse(val); });
+    ASSERT_EQ(false, LRUPolicy.popLRUPolicy());
+    ASSERT_EQ(true, LRUPolicy.popLRUPolicy());
 }
 
 static bool existsDuplicate(const std::vector<std::uint64_t>& vec) {
@@ -42,18 +39,17 @@ static bool existsDuplicate(const std::vector<std::uint64_t>& vec) {
     return s.size() != vec.size();
 }
 
-TEST(LRUTests, LRUAddingManyNonUniqueValuesReturnsInCorrectOrder) {
-    LRU<std::uint64_t> lru{100000};
+TEST(LRUPolicyTests, LRUPolicyAddingManyNonUniqueValuesReturnsInCorrectOrder) {
+    LRUPolicy<std::uint64_t> LRUPolicy{100000};
     auto inputList = generateRandomVector(100000, 1000);
     ASSERT_TRUE(existsDuplicate(inputList)); // pigeon-hole principle
-    std::for_each(inputList.cbegin(), inputList.cend(),
-                  [&lru](std::uint64_t val) { lru.logUse(val); });
+    std::for_each(inputList.cbegin(), inputList.cend(), [&LRUPolicy](std::uint64_t val) { LRUPolicy.logUse(val); });
 
     std::vector<std::uint64_t> popped{};
-    while (lru.getSize() > 0)
-        popped.push_back(lru.popLRU());
+    while (LRUPolicy.getSize() > 0)
+        popped.push_back(LRUPolicy.popLRUPolicy());
 
-    // lru does not keep state -> we can just iterate from the back
+    // LRUPolicy does not keep state -> we can just iterate from the back
     std::reverse(popped.begin(), popped.end());
     auto inputListIt = inputList.rbegin();
     std::unordered_set<std::uint64_t> alreadySeen{};

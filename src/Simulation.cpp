@@ -11,7 +11,7 @@ struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLin
                              struct Request requests[], const char* tracefile) {
     std::cout << "Starting Simulation...\n";
     CPU cpu{"CPU"};
-    //  CACHE cache{"Cache", directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency};
+    //   CACHE cache{"Cache", directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency};
     return Result{};
 }
 
