@@ -55,10 +55,138 @@ const char* help_msg = "Positional arguments:\n"
 
 void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, progname, progname); }
 
-void print_help(const char* progname) {
-    print_usage(progname);
-    fprintf(stderr, "\n%s", help_msg);
+void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
+
+// Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
+int isPowerOfTwo(unsigned long n) { return n && !(n & (n - 1)); }
+
+FILE* check_file (const char* progname, const char* filename) {
+    if (filename == NULL) {
+        perror("Filename does not exist");
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+
+    FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+
+    // Lines 78-98 taken and adapted from GRA Week 3 "File IO" files.c
+    struct stat file_info;
+    if (fstat(fileno(file), &file_info) != 0) {
+        perror("Error determining file size");
+        fclose(file);
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+
+    if (!S_ISREG(file_info.st_mode)) {
+        fprintf(stderr, "%s is not a regular file\n", filename);
+        fclose(file);
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+
+    if (S_ISDIR(file_info.st_mode)) {
+        fprintf(stderr, "Filename should not be a directory.\n");
+        fclose(file);
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+
+    return file;
 }
+
+struct Request* extract_file_data (const char* progname, FILE* file, struct Request* requests, size_t* numRequests) {
+    // Check for invalid file format and save file content to requests
+    // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
+    int read_line;
+
+    do {
+        char we;
+        uint32_t addr;
+        uint32_t data;
+
+        read_line = fscanf(file, "%c,%i,%i\n", &we, &addr, &data);
+
+        if (read_line < 3 && !feof(file)) {
+            if (read_line == -1) {
+                fprintf(stderr, "Wrong file format! An Error occurred while reading the file.\n");
+                fclose(file);
+                print_usage(progname);
+                exit(EXIT_FAILURE);
+            }
+            if (read_line < 2) { // Address was not read from file
+                fprintf(stderr, "Wrong file format! No address given.\n");
+                fclose(file);
+                print_usage(progname);
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        if (we == 'W' && read_line < 3) {   // Write should have data written in the file
+            fprintf(stderr, "Wrong file format! No data saved.\n");
+            fclose(file);
+            print_usage(progname);
+            exit(EXIT_FAILURE);
+        }
+        if (we == 'R' && read_line == 3) {  // Read should not have data written in the file
+            fprintf(stderr, "Wrong file format! When reading from a file, data should be empty.\n");
+            fclose(file);
+            print_usage(progname);
+            exit(EXIT_FAILURE);
+        }
+
+        requests[*numRequests].addr = addr;
+        requests[*numRequests].data = data;
+        if (we == 'R') {
+            requests[*numRequests].we = 0;
+        } else if (we == 'W') {
+            requests[*numRequests].we = 1;
+        } else {
+            fprintf(stderr, "Not a valid operation.\n");
+            fclose(file);
+            print_usage(progname);
+            exit(EXIT_FAILURE);
+        }
+
+        (*numRequests)++;
+
+        if (ferror(file)) {
+            printf("Error reading file.\n");
+            fclose(file);
+            print_usage(progname);
+            exit(EXIT_FAILURE);
+        }
+
+    } while (!feof(file));
+
+    fclose(file);
+    return requests;
+}
+
+unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option) {
+    endptr = NULL;
+    long n = strtol(optarg, &endptr, 10);
+    // TODO: Further error handling: Negative Inputs
+    if (*endptr != '\0' || n <= 0 || errno != 0) {
+        if (errno == 0 && n <= 0) {
+            fprintf(stderr, "Invalid input: %s\n", message);
+        } else if (n > INT32_MAX) {
+            fprintf(stderr, "%ld is too big to be converted to an int.\n", n);
+        } else {
+            char* error_message = strerror(errno);
+            fprintf(stderr, "Error parsing number for option %s%s", option, error_message);
+        }
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+    return n;
+}
+
 
 int main(int argc, char** argv) {
 
@@ -81,31 +209,10 @@ int main(int argc, char** argv) {
     // TODO: Implement option Cache Replacement Policy
 
     // Extract file data
-    const char* filename = argv[1];
-    if (filename == NULL) {
-        perror("Filename does not exist.");
-        print_usage(progname);
-        return EXIT_FAILURE;
-    }
-
-    FILE* file = fopen(filename, "r");
-    if (file == NULL) {
-        perror("Error opening file");
-        print_usage(progname);
-        return EXIT_FAILURE;
-    }
-
-    // Lines 97-118 taken and adapted from GRA Week 3 "File IO" files.c l.17-34
+    FILE* file = check_file(progname, argv[1]);
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
-        perror("Error determining file size.");
-        fclose(file);
-        print_usage(progname);
-        return EXIT_FAILURE;
-    }
-
-    if (!S_ISREG(file_info.st_mode)) {
-        fprintf(stderr, "%s is not a regular file\n", filename);
+        perror("Error determining file size");
         fclose(file);
         print_usage(progname);
         return EXIT_FAILURE;
@@ -120,75 +227,13 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    // Check for invalid file format and save file content to requests
-    // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
-    int read_line;
-
-    do {
-        char we;
-        uint32_t addr;
-        uint32_t data;
-
-        // TODO: Consider using strtol instead of fscanf
-        read_line = fscanf(file, "%c,%i,%i\n", &we, &addr, &data);
-
-        if (read_line < 3 && !feof(file)) {
-            if (read_line == -1) {
-                fprintf(stderr, "Wrong file format! An Error occurred while reading the file.\n");
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
-            if (read_line < 2) { // Address was not read from file
-                fprintf(stderr, "Wrong file format! No address given.\n");
-                fclose(file);
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
-        }
-
-        if (we == 'W' && read_line < 3) {   // Write should have data written in the file
-            fprintf(stderr, "Wrong file format! No data saved.\n");
-            fclose(file);
-            print_usage(progname);
-            return EXIT_FAILURE;
-        }
-        if (we == 'R' && read_line == 3) {  // Read should not have data written in the file
-            fprintf(stderr, "Wrong file format! When reading from a file, data should be empty.\n");
-            fclose(file);
-            print_usage(progname);
-            return EXIT_FAILURE;
-        }
-
-        requests[numRequests].addr = addr;
-        requests[numRequests].data = data;
-        if (we == 'R') {
-            requests[numRequests].we = 0;
-        } else if (we == 'W') {
-            requests[numRequests].we = 1;
-        } else {
-            fprintf(stderr, "Not a valid operation.\n");
-            fclose(file);
-            print_usage(progname);
-            return EXIT_FAILURE;
-        }
-
-        numRequests++;
-
-        if (ferror(file)) {
-            printf("Error reading file.\n");
-            fclose(file);
-            print_usage(progname);
-            return EXIT_FAILURE;
-        }
-
-    } while (!feof(file));
-
-    fclose(file);
+    requests = extract_file_data(progname, file, requests, &numRequests);
 
     // PARSING
     int opt;
-    char* endptr;
     int option_index;
+    char* error_message;
+    char* endptr = NULL;
     const char* optstring = "c:h";
     static struct option long_options[] = {
         {"cycles", required_argument, 0, 'c'},
@@ -207,20 +252,8 @@ int main(int argc, char** argv) {
 
         switch (opt) {
         case 'c':
-            endptr = NULL;
-            unsigned long c = strtoul(optarg, &endptr, 10); // Cycles in decimal
-            // TODO: Further error handling
-            if (*endptr != '\0' || c == 0 || errno != 0) {
-                if (errno == 0 && c == 0) {
-                    fprintf(stderr, "Invalid Input: Cycles cannot be smaller than 1.\n");
-                } else if (c > INT32_MAX) {
-                    fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
-                } else {
-                    perror("Error parsing number for option -c/--cycles.");
-                }
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
+            error_message = "Cycles cannot be smaller than 1.";
+            unsigned long c = check_user_input(endptr, error_message, progname, "-c/--cycles");
             cycles = (int) c;
             break;
 
@@ -237,112 +270,38 @@ int main(int argc, char** argv) {
             break;
 
         case CACHELINE_SIZE:
-            endptr = NULL;
-            unsigned long s = strtoul(optarg, &endptr, 10);
-            // TODO: Further error handling
-            if (*endptr != '\0' || s == 0 || errno != 0) {
-                if (errno == 0 && s == 0) {
-                    fprintf(stderr, "Invalid Input: Cacheline size should be at least 1.\n");
-                } else if (s > INT32_MAX) {
-                    fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
-                } else {
-                    perror("Error parsing number for option --cacheline-size.");
-                }
+            error_message = "Cacheline size should be at least 1.";
+            unsigned long s = check_user_input(endptr, error_message, progname, "--cacheline-size");
+
+            if (!isPowerOfTwo(s)) {
+                fprintf(stderr, "Invalid Input: Cacheline size should be a power of two!\n");
                 print_usage(progname);
                 return EXIT_FAILURE;
             }
-            // TODO: Only support powers of two
+
             cacheLineSize = (int) s;
             break;
 
         case CACHELINES:
-            endptr = NULL;
-            unsigned long n = strtoul(optarg, &endptr, 10);
-            // TODO: Further error handling
-            if (*endptr != '\0' || n == 0 || errno != 0) {
-                if (errno == 0 && n == 0) {
-                    fprintf(stderr, "Invalid Input: Number of cache-lines must be at least 1.\n");
-                } else if (n > INT32_MAX) {
-                    fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
-                } else {
-                    perror("Error parsing number for option --cachelines.");
-                }
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
-
+            error_message = "Number of cache-lines must be at least 1.";
+            unsigned long n = check_user_input(endptr, error_message, progname, "--cachelines");
             cacheLines = (int) n;
             break;
 
         case CACHE_LATENCY:
-            endptr = NULL;
-            unsigned long l = strtoul(optarg, &endptr, 10); // Cycles in decimal
-            // TODO: Further error handling
-            if (*endptr != '\0' || l == 0 || errno != 0) {
-                if (errno == 0 && l == 0) {
-                    fprintf(stderr, "Invalid Input: Cache-latency cannot be zero or negativ.\n");
-                } else if (l > INT32_MAX) {
-                    fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
-                } else {
-                    perror("Error parsing number for option --cache-latency.");
-                }
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
-
+            error_message = "Cache-latency cannot be zero or negativ.";
+            unsigned long l = check_user_input(endptr, error_message, progname, "--cache-latency");
             cacheLatency = (int) l;
             break;
 
         case MEMORY_LATENCY:
-            endptr = NULL;
-            unsigned long m = strtoul(optarg, &endptr, 10); // Cycles in decimal
-            // TODO: Further error handling
-            if (*endptr != '\0' || m == 0 || errno != 0) {
-                if (errno == 0 && m == 0) {
-                    fprintf(stderr, "Invalid Input: Memory-latency cannot be zero or negativ.\n");
-                } else if (m > INT32_MAX) {
-                    fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
-                } else {
-                    perror("Error parsing number for option --memory-latency.");
-                }
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
-
+            error_message = "Memory-latency cannot be zero or negativ.";
+            unsigned long m = check_user_input(endptr, error_message, progname, "--memory-latency");
             memoryLatency = (int) m;
             break;
 
         case TRACEFILE:
-            FILE* t_file = fopen(optarg, "r");
-
-            if (t_file == NULL) {
-                perror("Error opening file.\n");
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
-
-            // Lines 97-118 taken and adapted from GRA Week 3 "File IO" files.c l.322-336
-            struct stat t_file_info;
-            if (fstat(fileno(t_file), &t_file_info) != 0) {
-                perror("Error determining file size.");
-                fclose(t_file);
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
-
-            if (!S_ISREG(t_file_info.st_mode)) {
-                fprintf(stderr, "%s is not a regular file\n", optarg);
-                fclose(t_file);
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
-
-            if (S_ISDIR(t_file_info.st_mode)) {
-                fprintf(stderr, "Filename is a directory.\n");
-                fclose(t_file);
-                print_usage(progname);
-                return EXIT_FAILURE;
-            }
+            FILE* t_file = check_file(progname, optarg);
 
             char* tracefile_copy = NULL;
             strncpy(tracefile_copy, optarg, strlen(optarg));
@@ -360,6 +319,8 @@ int main(int argc, char** argv) {
     if (memoryLatency < cacheLatency) {
         // TODO: Wenn Memory < Cache latency => Warning
     }
+
+    // TODO: Cachelines und CachlineSize sind kleiner als 32 Bit
 
     run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
                    numRequests, requests, tracefile);
