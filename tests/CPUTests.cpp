@@ -79,7 +79,7 @@ SC_MODULE(DataMemoryMock) {
         if (validDataRequest) {
             std::cout << "Providing/writing data at " << addressBus.read() << std::endl;
             if (weBus.read() == 0) {
-                dataOutBus.write(dataMemory.at(addressBus.read()));
+                dataOutBus.write(dataMemory[addressBus.read()]);
             } else {
                 dataMemory[addressBus.read()] = dataInBus.read();
             }
@@ -215,7 +215,7 @@ TEST_F(CPUTests, CPUHandlesRandomInputWithoutThrowing) {
     std::uint32_t numRequests = 100000;
     auto randomAddresses = generateRandomVector(numRequests, UINT32_MAX);
     auto randomData = generateRandomVector(numRequests, UINT32_MAX);
-    auto randomWE = generateRandomVector(numRequests, UINT32_MAX);
+    auto randomWE = generateRandomVector(numRequests, 2);
 
     for (std::size_t i = 0; i < numRequests; ++i) {
         instrMock.instructionMemory[i] = Request{randomAddresses[i], randomData[i], randomWE[i]};
