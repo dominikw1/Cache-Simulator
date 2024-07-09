@@ -10,11 +10,11 @@
 #include "CacheInternal.h"
 #include "LRUPolicy.h"
 
-enum class CachePolicy {
+enum class MappingType {
     DIRECT_MAPPED, FULL_ASSOCIATIVE
 };
 
-template<CachePolicy cachePolicy>
+template<MappingType mappingType>
 SC_MODULE(CACHE) {
 public:
     sc_core::sc_in<uint32_t> cacheAddressBus;
@@ -140,7 +140,7 @@ private:
 };
 
 template<>
-uint32_t CACHE<DIRECT_MAPPED>::getTag(uint32_t address) {
+uint32_t CACHE<MappingType::DIRECT_MAPPED>::getTag(uint32_t address) {
     auto offsetBits = (int) log(cacheLineSize);
 
     auto tagMasks = (uint32_t) (-1 << offsetBits);
@@ -148,7 +148,7 @@ uint32_t CACHE<DIRECT_MAPPED>::getTag(uint32_t address) {
 }
 
 template<>
-uint32_t CACHE<FULL_ASSOCIATIVE>::getTag(uint32_t address) {
+uint32_t CACHE<MappingType::FULL_ASSOCIATIVE>::getTag(uint32_t address) {
     auto offsetBits = (int) log(cacheLineSize);
     auto indexBits = (int) log(cacheLines);
 
@@ -157,7 +157,7 @@ uint32_t CACHE<FULL_ASSOCIATIVE>::getTag(uint32_t address) {
 }
 
 template<>
-uint32_t CACHE<DIRECT_MAPPED>::getIndex(uint32_t address) {
+uint32_t CACHE<MappingType::DIRECT_MAPPED>::getIndex(uint32_t address) {
     auto tag = getTag(address);
 
     // Search for tag
@@ -177,7 +177,7 @@ uint32_t CACHE<DIRECT_MAPPED>::getIndex(uint32_t address) {
 }
 
 template<>
-uint32_t CACHE<FULL_ASSOCIATIVE>::getIndex(uint32_t address) {
+uint32_t CACHE<MappingType::FULL_ASSOCIATIVE>::getIndex(uint32_t address) {
     auto indexBits = (int) log(cacheLines);
     auto offsetBits = (int) log(cacheLineSize);
 
