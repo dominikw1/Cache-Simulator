@@ -13,7 +13,7 @@
 TEST(LRUPolicyTests, LRUPolicyAddingSingleValueReturnsSameValue) {
     LRUPolicy<std::uint64_t> LRUPolicy{100};
     LRUPolicy.logUse(10);
-    ASSERT_EQ(10, LRUPolicy.popLRUPolicy());
+    ASSERT_EQ(10, LRUPolicy.pop());
 }
 
 TEST(LRUPolicyTests, LRUPolicyAddingMultipleUniqueValuesReturnsInCorrectOrder) {
@@ -22,7 +22,7 @@ TEST(LRUPolicyTests, LRUPolicyAddingMultipleUniqueValuesReturnsInCorrectOrder) {
     std::for_each(randomVec.cbegin(), randomVec.cend(), [&LRUPolicy](std::uint64_t val) { LRUPolicy.logUse(val); });
     ASSERT_EQ(randomVec.size(), LRUPolicy.getSize());
     for (std::size_t i = 0; i < randomVec.size(); ++i) {
-        ASSERT_EQ(randomVec[i], LRUPolicy.popLRUPolicy());
+        ASSERT_EQ(randomVec[i], LRUPolicy.pop());
     }
 }
 
@@ -30,8 +30,8 @@ TEST(LRUPolicyTests, LRUPolicyAddingFewNonUniqueValuesReturnsInCorrectOrder) {
     LRUPolicy<bool> LRUPolicy{2};
     auto inputList = std::vector<bool>{true, true, false, true};
     std::for_each(inputList.cbegin(), inputList.cend(), [&LRUPolicy](bool val) { LRUPolicy.logUse(val); });
-    ASSERT_EQ(false, LRUPolicy.popLRUPolicy());
-    ASSERT_EQ(true, LRUPolicy.popLRUPolicy());
+    ASSERT_EQ(false, LRUPolicy.pop());
+    ASSERT_EQ(true, LRUPolicy.pop());
 }
 
 static bool existsDuplicate(const std::vector<std::uint64_t>& vec) {
@@ -47,7 +47,7 @@ TEST(LRUPolicyTests, LRUPolicyAddingManyNonUniqueValuesReturnsInCorrectOrder) {
 
     std::vector<std::uint64_t> popped{};
     while (LRUPolicy.getSize() > 0)
-        popped.push_back(LRUPolicy.popLRUPolicy());
+        popped.push_back(LRUPolicy.pop());
 
     // LRUPolicy does not keep state -> we can just iterate from the back
     std::reverse(popped.begin(), popped.end());

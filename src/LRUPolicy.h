@@ -1,4 +1,5 @@
 #pragma once
+#include "ReplacementPolicy.h"
 #include <assert.h>
 #include <cstdint>
 #include <initializer_list>
@@ -6,16 +7,18 @@
 #include <list>
 #include <type_traits>
 #include <unordered_map>
+#include <memory>
 
 // TODO: consider constraining the type somehow. Maybe also reconsider making
 // this a template
-template <typename T> class LRUPolicy {
+template <typename T> class LRUPolicy : public ReplacementPolicy<T> {
   public:
-    void logUse(T usage);
+    void logUse(T usage) override;
     // Return by value since T is small
-    T popLRUPolicy();
+    T pop() override;
     std::size_t getSize() { return cache.size(); }
-    LRUPolicy(std::size_t size): size{size} {}
+    LRUPolicy(std::size_t size) : size{size} {}
+
   private:
     const std::size_t size;
     // TODO: consider writing custom (ARENA) memory allocator
@@ -41,11 +44,15 @@ template <typename T> void inline LRUPolicy<T>::logUse(T usage) {
 }
 
 // Precondition: Non-Empty cache
-template <typename T> inline T LRUPolicy<T>::popLRUPolicy() {
+template <typename T> inline T LRUPolicy<T>::pop() {
     assert(!cache.empty());
     const auto retVal = cache.back();
     cache.pop_back();
     assert(mapping.find(retVal) != mapping.end());
     mapping.erase(retVal);
     return retVal;
+}
+
+template <typename T> std::unique_ptr<ReplacementPolicy<T>> makeLRUPolicy(std::size_t size) {
+    return std::make_unique<LRUPolicy<T>>(size);
 }
