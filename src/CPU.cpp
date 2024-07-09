@@ -4,7 +4,7 @@ using namespace sc_core;
 
 CPU::CPU(sc_module_name name) : sc_module{name} {
     SC_METHOD(dispatchInstruction);
-    sensitive << instrReadyBus.pos();
+    sensitive << clock.pos();
     dont_initialize();
 
     SC_METHOD(receiveData);
@@ -12,20 +12,25 @@ CPU::CPU(sc_module_name name) : sc_module{name} {
     dont_initialize();
 
     SC_METHOD(requestInstruction);
-    sensitive << cycleDone;
+    sensitive << instructionCycleDone;
     dont_initialize();
-    // initialize to start off!
 
+    // initialize to start off!
     SC_THREAD(startWorking);
 }
 
 void CPU::dispatchInstruction() {
-    validInstrRequest.write(false);
-    currInstruction = Request{instrAddressBus.read(), instrDataOutBus.read(), instrWeBus.read()};
-    weBus.write(currInstruction.we); // maybe bind these ports directly?
-    addressBus.write(currInstruction.addr);
-    dataOutBus.write(currInstruction.data);
-    validDataRequest.write(true);
+    if (instrReadyBus.read()) {
+        validInstrRequest.write(false);
+        currInstruction = Request{instrAddressBus.read(), instrDataOutBus.read(), instrWeBus.read()};
+        weBus.write(currInstruction.we); // maybe bind these ports directly?
+        addressBus.write(currInstruction.addr);
+        dataOutBus.write(currInstruction.data);
+        validDataRequest.write(true);
+
+        // kick off next instruction fetch
+        instructionCycleDone.notify(SC_ZERO_TIME);
+    }
 }
 
 void CPU::receiveData() {
@@ -36,7 +41,7 @@ void CPU::receiveData() {
     } else {
         std::cout << "Successfully read " << dataInBus.read() << " from address " << currInstruction.addr << std::endl;
     }
-    cycleDone.notify(SC_ZERO_TIME);
+   // dataCycleDone.notify(SC_ZERO_TIME);
 }
 
 void CPU::requestInstruction() {
@@ -47,4 +52,4 @@ void CPU::requestInstruction() {
     ++program_counter; // TODO: Figure out how large our instructiosn are supposed to be
 }
 
-void CPU::startWorking() { cycleDone.notify(SC_ZERO_TIME); }
+void CPU::startWorking() { instructionCycleDone.notify(SC_ZERO_TIME); }

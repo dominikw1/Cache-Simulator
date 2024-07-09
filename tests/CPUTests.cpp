@@ -8,6 +8,7 @@
 #include <vector>
 using namespace sc_core;
 
+
 SC_MODULE(InstrMemoryMock) {
     std::vector<uint32_t> instructionsProvided;
 
@@ -115,7 +116,9 @@ class CPUTests : public testing::Test {
     sc_signal<std::uint32_t> pcSignal;
     sc_signal<bool, SC_MANY_WRITERS> validInstrRequestSignal;
 
+    sc_clock clock{"clk", sc_time(1, SC_NS)};
     void SetUp() {
+        cpu.clock.bind(clock);
         cpu.weBus.bind(weSignal);
         cpu.addressBus.bind(addressSignal);
         cpu.dataOutBus.bind(dataOutSignal);
