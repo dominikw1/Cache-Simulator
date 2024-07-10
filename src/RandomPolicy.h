@@ -6,7 +6,7 @@ template <typename T> class RandomPolicy : public ReplacementPolicy<T> {
   public:
     void logUse(T usage) override;
     T pop() override;
-    std::size_t getSize() { return cache.size(); }
+    std::size_t getSize() { return size; }
     RandomPolicy(std::size_t size) : size{size} {
         std::random_device randomDevice{}; // for simpler but less performant code we could just use this
         generator = std::mt19937{randomDevice()};
