@@ -3,6 +3,7 @@
 #include "Cache.h"
 #include "Request.h"
 #include "Result.h"
+#include "InstructionCache.h"
 
 #include <systemc>
 struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "Cache.h"
 #include "Request.h"
 
@@ -6,26 +8,14 @@
 // optimsiation: instruction buffer
 SC_MODULE(InstructionCache) {
   private:
-    CACHE rawCache;
+    CACHE<MappingType::DIRECT_MAPPED> rawCache;
     std::vector<Request> instructions;
 
     SC_CTOR(InstructionCache);
 
-    void decode() {
-        // dummy -> we dont actually do anything with the value
-        // int dummy = readFromRawCache;
-        auto pc = pcBus.read();
-        if (pc >= instructions.size()) {
-            sc_core::sc_stop();
-        }
-        instructionBus.write(instructions[pc]);
-        instrReadyBus.write(true);
-    }
+    void decode() ;
 
-    void fetch() {
-        instrReadyBus.write(false);
-        // pass on to cache
-    }
+    void fetch();
 
   public:
     // -> CPU
@@ -36,12 +26,4 @@ SC_MODULE(InstructionCache) {
     sc_core::sc_in<std::uint32_t> pcBus;
     // -> RAM (same as cache)
     // <- RAM (Dummys, we do not write)
-
-    SC_METHOD(decode);
-    sensitive << cache.ready;
-    dont_initialize();
-
-    SC_METHOD(fetch);
-    sensitive << validInstrRequestBus;
-    dont_initialize();
-}
+};
