@@ -1,4 +1,4 @@
-
+#pragma once
 #ifndef CACHE_HPP
 #define CACHE_HPP
 
@@ -45,10 +45,9 @@ private:
 
     std::vector<uint32_t> tags;
 
-public:
-
     SC_CTOR(CACHE);
 
+public:
     CACHE(sc_core::sc_module_name name, unsigned int cacheLines, unsigned int cacheLineSize)
             : sc_module{name},
               cacheInternal{cacheLines, cacheLineSize},
@@ -135,7 +134,7 @@ private:
 };
 
 template<>
-uint32_t CACHE<MappingType::DIRECT_MAPPED>::getTag(uint32_t address) {
+inline uint32_t CACHE<MappingType::DIRECT_MAPPED>::getTag(uint32_t address) {
     auto offsetBits = static_cast<int>(log(cacheLineSize));
     auto indexBits = static_cast<int>(log(cacheLines));
 
@@ -143,14 +142,14 @@ uint32_t CACHE<MappingType::DIRECT_MAPPED>::getTag(uint32_t address) {
 }
 
 template<>
-uint32_t CACHE<MappingType::FULL_ASSOCIATIVE>::getTag(uint32_t address) {
+inline uint32_t CACHE<MappingType::FULL_ASSOCIATIVE>::getTag(uint32_t address) {
     auto offsetBits = static_cast<int>(log(cacheLineSize));
 
     return (address >> offsetBits);
 }
 
 template<>
-uint32_t CACHE<MappingType::FULL_ASSOCIATIVE>::getIndex(uint32_t address) {
+inline uint32_t CACHE<MappingType::FULL_ASSOCIATIVE>::getIndex(uint32_t address) {
     auto tag = getTag(address);
 
     // Search for tag
@@ -174,7 +173,7 @@ uint32_t CACHE<MappingType::FULL_ASSOCIATIVE>::getIndex(uint32_t address) {
 }
 
 template<>
-uint32_t CACHE<MappingType::DIRECT_MAPPED>::getIndex(uint32_t address) {
+inline uint32_t CACHE<MappingType::DIRECT_MAPPED>::getIndex(uint32_t address) {
     auto indexBits = static_cast<int>(log(cacheLines));
     auto offsetBits = static_cast<int>(log(cacheLineSize));
 
