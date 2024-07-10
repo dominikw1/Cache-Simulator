@@ -8,28 +8,26 @@
 SC_MODULE(MEMORY) {
 public:
     sc_core::sc_in<uint32_t> addressBus;
+    sc_core::sc_in<uint32_t> dataInBus;
     sc_core::sc_in<int> weBus; // 0 -> read, 1 -> write
-    sc_core::sc_port<sc_core::sc_signal<uint32_t>> dataBus; // Used to return data for read and read data for write
+    sc_core::sc_out<uint32_t> dataOutBus; // Used to return data for read and read data for write
+    sc_core::sc_out<bool> ready;
 
 private:
     std::map<uint32_t, uint8_t> memory;
-    unsigned int latency;
 
 public:
-    SC_CTOR(MEMORY);
-
-    MEMORY(sc_core::sc_module_name name, unsigned int latency) : sc_module(name) {
-        this->latency = latency;
-
+    SC_CTOR(MEMORY) {
         SC_THREAD(update);
         sensitive << weBus;
     }
 
 private:
     void update() {
+        ready = false;
         if (weBus) {
             uint32_t* a = splitUpAddress(addressBus);
-            uint8_t* d = splitUpData(dataBus->read());
+            uint8_t* d = splitUpData(dataInBus);
             for (int i = 0; i < 4; ++i) {
                 memory[a[i]] = d[i];
             }
@@ -40,8 +38,9 @@ private:
                 d[i] = memory[a[i]];
             }
 
-            dataBus->write(combineData(d));
+            dataOutBus = combineData(d);
         }
+        ready = true;
     }
 
     uint32_t* splitUpAddress(uint32_t address) {

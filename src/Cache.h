@@ -18,27 +18,27 @@ template<MappingType mappingType>
 SC_MODULE(CACHE) {
 public:
     sc_core::sc_in<uint32_t> cacheAddressBus;
-    sc_core::sc_in<uint32_t> cacheDataBus;
+    sc_core::sc_in<uint32_t> cacheInDataBus;
     sc_core::sc_in<uint32_t> cacheWeBus;
 
+    sc_core::sc_out<uint32_t> memoryAddressBus;
+    sc_core::sc_signal<uint32_t> memoryInDataBus;
+    sc_core::sc_signal<uint32_t> memoryOutDataBus;
+    sc_core::sc_out<int> memoryWeBus;
+    sc_core::sc_in<bool> memoryReady;
+
+    sc_core::sc_out<bool> ready;
     sc_core::sc_out<size_t> hit;
     sc_core::sc_out<size_t> miss;
-
-    SC_CTOR(CACHE);
+    sc_core::sc_out<uint32_t> cacheOutDataBus;
 
 private:
-    sc_core::sc_signal<uint32_t> memoryAddressBus;
-    sc_core::sc_signal<uint32_t> memoryDataBus;
-    sc_core::sc_signal<int> memoryWeBus;
 
     size_t hitCount;
     size_t missCount;
 
-    MEMORY memory;
     CacheInternal cacheInternal;
     LRUPolicy<uint32_t> lru;
-
-    unsigned int latency;
 
     unsigned int cacheLines;
     unsigned int cacheLineSize;
@@ -46,18 +46,15 @@ private:
     std::vector<uint32_t> tags;
 
 public:
-    CACHE(sc_core::sc_module_name name, unsigned int cacheLines, unsigned int cacheLineSize,
-          unsigned int cacheLatency, unsigned int memoryLatency)
+
+    SC_CTOR(CACHE);
+
+    CACHE(sc_core::sc_module_name name, unsigned int cacheLines, unsigned int cacheLineSize)
             : sc_module{name},
-              memory{"memory", memoryLatency},
-              cacheInternal(cacheLines, cacheLineSize),
-              latency{cacheLatency},
+              cacheInternal{cacheLines, cacheLineSize},
+              lru{cacheLines},
               cacheLines{cacheLines},
               tags{cacheLines} {
-
-        memory.weBus(memoryWeBus);
-        memory.dataBus(memoryDataBus);
-        memory.addressBus(memoryAddressBus);
 
         SC_THREAD(update);
         sensitive << cacheWeBus;
@@ -69,16 +66,16 @@ private:
     uint32_t getIndex(uint32_t address);
 
     void update() {
+        ready = false;
         if (cacheWeBus) {
-            write(cacheAddressBus);
+            write(cacheAddressBus, cacheInDataBus);
         } else {
-            read(cacheAddressBus, cacheDataBus);
+            cacheOutDataBus = read(cacheAddressBus);
         }
+        ready = true;
     }
 
     uint32_t read(uint32_t address) {
-        // TODO: add latency
-
         auto tag = getTag(address);
         auto index = getIndex(address);
         auto offset = getOffset(address);
@@ -89,10 +86,10 @@ private:
             memoryAddressBus = address;
             memoryWeBus = 0;
 
-            // TODO: how to handle latency from memory?
+            sc_core::next_trigger(memoryReady.posedge_event()); // TODO: Test if this works
 
             tags[index] = tag;
-            auto dataFromMemory = memoryDataBus.read();
+            auto dataFromMemory = memoryOutDataBus.read();
             auto dataFromMemoryInBytes = splitUpData(dataFromMemory);
             cacheInternal.handleRAMRead(InternalRequestMemoryRead{index, dataFromMemoryInBytes});
             free(dataFromMemoryInBytes);
@@ -104,8 +101,6 @@ private:
     }
 
     void write(uint32_t address, uint32_t data) {
-        // TODO: add latency -> maybe not needed due to calling read anyway
-
         auto index = getIndex(address);
         auto offset = getOffset(address);
 
@@ -116,19 +111,19 @@ private:
 
         // Write to memory
         memoryAddressBus = address;
-        memoryDataBus = data;
+        memoryInDataBus = data;
         memoryWeBus = 1;
     }
 
     uint32_t getOffset(uint32_t address) {
-        auto offsetBits = (int) log(cacheLineSize);
+        auto offsetBits = static_cast<int>(log(cacheLineSize));
 
         auto offsetMask = (uint32_t) ((1 << offsetBits) - 1);
         return address & offsetMask;
     }
 
     uint8_t* splitUpData(uint32_t data) {
-        uint8_t* bytes = (uint8_t*) malloc(4 * sizeof(uint8_t));
+        auto* bytes = static_cast<uint8_t*>(malloc(4 * sizeof(uint8_t)));
 
         bytes[0] = (data >> 0) & ((1 << 8) - 1);
         bytes[1] = (data >> 8) & ((1 << 8) - 1);
@@ -141,35 +136,37 @@ private:
 
 template<>
 uint32_t CACHE<MappingType::DIRECT_MAPPED>::getTag(uint32_t address) {
-    auto offsetBits = (int) log(cacheLineSize);
+    auto offsetBits = static_cast<int>(log(cacheLineSize));
+    auto indexBits = static_cast<int>(log(cacheLines));
 
-    auto tagMasks = (uint32_t) (-1 << offsetBits);
-    return address & tagMasks;
+    return (address >> (offsetBits + indexBits));
 }
 
 template<>
 uint32_t CACHE<MappingType::FULL_ASSOCIATIVE>::getTag(uint32_t address) {
-    auto offsetBits = (int) log(cacheLineSize);
-    auto indexBits = (int) log(cacheLines);
+    auto offsetBits = static_cast<int>(log(cacheLineSize));
 
-    auto tagMasks = (uint32_t) (-1 << (indexBits + offsetBits));
-    return address & tagMasks;
+    return (address >> offsetBits);
 }
 
 template<>
-uint32_t CACHE<MappingType::DIRECT_MAPPED>::getIndex(uint32_t address) {
+uint32_t CACHE<MappingType::FULL_ASSOCIATIVE>::getIndex(uint32_t address) {
     auto tag = getTag(address);
 
     // Search for tag
     auto temp = std::find(tags.begin(), tags.end(), tag);
     if (temp != tags.end()) {
-        return (uint32_t) (temp - tags.begin());
+        auto index = temp - tags.begin();
+        lru.logUse(index);
+        return index;
     }
 
     // Search for next empty value
     temp = std::find(tags.begin(), tags.end(), 0);
     if (temp != tags.end()) {
-        return (uint32_t) (temp - tags.begin());
+        auto index = temp - tags.begin();
+        lru.logUse(index);
+        return index;
     }
 
     // If cache full -> use LRU logic
@@ -177,12 +174,11 @@ uint32_t CACHE<MappingType::DIRECT_MAPPED>::getIndex(uint32_t address) {
 }
 
 template<>
-uint32_t CACHE<MappingType::FULL_ASSOCIATIVE>::getIndex(uint32_t address) {
-    auto indexBits = (int) log(cacheLines);
-    auto offsetBits = (int) log(cacheLineSize);
+uint32_t CACHE<MappingType::DIRECT_MAPPED>::getIndex(uint32_t address) {
+    auto indexBits = static_cast<int>(log(cacheLines));
+    auto offsetBits = static_cast<int>(log(cacheLineSize));
 
-    auto indexMask = (uint32_t) ((1 << indexBits) - 1) << offsetBits;
-    return address & indexMask;
+    return (address >> offsetBits) & ((1 << indexBits) - 1);
 }
 
 #endif
