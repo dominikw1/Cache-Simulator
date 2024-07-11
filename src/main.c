@@ -17,13 +17,17 @@
 #define CACHELINES 131
 #define CACHE_LATENCY 132
 #define MEMORY_LATENCY 133
-#define TRACEFILE 134
+#define LRU 134
+#define FIFO 135
+#define RANDOM 136
+#define TRACEFILE 137
 
 extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
                                     unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
-                                    struct Request requests[], const char* tracefile);
+                                    struct Request requests[], const char* tracefile, unsigned int policy);
 
 // Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
+// TODO: Replace Default Values => cycles, cachelilne size, cachelines, cache-latency, memory-latency
 const char* usage_msg = "usage: %s <filename> [-c/--cycles c] [--directmapped] [--fullassociative] "
                         "[--cacheline-size s] [--cachelines n] [--cache-latency l] "
                         "[--memorylatency m] [--tf=<filename>] [-h/--help]\n"
@@ -34,6 +38,9 @@ const char* usage_msg = "usage: %s <filename> [-c/--cycles c] [--directmapped] [
                         "   --cachelines n          Set the number of cachelines to n\n"
                         "   --cache-latency l       Set the cache latency to l cycles\n"
                         "   --memory-latency m      Set the memory latency to m cycles\n"
+                        "   --lru                   Use LRU as cache-replacement policy\n"
+                        "   --fifo                  Use FIFO as cache-replacement policy\n"
+                        "   --random                Use random cache-replacement policy\n"
                         "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
                         "trace file will be created\n"
                         "   -h / --help             Show help message and exit\n";
@@ -49,6 +56,9 @@ const char* help_msg = "Positional arguments:\n"
                        "   --cachelines n          The number of cache lines (default: 2048)\n"
                        "   --cache-latency l       The cache latency in cycles (default: 1)\n"
                        "   --memory-latency m      The memory latency in cycles (default: 100)\n"
+                       "   --lru                   Use LRU as cache-replacement policy (Set as default)\n"
+                       "   --fifo                  Use FIFO as cache-replacement policy\n"
+                       "   --random                Use random cache-replacement policy\n"
                        "   --tf=<filename>         The name for a trace file containing all signals. If not set, no "
                        "trace file will be created\n"
                        "   -h / --help             Show this help message and exit\n";
@@ -60,17 +70,23 @@ void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "
 // Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
 int isPowerOfTwo(unsigned long n) { return n && !(n & (n - 1)); }
 
-FILE* check_file (const char* progname, const char* filename) {
+FILE* check_file (const char* progname, const char* filename, struct Request* requests, char* filetype) {
     if (filename == NULL) {
         perror("Filename does not exist");
         print_usage(progname);
+        if (requests != NULL) {
+            free(requests);
+        }
         exit(EXIT_FAILURE);
     }
 
     FILE* file = fopen(filename, "r");
     if (file == NULL) {
-        perror("Error opening file");
+        fprintf(stderr, "Error opening %s: %s\n", filetype, strerror(errno));
         print_usage(progname);
+        if (requests != NULL) {
+            free(requests);
+        }
         exit(EXIT_FAILURE);
     }
 
@@ -80,6 +96,9 @@ FILE* check_file (const char* progname, const char* filename) {
         perror("Error determining file size");
         fclose(file);
         print_usage(progname);
+        if (requests != NULL) {
+            free(requests);
+        }
         exit(EXIT_FAILURE);
     }
 
@@ -87,6 +106,9 @@ FILE* check_file (const char* progname, const char* filename) {
         fprintf(stderr, "%s is not a regular file\n", filename);
         fclose(file);
         print_usage(progname);
+        if (requests != NULL) {
+            free(requests);
+        }
         exit(EXIT_FAILURE);
     }
 
@@ -94,13 +116,16 @@ FILE* check_file (const char* progname, const char* filename) {
         fprintf(stderr, "Filename should not be a directory.\n");
         fclose(file);
         print_usage(progname);
+        if (requests != NULL) {
+            free(requests);
+        }
         exit(EXIT_FAILURE);
     }
 
     return file;
 }
 
-struct Request* extract_file_data (const char* progname, FILE* file, struct Request* requests, size_t* numRequests) {
+void extract_file_data (const char* progname, FILE* file, struct Request* requests, size_t* numRequests) {
     // Check for invalid file format and save file content to requests
     // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
     int read_line;
@@ -117,26 +142,30 @@ struct Request* extract_file_data (const char* progname, FILE* file, struct Requ
                 fprintf(stderr, "Wrong file format! An Error occurred while reading the file.\n");
                 fclose(file);
                 print_usage(progname);
+                free(requests);
                 exit(EXIT_FAILURE);
             }
             if (read_line < 2) { // Address was not read from file
                 fprintf(stderr, "Wrong file format! No address given.\n");
                 fclose(file);
                 print_usage(progname);
+                free(requests);
                 exit(EXIT_FAILURE);
             }
         }
 
-        if (we == 'W' && read_line < 3) {   // Write should have data written in the file
+        if ((we == 'W' || we == 'w') && read_line < 3) {   // Write should have data written in the file
             fprintf(stderr, "Wrong file format! No data saved.\n");
             fclose(file);
             print_usage(progname);
+            free(requests);
             exit(EXIT_FAILURE);
         }
-        if (we == 'R' && read_line == 3) {  // Read should not have data written in the file
+        if ((we == 'R' || we == 'r') && read_line == 3) {  // Read should not have data written in the file
             fprintf(stderr, "Wrong file format! When reading from a file, data should be empty.\n");
             fclose(file);
             print_usage(progname);
+            free(requests);
             exit(EXIT_FAILURE);
         }
 
@@ -150,6 +179,7 @@ struct Request* extract_file_data (const char* progname, FILE* file, struct Requ
             fprintf(stderr, "Not a valid operation.\n");
             fclose(file);
             print_usage(progname);
+            free(requests);
             exit(EXIT_FAILURE);
         }
 
@@ -159,19 +189,19 @@ struct Request* extract_file_data (const char* progname, FILE* file, struct Requ
             printf("Error reading file.\n");
             fclose(file);
             print_usage(progname);
+            free(requests);
             exit(EXIT_FAILURE);
         }
 
     } while (!feof(file));
 
     fclose(file);
-    return requests;
 }
 
-unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option) {
+unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option, struct Request* requests) {
     endptr = NULL;
     long n = strtol(optarg, &endptr, 10);
-    // TODO: Further error handling: Negative Inputs
+    // TODO: Further error handling
     if (*endptr != '\0' || n <= 0 || errno != 0) {
         if (errno == 0 && n <= 0) {
             fprintf(stderr, "Invalid input: %s\n", message);
@@ -182,6 +212,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
             fprintf(stderr, "Error parsing number for option %s%s", option, error_message);
         }
         print_usage(progname);
+        free(requests);
         exit(EXIT_FAILURE);
     }
     return n;
@@ -205,11 +236,11 @@ int main(int argc, char** argv) {
     unsigned int cacheLineSize = 32;
     unsigned int cacheLatency = 1;    // in cycles
     unsigned int memoryLatency = 100;
+    unsigned int policy = 0;    // 0 => lru, 1 => fifo, 2 => random
     const char* tracefile = NULL;
-    // TODO: Implement option Cache Replacement Policy
 
     // Extract file data
-    FILE* file = check_file(progname, argv[1]);
+    FILE* file = check_file(progname, argv[1], NULL, "input file");
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
         perror("Error determining file size");
@@ -221,13 +252,14 @@ int main(int argc, char** argv) {
     size_t numRequests = 0;
     struct Request *requests = (struct Request *) malloc(sizeof(struct Request)*file_info.st_size);
     if (requests == NULL) {
-        perror("Error allocating memory buffer for file.");
+        perror("Error allocating memory buffer for file");
         fclose(file);
         print_usage(progname);
+        free(requests);
         return EXIT_FAILURE;
     }
 
-    requests = extract_file_data(progname, file, requests, &numRequests);
+    extract_file_data(progname, file, requests, &numRequests);
 
     // PARSING
     int opt;
@@ -243,6 +275,9 @@ int main(int argc, char** argv) {
         {"cachelines", required_argument, 0, CACHELINES},
         {"cache-latency", required_argument, 0, CACHE_LATENCY},
         {"memory-latency", required_argument, 0, MEMORY_LATENCY},
+        {"lru", no_argument, 0, LRU},
+        {"fifo", no_argument, 0, FIFO},
+        {"random", no_argument, 0, RANDOM},
         {"tf=", required_argument, 0, TRACEFILE},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}};
@@ -253,12 +288,13 @@ int main(int argc, char** argv) {
         switch (opt) {
         case 'c':
             error_message = "Cycles cannot be smaller than 1.";
-            unsigned long c = check_user_input(endptr, error_message, progname, "-c/--cycles");
+            unsigned long c = check_user_input(endptr, error_message, progname, "-c/--cycles", requests);
             cycles = (int) c;
             break;
 
         case 'h':
             print_help(progname);
+            free(requests);
             return EXIT_SUCCESS;
 
         case DIRECTMAPPED:
@@ -271,42 +307,51 @@ int main(int argc, char** argv) {
 
         case CACHELINE_SIZE:
             error_message = "Cacheline size should be at least 1.";
-            unsigned long s = check_user_input(endptr, error_message, progname, "--cacheline-size");
+            unsigned long s = check_user_input(endptr, error_message, progname, "--cacheline-size", requests);
 
             if (!isPowerOfTwo(s)) {
                 fprintf(stderr, "Invalid Input: Cacheline size should be a power of two!\n");
                 print_usage(progname);
+                free(requests);
                 return EXIT_FAILURE;
             }
 
-            cacheLineSize = (int) s;
+            cacheLineSize = s;
             break;
 
         case CACHELINES:
             error_message = "Number of cache-lines must be at least 1.";
-            unsigned long n = check_user_input(endptr, error_message, progname, "--cachelines");
-            cacheLines = (int) n;
+            unsigned long n = check_user_input(endptr, error_message, progname, "--cachelines", requests);
+            cacheLines = n;
             break;
 
         case CACHE_LATENCY:
             error_message = "Cache-latency cannot be zero or negativ.";
-            unsigned long l = check_user_input(endptr, error_message, progname, "--cache-latency");
-            cacheLatency = (int) l;
+            unsigned long l = check_user_input(endptr, error_message, progname, "--cache-latency", requests);
+            cacheLatency = l;
             break;
 
         case MEMORY_LATENCY:
             error_message = "Memory-latency cannot be zero or negativ.";
-            unsigned long m = check_user_input(endptr, error_message, progname, "--memory-latency");
-            memoryLatency = (int) m;
+            unsigned long m = check_user_input(endptr, error_message, progname, "--memory-latency", requests);
+            memoryLatency = m;
+            break;
+
+        case LRU:
+            // Default value is set to lru
+            break;
+
+        case FIFO:
+            policy = 1;
+            break;
+
+        case RANDOM:
+            policy = 2;
             break;
 
         case TRACEFILE:
-            FILE* t_file = check_file(progname, optarg);
-
-            char* tracefile_copy = NULL;
-            strncpy(tracefile_copy, optarg, strlen(optarg));
-            tracefile = tracefile_copy;
-
+            FILE* t_file = check_file(progname, optarg, requests, "tracefile");
+            tracefile = optarg;
             fclose(t_file);
             break;
 
@@ -316,15 +361,22 @@ int main(int argc, char** argv) {
         }
     }
 
+    // TODO: Weitere nicht-sinnvolle inputs abfangen
     if (memoryLatency < cacheLatency) {
         // TODO: Wenn Memory < Cache latency => Warning
+    } else if (cacheLines < 32 || cacheLineSize < 32) {
+        // TODO: Cachelines und CachlineSize sind kleiner als 32 Bit
     }
 
-    // TODO: Cachelines und CachlineSize sind kleiner als 32 Bit
-
-    run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
-                   numRequests, requests, tracefile);
+    struct Result result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
+                                          numRequests, requests, tracefile, policy);
     free(requests);
+
+    // TODO: Error Handling result
+
+    fprintf(stderr, "Results:\n\tCycles: %zu\n\tMisses: %zu\n\tHits: %zu\n\tPrimitive gate count: %zu\n",
+            result.cycles, result.misses, result.hits, result.primitiveGateCount);
+    fprintf(stderr, "End of Simulation");
 
     return EXIT_SUCCESS;
 }
