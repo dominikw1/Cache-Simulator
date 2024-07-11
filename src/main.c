@@ -10,6 +10,7 @@
 
 #include "Request.h"
 #include "Result.h"
+#include "Policy.h"
 
 #define DIRECTMAPPED 128
 #define FULLASSOCIATIVE 129
@@ -17,14 +18,14 @@
 #define CACHELINES 131
 #define CACHE_LATENCY 132
 #define MEMORY_LATENCY 133
-#define LRU 134
-#define FIFO 135
-#define RANDOM 136
+#define LEAST_RECENTLY_USED 134
+#define FIRST_IN_FIRST_OUT 135
+#define RANDOM_CHOICE 136
 #define TRACEFILE 137
 
 extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
                                     unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
-                                    struct Request requests[], const char* tracefile, unsigned int policy);
+                                    struct Request requests[], const char* tracefile, int policy);
 
 // Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
 // TODO: Replace Default Values => cycles, cachelilne size, cachelines, cache-latency, memory-latency
@@ -236,7 +237,7 @@ int main(int argc, char** argv) {
     unsigned int cacheLineSize = 32;
     unsigned int cacheLatency = 1;    // in cycles
     unsigned int memoryLatency = 100;
-    unsigned int policy = 0;    // 0 => lru, 1 => fifo, 2 => random
+    enum Policy policy = LRU;    // 0 => lru, 1 => fifo, 2 => random
     const char* tracefile = NULL;
 
     // Extract file data
@@ -275,9 +276,9 @@ int main(int argc, char** argv) {
         {"cachelines", required_argument, 0, CACHELINES},
         {"cache-latency", required_argument, 0, CACHE_LATENCY},
         {"memory-latency", required_argument, 0, MEMORY_LATENCY},
-        {"lru", no_argument, 0, LRU},
-        {"fifo", no_argument, 0, FIFO},
-        {"random", no_argument, 0, RANDOM},
+        {"lru", no_argument, 0, LEAST_RECENTLY_USED},
+        {"fifo", no_argument, 0, FIRST_IN_FIRST_OUT},
+        {"random", no_argument, 0, RANDOM_CHOICE},
         {"tf=", required_argument, 0, TRACEFILE},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}};
@@ -337,16 +338,16 @@ int main(int argc, char** argv) {
             memoryLatency = m;
             break;
 
-        case LRU:
+        case LEAST_RECENTLY_USED:
             // Default value is set to lru
             break;
 
-        case FIFO:
-            policy = 1;
+        case FIRST_IN_FIRST_OUT:
+            policy = FIFO;
             break;
 
-        case RANDOM:
-            policy = 2;
+        case RANDOM_CHOICE:
+            policy = RANDOM;
             break;
 
         case TRACEFILE:
