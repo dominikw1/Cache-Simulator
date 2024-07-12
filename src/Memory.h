@@ -5,21 +5,22 @@
 
 SC_MODULE(RAM) {
   public:
-    sc_in<bool> validDataRequest;
-    sc_in<bool> weBus;
-    sc_in<std::uint32_t> addressBus;
-    std::vector<sc_in<std::uint8_t>> dataInBusses;
+    sc_core::sc_in<bool> validDataRequest;
+    sc_core::sc_in<bool> weBus;
+    sc_core::sc_in<std::uint32_t> addressBus;
+    std::vector<sc_core::sc_in<std::uint8_t>> dataInBusses;
 
-    std::vector<sc_out<std::uint8_t>> dataOutBusses;
-    sc_out<bool> readyBus;
+    std::vector<sc_core::sc_out<std::uint8_t>> dataOutBusses;
+    sc_core::sc_out<bool> readyBus;
 
   private:
     std::unordered_map<std::uint32_t, std::uint8_t> dataMemory{};
-    const std::uint32_t interfaceSize;
+    std::uint32_t interfaceSize;
+    std::uint32_t latency;
     SC_CTOR(RAM) {}
 
   public:
-    RAM(sc_module_name name, std::uint32_t interfaceSize, std::uint32_t latency)
+    RAM(sc_core::sc_module_name name, std::uint32_t interfaceSize, std::uint32_t latency)
         : sc_module{name}, dataOutBusses(interfaceSize), dataInBusses(interfaceSize), interfaceSize{interfaceSize},
           latency{latency} {
         SC_THREAD(provideData);
@@ -37,7 +38,7 @@ SC_MODULE(RAM) {
 
     void provideData() {
         while (true) {
-            wait(latency, SC_NS);
+            wait(latency, sc_core::SC_NS);
             bool we = weBus.read();
             for (int i = 0; i < interfaceSize; ++i) {
                 if (!we) {
