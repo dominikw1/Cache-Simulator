@@ -9,7 +9,7 @@ extern "C" {
 #endif
 struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
                              unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
-                             struct Request requests[], const char* tracefile, int policy);
+                             struct Request requests[], const char* tracefile, int policy, int usingCache);
 #ifdef __cplusplus
 }
 #endif

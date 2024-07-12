@@ -21,14 +21,14 @@
 #define LEAST_RECENTLY_USED 134
 #define FIRST_IN_FIRST_OUT 135
 #define RANDOM_CHOICE 136
-#define TRACEFILE 137
+#define NO_CACHE 137
+#define TRACEFILE 138
 
 extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
                                     unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
-                                    struct Request requests[], const char* tracefile, int policy);
+                                    struct Request requests[], const char* tracefile, int policy, int usingCache);
 
 // Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
-// TODO: Replace Default Values => cycles, cachelilne size, cachelines, cache-latency, memory-latency
 const char* usage_msg = "usage: %s <filename> [-c/--cycles c] [--directmapped] [--fullassociative] "
                         "[--cacheline-size s] [--cachelines n] [--cache-latency l] "
                         "[--memorylatency m] [--tf=<filename>] [-h/--help]\n"
@@ -42,6 +42,7 @@ const char* usage_msg = "usage: %s <filename> [-c/--cycles c] [--directmapped] [
                         "   --lru                   Use LRU as cache-replacement policy\n"
                         "   --fifo                  Use FIFO as cache-replacement policy\n"
                         "   --random                Use random cache-replacement policy\n"
+                        "   --no-cache              Simulates a system with no cache\n"
                         "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
                         "trace file will be created\n"
                         "   -h / --help             Show help message and exit\n";
@@ -50,16 +51,17 @@ const char* help_msg = "Positional arguments:\n"
                        "   <filename>   The name of the file to be processed\n"
                        "\n"
                        "Optional arguments:\n"
-                       "   -c c / --cycles c       The number of cycles used for the simulation (default: c = 0)\n"
+                       "   -c c / --cycles c       The number of cycles used for the simulation (default: c = 100000)\n"
                        "   --directmapped          Simulates a direct-mapped cache\n"
                        "   --fullassociative       Simulates a fully associative cache (Set as default)\n"
-                       "   --cacheline-size s      The size of a cache line in bytes (default: 32)\n"
-                       "   --cachelines n          The number of cache lines (default: 2048)\n"
-                       "   --cache-latency l       The cache latency in cycles (default: 1)\n"
+                       "   --cacheline-size s      The size of a cache line in bytes (default: 64)\n"
+                       "   --cachelines n          The number of cache lines (default: 16)\n"
+                       "   --cache-latency l       The cache latency in cycles (default: 2)\n"
                        "   --memory-latency m      The memory latency in cycles (default: 100)\n"
                        "   --lru                   Use LRU as cache-replacement policy (Set as default)\n"
                        "   --fifo                  Use FIFO as cache-replacement policy\n"
                        "   --random                Use random cache-replacement policy\n"
+                       "   --no-cache              Simulates a system with no cache\n"
                        "   --tf=<filename>         The name for a trace file containing all signals. If not set, no "
                        "trace file will be created\n"
                        "   -h / --help             Show this help message and exit\n";
@@ -68,8 +70,26 @@ void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, pr
 
 void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
 
-// Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
-int isPowerOfTwo(unsigned long n) { return n && !(n & (n - 1)); }
+unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option,
+                               struct Request* requests) {
+    endptr = NULL;
+    long n = strtol(optarg, &endptr, 10);
+    // TODO: Further error handling
+    if (*endptr != '\0' || n <= 0 || errno != 0) {
+        if (errno == 0 && n <= 0) {
+            fprintf(stderr, "Invalid input: %s\n", message);
+        } else if (n > INT32_MAX) {
+            fprintf(stderr, "%ld is too big to be converted to an int.\n", n);
+        } else {
+            char* error_message = strerror(errno);
+            fprintf(stderr, "Error parsing number for option %s%s", option, error_message);
+        }
+        print_usage(progname);
+        free(requests);
+        exit(EXIT_FAILURE);
+    }
+    return n;
+}
 
 FILE* check_file (const char* progname, const char* filename, struct Request* requests, char* filetype) {
     if (filename == NULL) {
@@ -127,6 +147,7 @@ FILE* check_file (const char* progname, const char* filename, struct Request* re
 }
 
 void extract_file_data (const char* progname, FILE* file, struct Request* requests, size_t* numRequests) {
+
     // Check for invalid file format and save file content to requests
     // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
     int read_line;
@@ -199,26 +220,8 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
     fclose(file);
 }
 
-unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option, struct Request* requests) {
-    endptr = NULL;
-    long n = strtol(optarg, &endptr, 10);
-    // TODO: Further error handling
-    if (*endptr != '\0' || n <= 0 || errno != 0) {
-        if (errno == 0 && n <= 0) {
-            fprintf(stderr, "Invalid input: %s\n", message);
-        } else if (n > INT32_MAX) {
-            fprintf(stderr, "%ld is too big to be converted to an int.\n", n);
-        } else {
-            char* error_message = strerror(errno);
-            fprintf(stderr, "Error parsing number for option %s%s", option, error_message);
-        }
-        print_usage(progname);
-        free(requests);
-        exit(EXIT_FAILURE);
-    }
-    return n;
-}
-
+// Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
+int isPowerOfTwo(unsigned long n) { return n && !(n & (n - 1)); }
 
 int main(int argc, char** argv) {
 
@@ -230,14 +233,15 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    // TODO: Set useful default values
-    int cycles = 0;
+    // Default values for fullassociative cache
+    int cycles = 100000;
     int directMapped = 0; // 0 => fullassociative, x => directmapped
-    unsigned int cacheLines = 2048;
-    unsigned int cacheLineSize = 32;
-    unsigned int cacheLatency = 1;    // in cycles
+    unsigned int cacheLines = 16;
+    unsigned int cacheLineSize = 64;
+    unsigned int cacheLatency = 2;
     unsigned int memoryLatency = 100;
     enum Policy policy = LRU;    // 0 => lru, 1 => fifo, 2 => random
+    int usingCache = 1; // 1 => true, x => false
     const char* tracefile = NULL;
 
     // Extract file data
@@ -279,6 +283,7 @@ int main(int argc, char** argv) {
         {"lru", no_argument, 0, LEAST_RECENTLY_USED},
         {"fifo", no_argument, 0, FIRST_IN_FIRST_OUT},
         {"random", no_argument, 0, RANDOM_CHOICE},
+        {"no-cache", no_argument, 0, NO_CACHE},
         {"tf=", required_argument, 0, TRACEFILE},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}};
@@ -350,6 +355,10 @@ int main(int argc, char** argv) {
             policy = RANDOM;
             break;
 
+        case NO_CACHE:
+            usingCache = 0;
+            break;
+
         case TRACEFILE:
             FILE* t_file = check_file(progname, optarg, requests, "tracefile");
             tracefile = optarg;
@@ -370,7 +379,7 @@ int main(int argc, char** argv) {
     }
 
     struct Result result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
-                                          numRequests, requests, tracefile, policy);
+                                          numRequests, requests, tracefile, policy, usingCache);
     free(requests);
 
     // TODO: Error Handling result
