@@ -78,7 +78,7 @@ SC_MODULE(DataMemoryMock) {
 
     void provideData() {
         if (validDataRequest) {
-            std::cout << "Providing/writing data at " << addressBus.read() << std::endl;
+            //std::cout << "Providing/writing data at " << addressBus.read() << std::endl;
             if (weBus.read() == 0) {
                 dataOutBus.write(dataMemory[addressBus.read()]);
             } else {
@@ -153,10 +153,6 @@ class CPUTests : public testing::Test {
     }
 };
 
-inline bool operator==(const Request& a, const Request& b) {
-    return a.we == b.we && a.addr == b.addr && a.data == b.data;
-}
-
 TEST_F(CPUTests, CPUDispatchesSameInstructionAsInput) {
     auto req = Request{1, 5, 0};
     instrMock.instructionMemory[0] = req;
@@ -221,7 +217,7 @@ TEST_F(CPUTests, CPUHandlesRandomInputWithoutThrowing) {
     auto randomWE = generateRandomVector(numRequests, 2);
 
     for (std::size_t i = 0; i < numRequests; ++i) {
-        instrMock.instructionMemory[i] = Request{randomAddresses[i], randomData[i], randomWE[i]};
+        instrMock.instructionMemory[i] = Request{static_cast<std::uint32_t>(randomAddresses[i]), static_cast<std::uint32_t>(randomData[i]), static_cast<int>(randomWE[i])};
     }
 
     sc_start(5, SC_SEC);

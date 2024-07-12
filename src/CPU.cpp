@@ -41,7 +41,7 @@ void CPU::receiveData() {
     } else {
         std::cout << "Successfully read " << dataInBus.read() << " from address " << currInstruction.addr << std::endl;
     }
-   // dataCycleDone.notify(SC_ZERO_TIME);
+    lastTimeStep = sc_time_stamp().to_seconds();
 }
 
 void CPU::requestInstruction() {

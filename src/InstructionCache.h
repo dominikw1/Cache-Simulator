@@ -8,7 +8,7 @@
 // optimsiation: instruction buffer
 SC_MODULE(InstructionCache) {
   private:
-    CACHE<MappingType::DIRECT_MAPPED> rawCache;
+    Cache<MappingType::Direct> rawCache;
     std::vector<Request> instructions;
 
     SC_CTOR(InstructionCache);
