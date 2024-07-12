@@ -77,7 +77,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
           cacheLatency{cacheLatency}, cacheInternal{numCacheLines},
           numOffsetBitsInAddress{static_cast<std::uint8_t>(safeCeilLog2(cacheLineSize))} {
         using namespace sc_core; // in scope as to not pollute global namespace
-        for(auto& cacheline: cacheInternal) {
+        for (auto& cacheline : cacheInternal) {
             cacheline.data = std::vector<std::uint8_t>(cacheLineSize);
         }
 
@@ -127,13 +127,14 @@ template <MappingType mappingType> SC_MODULE(Cache) {
             if (cpuWeBus.read()) {
                 doWrite(*cacheline, decomposedAddr, cpuDataInBus.read());
                 passWriteOnToRAM(*cacheline, addr);
-                ready.write(true);
             } else {
                 cpuDataOutBus.write(doRead(decomposedAddr, *cacheline));
-                ready.write(true);
             }
+
+            std::cout << "Done with cycle" << std::endl;
+            ready.write(true);
+            wait();
         }
-        wait();
     }
 
     // precondition: cacheline is in cache
