@@ -202,7 +202,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
         std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
 
         assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
-        std::cout<<"Attempting to write "<<data<<std::endl;
+        std::cout << "Attempting to write " << data << std::endl;
         for (std::size_t byteNr = 0; byteNr < numBytes; ++byteNr) {
             cacheline.data[(decomposedAddr.offset + byteNr)] = (data >> 8 * byteNr) & ((1 << 8) - 1);
         }
@@ -264,13 +264,10 @@ template <>
 inline std::vector<Cacheline>::iterator
 Cache<MappingType::Fully_Associative>::getCachelineOwnedByAddr(DecomposedAddress decomposedAddr) {
     auto cachelineFoundTag =
-        std::find_if(cacheInternal.begin(), cacheInternal.end(),
-                     [&decomposedAddr](Cacheline& cacheline) { return cacheline.tag == decomposedAddr.tag; });
-    if (cachelineFoundTag == cacheInternal.end()) {
-        return cacheInternal.end();
-    } else {
-        return cachelineFoundTag;
-    }
+        std::find_if(cacheInternal.begin(), cacheInternal.end(), [&decomposedAddr](Cacheline& cacheline) {
+            return cacheline.isUsed && cacheline.tag == decomposedAddr.tag;
+        });
+    return cachelineFoundTag;
 }
 
 template <>
@@ -304,6 +301,7 @@ Cache<MappingType::Fully_Associative>::writeRAMReadIntoCacheline(DecomposedAddre
     firstUnusedCacheline->tag = decomposedAddr.tag;
     wait(sc_core::SC_ZERO_TIME);
     memoryValidRequestBus.write(false);
+    std::cout << "Done writing RAM Read into cacheline " << std::endl;
     return firstUnusedCacheline;
 }
 

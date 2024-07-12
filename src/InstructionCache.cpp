@@ -1,8 +1,8 @@
 #include "InstructionCache.h"
 
 using namespace sc_core;
-InstructionCache::InstructionCache(sc_module_name name) : sc_module{name} {
-    // rawCache{"instrCache", 100, 10, 10, {"Cache", 10, 64, 10, std::make_unique<RandomPolicy<std::uint32_t>>(10)}} {
+InstructionCache::InstructionCache(sc_module_name name)
+    : sc_module{name}, memoryDataInBusses{cacheLineSize}, memoryDataOutBusses{cacheLineSize} {
 
     SC_METHOD(decode);
     sensitive << cache.ready;
@@ -14,7 +14,9 @@ InstructionCache::InstructionCache(sc_module_name name) : sc_module{name} {
 
 void InstructionCache::fetch() {
     instrReadyBus.write(false);
-    // pass on to cache
+    cache.memoryAddrBus.write(pcBus.read());
+    cache.memoryWeBus.write(false);
+    cache.memoryValidRequestBus.write(true);
 }
 
 void InstructionCache::decode() {

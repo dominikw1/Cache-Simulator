@@ -4,11 +4,11 @@
 #include "../src/Request.h"
 #include "Utils.h"
 #include <cassert>
-#include <tuple>
 #include <exception>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <systemc>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 using namespace sc_core;
@@ -162,7 +162,7 @@ SC_MODULE(RAMMock) {
 class CacheTests : public testing::Test {
   protected:
     CPUMock cpu{"CPU"};
-    Cache<MappingType::Direct> cache{"Cache", 10, 64, 10, std::make_unique<RandomPolicy<std::uint32_t>>(10)};
+    Cache<MappingType::Fully_Associative> cache{"Cache", 10, 64, 10, std::make_unique<RandomPolicy<std::uint32_t>>(10)};
     RAMMock ram{"RAM", 64};
 
     // CPU -> Cache
@@ -314,6 +314,10 @@ TEST_F(CacheTests, CacheReadReturnsSameValueAsWrittenBefore) {
 
     ASSERT_EQ(cpu.instructionsProvided.size(), 2 * numRequests);
     for (int i = 0; i < numRequests; ++i) {
+        std::cout << std::get<1>(cpu.dataReceivedForAddress.at(2 * i + 1)) << " "
+                  << std::get<1>(cpu.dataReceivedForAddress.at(2 * i)) << " "
+                  << std::get<0>(cpu.dataReceivedForAddress.at(2 * i)) << std::endl;
+        ASSERT_EQ(std::get<0>(cpu.dataReceivedForAddress.at(2 * i)), addresses.at(i));
         ASSERT_EQ(std::get<1>(cpu.dataReceivedForAddress.at(2 * i)),
                   std::get<1>(cpu.dataReceivedForAddress.at(2 * i + 1)));
         ASSERT_EQ(std::get<1>(cpu.dataReceivedForAddress.at(2 * i)), data.at(i));
@@ -390,4 +394,16 @@ TEST(CacheHelperTests, SubRequestSplitterCorrectlySplitsCacheline16Bit) {
     ASSERT_EQ(subReqs[0].we, false);
     ASSERT_EQ(subReqs[1].we, false);
     ASSERT_EQ(subReqs[2].we, false);
+}
+
+TEST_F(CacheTests, CacheTestReadWriteReturnsSameInFailureCase) {
+    std::uint32_t problematicVal = 1322427197u;
+    Request w{problematicVal, problematicVal, 1};
+    Request r{problematicVal, problematicVal, 0};
+    cpu.instructions.push_back(r);
+
+    sc_start(2, SC_SEC);
+    ASSERT_EQ(cpu.dataReceivedForAddress.size(), 2);
+    ASSERT_EQ(std::get<1>(cpu.dataReceivedForAddress.at(0)), std::get<1>(cpu.dataReceivedForAddress.at(1)));
+    ASSERT_EQ(std::get<1>(cpu.dataReceivedForAddress.at(0)), problematicVal);
 }
