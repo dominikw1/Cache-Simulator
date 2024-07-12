@@ -27,22 +27,29 @@ struct SubRequest {
     std::uint32_t addr;
     std::uint8_t size;
     std::uint32_t data;
+    std::uint8_t bitsBefore;
     int we;
 };
 
-inline static std::vector<SubRequest> splitRequestIntoSubRequests(Request request, std::uint32_t cacheLineSizeInBit) {
-    std::uint32_t currAlignedAddr = (request.addr / cacheLineSizeInBit) * cacheLineSizeInBit;
+inline static std::vector<SubRequest> splitRequestIntoSubRequests(Request request, std::uint32_t cacheLineSizeInByte) {
+    std::uint32_t currAlignedAddr = (request.addr / cacheLineSizeInByte) * cacheLineSizeInByte;
     std::uint8_t remainingBits = 32;
     std::vector<SubRequest> subrequests;
-    while (currAlignedAddr <= request.addr + 31) {
+    while (currAlignedAddr < request.addr + 4) {
         std::uint32_t startPoint = std::max(request.addr, currAlignedAddr);
-        std::uint8_t size = std::min(request.addr + 32, currAlignedAddr + cacheLineSizeInBit) - startPoint;
-        std::uint32_t data = (request.data >> (32 - remainingBits)) & ((1ull<<size)-1ull) ;
-        remainingBits -= size;
-        currAlignedAddr += cacheLineSizeInBit;
-        subrequests.push_back(SubRequest{startPoint, size, data, request.we});
+        std::uint8_t size = std::min(request.addr + 4, currAlignedAddr + cacheLineSizeInByte) - startPoint;
+        std::uint32_t data = (request.data >> (32 - remainingBits)) & ((1ull << size * 8) - 1ull);
+        std::uint8_t bitsBefore = 32 - remainingBits;
+
+        remainingBits -= size * 8;
+        currAlignedAddr += cacheLineSizeInByte;
+        subrequests.push_back(SubRequest{startPoint, size, data, bitsBefore, request.we});
     }
     return subrequests;
+}
+
+inline static std::uint32_t applyPartialRead(SubRequest subReq, std::uint32_t curr, std::uint32_t newVal) {
+    return curr | (newVal << subReq.bitsBefore);
 }
 
 static inline std::uint32_t safeCeilLog2(std::uint32_t val) noexcept {
@@ -132,36 +139,47 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     void handleRequest() {
         while (true) {
             std::cout << "Received request\n";
+            auto request = Request{cpuAddrBus.read(), cpuDataInBus.read(), cpuWeBus.read()};
+            std::cout << request << "\n";
+            auto subRequests = splitRequestIntoSubRequests(request, cacheLineSize);
             ready.write(false);
-            wait(cacheLatency, sc_core::SC_NS);
-            std::cout << "Done waiting, now potentially reading into cache\n";
-            auto addr = cpuAddrBus.read();
+            std::uint32_t readData = 0;
+            for (auto& subRequest : subRequests) {
+                std::cout << "Starting handling subrequest " << subRequest.addr << " " << subRequest.data << " "
+                          << unsigned(subRequest.size) << " " << subRequest.we << " " << unsigned(subRequest.bitsBefore)
+                          << std::endl;
+                wait(cacheLatency, sc_core::SC_NS);
+                std::cout << "Done waiting, now potentially reading into cache\n";
+                auto addr = subRequest.addr;
+                // split into tag - index - offset
+                auto decomposedAddr = decomposeAddress(addr);
 
-            // split into tag - index - offset
-            auto decomposedAddr = decomposeAddress(addr);
+                // check if in cache - if not read from RAM
+                auto cacheline = fetchIfNotPresent(addr, decomposedAddr);
+                std::cout << "Done reading into cache\n";
 
-            // check if in cache - if not read from RAM
-            auto cacheline = fetchIfNotPresent(addr, decomposedAddr);
-            std::cout << "Done reading into cache\n";
+                registerUsage(cacheline);
 
-            registerUsage(cacheline);
+                std::cout << "Cacheline we read looks like: " << std::endl;
+                for (auto& by : cacheline->data) {
+                    std::cout << unsigned(by) << " ";
+                }
+                std::cout << std::endl;
 
-            std::cout << "Cacheline we read looks like: " << std::endl;
-            for (auto& by : cacheline->data) {
-                std::cout << unsigned(by) << " ";
+                if (subRequest.we) {
+                    doWrite(*cacheline, decomposedAddr, subRequest.data, subRequest.size);
+                    passWriteOnToRAM(*cacheline, addr);
+                } else {
+                    auto tempReadData = doRead(decomposedAddr, *cacheline, subRequest.size);
+                    std::cout << "Just read " << tempReadData << " from cache\n";
+                    readData = applyPartialRead(subRequest, readData, tempReadData);
+                }
+                std::cout << "Done with subcycle" << std::endl;
             }
-            std::cout << std::endl;
-
-            if (cpuWeBus.read()) {
-
-                doWrite(*cacheline, decomposedAddr, cpuDataInBus.read());
-                passWriteOnToRAM(*cacheline, addr);
-            } else {
-                auto readData = doRead(decomposedAddr, *cacheline);
-                std::cout << "Just read " << readData << " from cache\n";
+            if (!request.we) {
+                std::cout << "Sending " << readData << " back to CPU" << std::endl;
                 cpuDataOutBus.write(readData);
             }
-
             std::cout << "Done with cycle" << std::endl;
             ready.write(true);
             wait();
@@ -169,23 +187,25 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     }
 
     // precondition: cacheline is in cache
-    std::uint32_t doRead(DecomposedAddress decomposedAddr, Cacheline & cacheline) {
-        if (cacheline.data.size() <= decomposedAddr.offset + 3) // this is TEMPORARY
-            return 0;
-        return (cacheline.data.at(decomposedAddr.offset + 0) << 0) +
-               (cacheline.data.at(decomposedAddr.offset + 1) << 8) +
-               (cacheline.data.at(decomposedAddr.offset + 2) << 16) +
-               (cacheline.data.at(decomposedAddr.offset + 3) << 24);
+    std::uint32_t doRead(DecomposedAddress decomposedAddr, Cacheline & cacheline, std::uint8_t numBytes) {
+        std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
+        assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
+
+        std::uint32_t retVal = 0;
+        for (std::size_t byteNr = 0; byteNr < numBytes; ++byteNr) {
+            retVal += cacheline.data.at(decomposedAddr.offset + byteNr) << (byteNr * 8);
+        }
+        return retVal;
     }
 
-    void doWrite(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t data) {
-        // TODO: remove assumption that it fits into 1
-        if (cacheline.data.size() <= decomposedAddr.offset + 3) // this is TEMPORARY
-            return;
-        cacheline.data[(decomposedAddr.offset + 0)] = (data << 0) & ((1 << 8) - 1);
-        cacheline.data[(decomposedAddr.offset + 1)] = (data << 8) & ((1 << 8) - 1);
-        cacheline.data[(decomposedAddr.offset + 2)] = (data << 16) & ((1 << 8) - 1);
-        cacheline.data[(decomposedAddr.offset + 3)] = (data << 24) & ((1 << 8) - 1);
+    void doWrite(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t data, std::uint8_t numBytes) {
+        std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
+
+        assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
+        std::cout<<"Attempting to write "<<data<<std::endl;
+        for (std::size_t byteNr = 0; byteNr < numBytes; ++byteNr) {
+            cacheline.data[(decomposedAddr.offset + byteNr)] = (data >> 8 * byteNr) & ((1 << 8) - 1);
+        }
         std::cout << "Done writing into cacheline" << std::endl;
     }
 
@@ -208,9 +228,10 @@ template <MappingType mappingType> SC_MODULE(Cache) {
         memoryAddrBus.write(alignedAddr);
         memoryWeBus.write(true);
         for (std::size_t i = 0; i < cacheline.data.size(); ++i) {
-            //    std::cout << "Writing to Cache->RAM data out bus " << i << " : " << unsigned(cacheline.data[i]) << "
+            //    std::cout << "Writing to Cache->RAM data out bus " << i << " : " << unsigned(cacheline.data[i]) <<
+            //    "
             //    ";
-            memoryDataOutBusses.at(i).write(cacheline.data[i]);
+            memoryDataOutBusses.at(i).write(cacheline.data.at(i));
         }
         wait(sc_core::SC_ZERO_TIME);
         memoryValidRequestBus.write(true);
@@ -262,6 +283,7 @@ Cache<MappingType::Direct>::writeRAMReadIntoCacheline(DecomposedAddress decompos
     std::transform(memoryDataInBusses.begin(), memoryDataInBusses.end(), cachelineToWriteInto->data.begin(),
                    [](sc_core::sc_in<std::uint8_t>& port) { return port.read(); });
     cachelineToWriteInto->isUsed = true;
+    cachelineToWriteInto->tag = decomposedAddr.tag;
     wait(sc_core::SC_ZERO_TIME);
     memoryValidRequestBus.write(false);
     std::cout << "Done writing RAM Read into cacheline " << std::endl;
@@ -278,6 +300,8 @@ Cache<MappingType::Fully_Associative>::writeRAMReadIntoCacheline(DecomposedAddre
     }
     std::transform(memoryDataInBusses.begin(), memoryDataInBusses.end(), firstUnusedCacheline->data.begin(),
                    [](sc_core::sc_in<std::uint8_t>& port) { return port.read(); });
+    firstUnusedCacheline->isUsed = true;
+    firstUnusedCacheline->tag = decomposedAddr.tag;
     wait(sc_core::SC_ZERO_TIME);
     memoryValidRequestBus.write(false);
     return firstUnusedCacheline;
