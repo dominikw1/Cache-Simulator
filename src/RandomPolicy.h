@@ -10,7 +10,7 @@ template <typename T> class RandomPolicy : public ReplacementPolicy<T> {
     RandomPolicy(std::size_t size) : size{size} {
         std::random_device randomDevice{}; // for simpler but less performant code we could just use this
         generator = std::mt19937{randomDevice()};
-        randomDistr = std::uniform_int_distribution(0, size - 1);
+        randomDistr = std::uniform_int_distribution<>(0, size - 1);
     }
 
   private:

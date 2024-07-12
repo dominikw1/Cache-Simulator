@@ -35,6 +35,8 @@ SC_MODULE(CPU) {
     // sc_core::sc_event dataCycleDone;
     sc_core::sc_event instructionCycleDone;
 
+    double lastTimeStep = 0;
+
   public:
     SC_CTOR(CPU);
 

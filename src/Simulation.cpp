@@ -1,9 +1,9 @@
 #include "Simulation.h"
 #include "CPU.h"
 #include "Cache.h"
+#include "InstructionCache.h"
 #include "Request.h"
 #include "Result.h"
-#include "InstructionCache.h"
 
 #include <systemc>
 struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
@@ -11,7 +11,9 @@ struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLin
                              struct Request requests[], const char* tracefile) {
     std::cout << "Starting Simulation...\n";
     CPU cpu{"CPU"};
-    // CACHE<MappingType::DIRECT_MAPPED> cache{"Cache", cacheLines, cacheLineSize, cacheLatency, memoryLatency};
+    //CACHE<MappingType::DIRECT_MAPPED> cache{"Cache", cacheLines, cacheLineSize};
+    
+    sc_core::sc_start();
     return Result{};
 }
 

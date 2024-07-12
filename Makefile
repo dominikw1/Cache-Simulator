@@ -65,6 +65,6 @@ clean:
 	rm -rf src/*.o
 
 test:
-	cmake -S . -B build && cmake --build build && cd build && ctest --output-on-failure
+	cmake -S . -B build && cmake --build build  && cd build && ctest --output-on-failure
 
-.PHONY: all debug release clean
+.PHONY: all debug release clean test

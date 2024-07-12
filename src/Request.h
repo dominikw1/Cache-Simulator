@@ -13,6 +13,11 @@ struct Request {
 #ifdef __cplusplus
 #include <ostream>
 #include <systemc>
+
+static inline bool operator==(const Request& lhs, const Request& rhs) {
+    return lhs.addr == rhs.addr && lhs.data == rhs.data && lhs.we == rhs.we;
+}
+
 static inline std::ostream& operator<<(std::ostream& os, const Request& request) {
     os << "Address: " << request.addr << "\n";
     os << "Data: " << request.data << "\n";
