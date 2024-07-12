@@ -13,7 +13,7 @@ add_definitions(-g -Wall -Wextra -pedantic)
 
 
 add_executable(tests template.cpp LRUTests.cpp CacheInternalTests.cpp Utils.cpp CPUTests.cpp FIFOTests.cpp CacheTests.cpp)
-target_link_libraries(tests -lubsan)
+target_link_libraries(tests -lasan -lubsan)
 
 
 
