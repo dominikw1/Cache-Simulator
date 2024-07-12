@@ -3,17 +3,20 @@
 #include "Cache.h"
 #include "Request.h"
 
+#include "RandomPolicy.h"
+#include <memory>
 #include <systemc>
 
 // optimsiation: instruction buffer
 SC_MODULE(InstructionCache) {
   private:
-    Cache<MappingType::Direct> rawCache;
+    Cache<MappingType::Direct> cache{"Cache", 10, 64, 10, std::make_unique<RandomPolicy<std::uint32_t>>(10)};
+
     std::vector<Request> instructions;
 
     SC_CTOR(InstructionCache);
 
-    void decode() ;
+    void decode();
 
     void fetch();
 

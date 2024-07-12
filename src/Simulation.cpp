@@ -1,11 +1,10 @@
 #include "Simulation.h"
 #include "CPU.h"
 #include "Cache.h"
-#include "InstructionCache.h"
+//#include "InstructionCache.h"
 #include "Request.h"
 #include "Result.h"
 #include "Policy.h"
-#include "InstructionCache.h"
 
 #include <systemc>
 struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,

@@ -1,8 +1,11 @@
 #include "InstructionCache.h"
+
 using namespace sc_core;
-InstructionCache::InstructionCache(sc_module_name name) : sc_module{name}, rawCache{"instrCache", 100, 10} {
+InstructionCache::InstructionCache(sc_module_name name) : sc_module{name} {
+    // rawCache{"instrCache", 100, 10, 10, {"Cache", 10, 64, 10, std::make_unique<RandomPolicy<std::uint32_t>>(10)}} {
+
     SC_METHOD(decode);
-    sensitive << rawCache.ready;
+    sensitive << cache.ready;
     dont_initialize();
     SC_METHOD(fetch);
     sensitive << validInstrRequestBus;
