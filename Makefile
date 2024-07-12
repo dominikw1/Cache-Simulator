@@ -18,7 +18,7 @@ TARGET := cache
 
 # Path to your systemc installation
 # TODO: Adapt to env variable
-SCPATH = ../systemc
+SCPATH = $(SYSTEMC_HOME)
 
 # Additional flags for the compiler
 CXXFLAGS := -std=c++14  -I$(SCPATH)/include -L$(SCPATH)/lib -lsystemc -lm
