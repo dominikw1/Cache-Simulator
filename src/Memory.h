@@ -1,6 +1,4 @@
-
-#ifndef MEMORY_HPP
-#define MEMORY_HPP
+#pragma once
 
 #include <map>
 #include <systemc>
@@ -21,7 +19,7 @@ SC_MODULE(RAM) {
     SC_CTOR(RAM) {}
 
   public:
-    RAMMock(sc_module_name name, std::uint32_t interfaceSize, std::uint32_t latency)
+    RAM(sc_module_name name, std::uint32_t interfaceSize, std::uint32_t latency)
         : sc_module{name}, dataOutBusses(interfaceSize), dataInBusses(interfaceSize), interfaceSize{interfaceSize},
           latency{latency} {
         SC_THREAD(provideData);

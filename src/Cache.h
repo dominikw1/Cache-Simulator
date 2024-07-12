@@ -52,7 +52,7 @@ inline static std::uint32_t applyPartialRead(SubRequest subReq, std::uint32_t cu
     return curr | (newVal << subReq.bitsBefore);
 }
 
-static inline std::uint32_t safeCeilLog2(std::uint32_t val) noexcept {
+static constexpr inline std::uint32_t safeCeilLog2(std::uint32_t val) noexcept {
     // taken from: https://stackoverflow.com/a/35758355
     return (val > 1) ? 1 + std::log2l(val >> 1) : 0;
 }
