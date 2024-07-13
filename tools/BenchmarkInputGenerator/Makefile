@@ -1,0 +1,2 @@
+all:
+	clang++ -fpass-plugin=../MemoryAnalyser/build/MemoryAnalyser.so MergeSortDriver.cpp -o mergeSort.out; clang++ -fpass-plugin=../MemoryAnalyser/build/MemoryAnalyser.so RadixSortDriver.cpp -o radixSort.out
