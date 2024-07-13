@@ -70,25 +70,47 @@ void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, pr
 
 void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
 
+void check_for_invalid_input(const char* progname, struct Request* requests, char* option) {
+    if (optarg != NULL) {   // TODO: Error oder Warning?
+        fprintf(stderr, "Invalid input: %s does not expect an argument.", option);
+        print_usage(progname);
+        free(requests);
+        exit(EXIT_FAILURE);
+    }
+}
+
 unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option,
                                struct Request* requests) {
+    if (optarg == NULL) {
+        fprintf(stderr, "Error: Option %s requires an argument.\n", option);
+        print_usage(progname);
+        free(requests);
+        exit(EXIT_FAILURE);
+    }
+
     endptr = NULL;
     long n = strtol(optarg, &endptr, 10);
-    // TODO: Further error handling
-    if (*endptr != '\0' || n <= 0 || errno != 0) {
-        if (errno == 0 && n <= 0) {
+    if (*endptr != '\0' || endptr == optarg) {
+        fprintf(stderr, "Invalid input: %s is not a number.", optarg);
+        print_usage(progname);
+        free(requests);
+        exit(EXIT_FAILURE);
+    }
+
+    if (n <= 0 || errno != 0) {
+        if (errno == 0 && n <= 0) { // Negative input and 0 not useful for simulation
             fprintf(stderr, "Invalid input: %s\n", message);
-        } else if (n > INT32_MAX) {
+        } else if (n > INT32_MAX) { // Input needs to fit into predefined datatypes for run_simulation method
             fprintf(stderr, "%ld is too big to be converted to an int.\n", n);
         } else {
             char* error_message = strerror(errno);
-            fprintf(stderr, "Error parsing number for option %s%s", option, error_message);
+            fprintf(stderr, "Error parsing number for option %s. %s", option, error_message);
         }
         print_usage(progname);
         free(requests);
         exit(EXIT_FAILURE);
     }
-    return n;
+    return (unsigned) n;
 }
 
 FILE* check_file (const char* progname, const char* filename, struct Request* requests, char* filetype) {
@@ -269,7 +291,6 @@ int main(int argc, char** argv) {
     // PARSING
     int opt;
     int option_index;
-    char* error_message;
     char* endptr = NULL;
     const char* optstring = "c:h";
     static struct option long_options[] = {
@@ -288,6 +309,10 @@ int main(int argc, char** argv) {
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}};
 
+    char* error_message;
+    int isFullassociativeSet = 0;
+    int isLruSet = 0;
+
     while ((opt = getopt_long(argc, argv, optstring, long_options, &option_index)) != -1) {
         errno = 0;
 
@@ -304,16 +329,28 @@ int main(int argc, char** argv) {
             return EXIT_SUCCESS;
 
         case DIRECTMAPPED:
+            check_for_invalid_input(progname, requests, "--directmapped");
+            if (isFullassociativeSet) {
+                fprintf(stderr, "Warning: --fullassociative and --directmapped are both set. "
+                                "Using default value fullassociative!");
+                break;
+            }
             directMapped = 1;
             break;
 
         case FULLASSOCIATIVE:
-            // Default value is set to fullassociative
+            check_for_invalid_input(progname, requests, "--fullassociative");
+            if (directMapped) {
+                fprintf(stderr, "Warning: --fullassociative and --directmapped are both set. "
+                                "Using default value fullassociative!");
+            }
+            isFullassociativeSet = 1;
             break;
 
         case CACHELINE_SIZE:
             error_message = "Cacheline size should be at least 1.";
-            unsigned long s = check_user_input(endptr, error_message, progname, "--cacheline-size", requests);
+            unsigned long s = check_user_input(endptr, error_message, progname,"--cacheline-size",
+                                               requests);
 
             if (!isPowerOfTwo(s)) {
                 fprintf(stderr, "Invalid Input: Cacheline size should be a power of two!\n");
@@ -328,6 +365,10 @@ int main(int argc, char** argv) {
         case CACHELINES:
             error_message = "Number of cache-lines must be at least 1.";
             unsigned long n = check_user_input(endptr, error_message, progname, "--cachelines", requests);
+            // TODO: Warning oder Abbruch?
+            if (!isPowerOfTwo(s)) {
+                fprintf(stderr, "Warning: Number of cachelines are usually a power of two!\n");
+            }
             cacheLines = n;
             break;
 
@@ -344,18 +385,39 @@ int main(int argc, char** argv) {
             break;
 
         case LEAST_RECENTLY_USED:
-            // Default value is set to lru
+            check_for_invalid_input(progname, requests, "--lru");
+            // TODO: Mehrere Policies gesetzt
+            if (policy == FIFO || policy == RANDOM) {
+                fprintf(stderr, "Warning: More than one policy set. "
+                                "Simulating cache using default value LRU!");
+            }
+            policy = LRU;
+            isLruSet = 1;
             break;
 
         case FIRST_IN_FIRST_OUT:
+            check_for_invalid_input(progname, requests, "--fifo");
+            if (isLruSet) {
+                fprintf(stderr, "Warning: More than one policy set. "
+                                "Simulating cache using default value LRU!");
+                break;
+            }
             policy = FIFO;
             break;
 
         case RANDOM_CHOICE:
+            check_for_invalid_input(progname, requests, "--random");
+            if (isLruSet) {
+                fprintf(stderr, "Warning: More than one policy set. "
+                                "Simulating cache using default value LRU!");
+                break;
+            }
+
             policy = RANDOM;
             break;
 
         case NO_CACHE:
+            check_for_invalid_input(progname, requests, "--no-cache");
             usingCache = 0;
             break;
 
@@ -373,10 +435,15 @@ int main(int argc, char** argv) {
 
     // TODO: Weitere nicht-sinnvolle inputs abfangen
     if (memoryLatency < cacheLatency) {
+        fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
         // TODO: Wenn Memory < Cache latency => Warning
     } else if (cacheLines < 32 || cacheLineSize < 32) {
         // TODO: Cachelines und CachlineSize sind kleiner als 32 Bit
-    }
+        fprintf(stderr, "Error: Cachelines and Cacheline-Size must be at least 32.\n");
+        print_usage(progname);
+        free(requests);
+        return EXIT_FAILURE;
+    } // TODO: Cycles macht keinen Sinn
 
     struct Result result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
                                           numRequests, requests, tracefile, policy, usingCache);
