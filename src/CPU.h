@@ -9,7 +9,7 @@ SC_MODULE(CPU) {
   public:
     // CPU -> Cache
     sc_core::sc_out<bool> weBus;
-    sc_core::sc_out<bool> validDataRequest;
+    sc_core::sc_out<bool> validDataRequestBus;
     sc_core::sc_out<std::uint32_t> addressBus;
     sc_core::sc_out<std::uint32_t> dataOutBus;
 

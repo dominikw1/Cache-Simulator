@@ -123,7 +123,7 @@ class CPUTests : public testing::Test {
 
         cpu.pcBus.bind(pcSignal);
         cpu.validInstrRequestBus.bind(validInstrRequestSignal);
-        cpu.validDataRequest.bind(validDataRequestSignal);
+        cpu.validDataRequestBus.bind(validDataRequestSignal);
 
         std::cout << "done binding cpu" << std::endl;
         instrMock.pcBus.bind(pcSignal);

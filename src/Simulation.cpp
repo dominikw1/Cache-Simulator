@@ -36,7 +36,7 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
     InstructionCache instructionCache{"Instruction_Cache", instructionCacheLines, instructionCacheLineSize,
                                       std::vector<Request>(requests, requests + numRequests)};
 
-    sc_core::sc_clock clk("Clock", sc_core::sc_time(1, sc_core::SC_SEC));
+    sc_core::sc_clock clk("Clock", sc_core::sc_time(1, sc_core::SC_NS));
 
     // Data Cache
     // CPU -> Cache
@@ -48,7 +48,7 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
     cpu.weBus(cpuWeSignal);
     cpu.addressBus(cpuAddressSignal);
     cpu.dataOutBus(cpuDataOutSignal);
-    cpu.validDataRequest(cpuValidDataRequestSignal);
+    cpu.validDataRequestBus(cpuValidDataRequestSignal);
 
     dataCache.cpuWeBus(cpuWeSignal);
     dataCache.cpuAddrBus(cpuAddressSignal);
@@ -155,7 +155,7 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
     sc_core::sc_trace_file* file = sc_core::sc_create_vcd_trace_file(tracefile);
     // TODO: Add all signals
 
-    sc_core::sc_start(cycles, sc_core::SC_SEC);
+    sc_core::sc_start(cycles, sc_core::SC_NS);
 
     sc_core::sc_close_vcd_trace_file(file);
 
