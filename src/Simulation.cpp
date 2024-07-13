@@ -26,7 +26,7 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
 
     CPU cpu{"CPU"}; // TODO: How does to latency work in the CPU
     RAM ram{"RAM", cacheLineSize, memoryLatency};
-    Cache<MappingType::Direct> dataCache{"Data cache", cacheLines, cacheLineSize, cacheLatency,
+    Cache<mappingType> dataCache{"Data cache", cacheLines, cacheLineSize, cacheLatency,
                                          getReplacementPolity(policy, cacheLines)};
     // InstructionCache{"Instruction Cache"};
 
