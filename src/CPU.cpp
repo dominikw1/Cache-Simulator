@@ -27,7 +27,7 @@ void CPU::dispatchInstruction() {
         weBus.write(currInstruction.we); // maybe bind these ports directly?
         addressBus.write(currInstruction.addr);
         dataOutBus.write(currInstruction.data);
-        validInstrRequestBus.write(true);
+        validDataRequest.write(true);
 
         // kick off next instruction fetch
         instructionCycleDone.notify(SC_ZERO_TIME);
