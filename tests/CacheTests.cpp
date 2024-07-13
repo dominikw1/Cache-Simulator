@@ -470,4 +470,3 @@ TEST_F(CacheTests, CacheNumberRightHitsMixedReadWritesIndependentAligned) {
     ASSERT_EQ(cache.hitCount, 5);
     ASSERT_EQ(cache.missCount, 3);
 }
-

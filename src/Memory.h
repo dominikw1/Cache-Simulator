@@ -44,7 +44,7 @@ SC_MODULE(RAM) {
                 if (!we) {
                     dataOutBusses.at(i).write(readByteFromMem(addressBus.read() + i));
                 } else {
-                    dataMemory[i] = dataInBusses.at(i).read();
+                    dataMemory[addressBus.read() + i] = dataInBusses.at(i).read();
                 }
             }
             readyBus.write(true);
