@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Request.h"
+#include <atomic>
 #include <cstdint>
 #include <systemc>
 
@@ -35,10 +36,12 @@ SC_MODULE(CPU) {
     // sc_core::sc_event dataCycleDone;
     sc_core::sc_event instructionCycleDone;
 
-    double lastTimeStep = 0;
+    std::atomic<std::uint64_t> cycleNum{0ull};
+    std::uint64_t lastCycleWhereWorkWasDone = 0;
 
   public:
     SC_CTOR(CPU);
+    constexpr std::uint64_t getElapsedCycleCount() const noexcept { return lastCycleWhereWorkWasDone; };
 
   private:
     void startWorking(); // temporary, find a better solution!!!

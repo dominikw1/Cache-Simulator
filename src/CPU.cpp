@@ -20,6 +20,7 @@ CPU::CPU(sc_module_name name) : sc_module{name} {
 }
 
 void CPU::dispatchInstruction() {
+    ++cycleNum;
     if (instrReadyBus.read()) {
         validInstrRequest.write(false);
         currInstruction = Request{instrAddressBus.read(), instrDataOutBus.read(), instrWeBus.read()};
@@ -41,7 +42,7 @@ void CPU::receiveData() {
     } else {
         std::cout << "Successfully read " << dataInBus.read() << " from address " << currInstruction.addr << std::endl;
     }
-    lastTimeStep = sc_time_stamp().to_seconds();
+    lastCycleWhereWorkWasDone = cycleNum.load();
 }
 
 void CPU::requestInstruction() {
