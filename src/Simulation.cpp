@@ -11,6 +11,8 @@
 #include "Request.h"
 #include "Result.h"
 
+#include <exception>
+
 #include <systemc>
 
 std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(int replacementPolicy, int cacheSize);
@@ -119,6 +121,8 @@ std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(int repla
         return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
     case 2:
         return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
+    default:
+        throw std::runtime_error("Encountered unknown policy type");
     }
 }
 
