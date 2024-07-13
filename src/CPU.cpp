@@ -27,7 +27,7 @@ void CPU::dispatchInstruction() {
         weBus.write(currInstruction.we); // maybe bind these ports directly?
         addressBus.write(currInstruction.addr);
         dataOutBus.write(currInstruction.data);
-        validInstrRequestBus.write(true);
+        validDataRequestBus.write(true);
 
         // kick off next instruction fetch
         instructionCycleDone.notify(SC_ZERO_TIME);
@@ -46,7 +46,7 @@ void CPU::receiveData() {
 }
 
 void CPU::requestInstruction() {
-    validDataRequest.write(false);
+    validDataRequestBus.write(false);
     std::cout << "Requesting instruction " << program_counter << std::endl;
     pcBus.write(program_counter);
     validInstrRequestBus.write(true);
