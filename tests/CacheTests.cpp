@@ -136,12 +136,13 @@ SC_MODULE(RAMMock) {
         for (int i = 0; i < 64; ++i) {
             // std::cout << "Doing it for a byte " << std::endl;
             if (!we) {
-                std::cout << "Reading byte " << i << " as " << unsigned(readByteFromMem(addressBus.read() + i))
-                          << std::endl;
+                //  std::cout << "Reading byte " << i << " as " << unsigned(readByteFromMem(addressBus.read() + i))
+                //          << std::endl;
                 dataOutBusses.at(i).write(readByteFromMem(addressBus.read() + i));
             } else {
-                std::cout << "Writing byte " << addressBus.read() + i << " as " << unsigned(dataInBusses.at(i).read())
-                          << std::endl;
+                // std::cout << "Writing byte " << addressBus.read() + i << " as " <<
+                // unsigned(dataInBusses.at(i).read())
+                //         << std::endl;
                 dataMemory[addressBus.read() + i] = dataInBusses.at(i).read();
             }
         }
@@ -411,3 +412,62 @@ TEST_F(CacheTests, CacheTestReadWriteReturnsSameInFailureCase) {
     ASSERT_EQ(std::get<1>(cpu.dataReceivedForAddress.at(0)), std::get<1>(cpu.dataReceivedForAddress.at(1)));
     ASSERT_EQ(std::get<1>(cpu.dataReceivedForAddress.at(0)), problematicVal);
 }
+
+TEST_F(CacheTests, CacheRightNumberHitsForOnlyReadsOnSameAddr) {
+    std::uint32_t addr = 15915959ull;
+
+    Request r{addr, 0, 0};
+    int numRequests = 10000;
+    for (std::size_t i = 0; i < numRequests; ++i) {
+        cpu.instructions.push_back(r);
+    }
+
+    sc_start(2, SC_SEC);
+    ASSERT_EQ(cpu.dataReceivedForAddress.size(), numRequests);
+    ASSERT_EQ(cache.hitCount, numRequests - 1);
+    ASSERT_EQ(cache.missCount, 1);
+}
+
+TEST_F(CacheTests, CacheNumberRightHitsAllReadsUnalignedAddress) {
+    std::uint32_t addr = 62;
+
+    Request r{addr, 0, 0};
+    int numRequests = 10000;
+    for (std::size_t i = 0; i < numRequests; ++i) {
+        cpu.instructions.push_back(r);
+    }
+
+    sc_start(2, SC_SEC);
+    ASSERT_EQ(cpu.dataReceivedForAddress.size(), numRequests);
+    ASSERT_EQ(cache.hitCount, 2 * numRequests - 2);
+    ASSERT_EQ(cache.missCount, 2);
+}
+
+TEST_F(CacheTests, CacheNumberRightHitsMixedReadWritesIndependentAligned) {
+    std::uint32_t addr1 = 59;
+    std::uint32_t addr2 = 4 + 64;
+    std::uint32_t addr3 = 20 + 64 * 2;
+
+    Request w1{addr1, 5, 0};
+    Request w2{addr2, 10, 0};
+    Request w3{addr3, 23, 0};
+    Request r1{addr1, 0, 0};
+    Request r2{addr2, 0, 0};
+    Request r3{addr3, 0, 0};
+
+    cpu.instructions.push_back(w1); // each write is 1 miss
+    cpu.instructions.push_back(w2);
+    cpu.instructions.push_back(w3);
+
+    cpu.instructions.push_back(r1); // each read is one hit
+    cpu.instructions.push_back(r2);
+    cpu.instructions.push_back(r3);
+    cpu.instructions.push_back(r3);
+    cpu.instructions.push_back(r3);
+
+    sc_start(2, SC_SEC);
+    ASSERT_EQ(cpu.dataReceivedForAddress.size(), 8);
+    ASSERT_EQ(cache.hitCount, 5);
+    ASSERT_EQ(cache.missCount, 3);
+}
+
