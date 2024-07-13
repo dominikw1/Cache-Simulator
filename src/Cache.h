@@ -17,6 +17,18 @@ struct Cacheline {
     std::vector<std::uint8_t> data;
 };
 
+// Debug purposes
+static inline std::ostream& operator<<(std::ostream& os, const Cacheline& cacheline) {
+    os << "Cacheline used: " << cacheline.isUsed << "\n";
+    os << "Tag: " << cacheline.tag << "\n";
+    os << "Data: " << std::endl;
+    for (auto& byte : cacheline.data) {
+        os << unsigned(byte) << " ";
+    }
+    os << "\n";
+    return os;
+}
+
 struct DecomposedAddress {
     std::uint32_t tag;
     std::uint32_t index;
@@ -117,13 +129,14 @@ template <MappingType mappingType> SC_MODULE(Cache) {
 
   private:
     constexpr DecomposedAddress decomposeAddress(std::uint32_t address) noexcept;
-
     std::vector<Cacheline>::iterator getCachelineOwnedByAddr(DecomposedAddress decomposedAddr);
     std::vector<Cacheline>::iterator writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr);
     void registerUsage(std::vector<Cacheline>::iterator cacheline);
+
     std::vector<Cacheline>::iterator fetchIfNotPresent(std::uint32_t addr, DecomposedAddress decomposedAddr) {
         auto cacheline = getCachelineOwnedByAddr(decomposedAddr);
         if (cacheline != cacheInternal.end()) {
+            std::cout << "HIT" << std::endl;
             ++hitCount;
             return cacheline;
         }
@@ -160,15 +173,12 @@ template <MappingType mappingType> SC_MODULE(Cache) {
 
                 registerUsage(cacheline);
 
-                std::cout << "Cacheline we read looks like: " << std::endl;
-                for (auto& by : cacheline->data) {
-                    std::cout << unsigned(by) << " ";
-                }
-                std::cout << std::endl;
+                std::cout << "Cacheline we read looks like: " << *cacheline << std::endl;
 
                 if (subRequest.we) {
                     doWrite(*cacheline, decomposedAddr, subRequest.data, subRequest.size);
                     passWriteOnToRAM(*cacheline, addr);
+                    std::cout << "After writing it now looks like: " << *cacheline << std::endl;
                 } else {
                     auto tempReadData = doRead(decomposedAddr, *cacheline, subRequest.size);
                     std::cout << "Just read " << tempReadData << " from cache\n";

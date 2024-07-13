@@ -136,10 +136,13 @@ SC_MODULE(RAMMock) {
         for (int i = 0; i < 64; ++i) {
             // std::cout << "Doing it for a byte " << std::endl;
             if (!we) {
+                std::cout << "Reading byte " << i << " as " << unsigned(readByteFromMem(addressBus.read() + i))
+                          << std::endl;
                 dataOutBusses.at(i).write(readByteFromMem(addressBus.read() + i));
             } else {
-                // std::cout << "Writing byte " << i << " as " << unsigned(dataInBusses.at(i).read()) << std::endl;
-                dataMemory[i] = dataInBusses.at(i).read();
+                std::cout << "Writing byte " << addressBus.read() + i << " as " << unsigned(dataInBusses.at(i).read())
+                          << std::endl;
+                dataMemory[addressBus.read() + i] = dataInBusses.at(i).read();
             }
         }
         readyBus.write(true);
@@ -400,6 +403,7 @@ TEST_F(CacheTests, CacheTestReadWriteReturnsSameInFailureCase) {
     std::uint32_t problematicVal = 1322427197u;
     Request w{problematicVal, problematicVal, 1};
     Request r{problematicVal, problematicVal, 0};
+    cpu.instructions.push_back(w);
     cpu.instructions.push_back(r);
 
     sc_start(2, SC_SEC);

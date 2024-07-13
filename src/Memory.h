@@ -1,7 +1,7 @@
 #pragma once
-
 #include <map>
 #include <systemc>
+#include <unordered_map>
 
 SC_MODULE(RAM) {
   public:

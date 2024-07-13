@@ -8,7 +8,6 @@
 #include <vector>
 using namespace sc_core;
 
-
 SC_MODULE(InstrMemoryMock) {
     std::vector<uint32_t> instructionsProvided;
 
@@ -78,7 +77,7 @@ SC_MODULE(DataMemoryMock) {
 
     void provideData() {
         if (validDataRequest) {
-            //std::cout << "Providing/writing data at " << addressBus.read() << std::endl;
+            // std::cout << "Providing/writing data at " << addressBus.read() << std::endl;
             if (weBus.read() == 0) {
                 dataOutBus.write(dataMemory[addressBus.read()]);
             } else {
@@ -217,7 +216,9 @@ TEST_F(CPUTests, CPUHandlesRandomInputWithoutThrowing) {
     auto randomWE = generateRandomVector(numRequests, 2);
 
     for (std::size_t i = 0; i < numRequests; ++i) {
-        instrMock.instructionMemory[i] = Request{static_cast<std::uint32_t>(randomAddresses[i]), static_cast<std::uint32_t>(randomData[i]), static_cast<int>(randomWE[i])};
+        instrMock.instructionMemory[i] =
+            Request{static_cast<std::uint32_t>(randomAddresses[i]), static_cast<std::uint32_t>(randomData[i]),
+                    static_cast<int>(randomWE[i])};
     }
 
     sc_start(5, SC_SEC);
