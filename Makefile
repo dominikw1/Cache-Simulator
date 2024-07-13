@@ -16,8 +16,7 @@ CPP_OBJS = $(CPP_SRCS:.cpp=.o)
 # target name
 TARGET := cache
 
-# Path to your systemc installation
-# TODO: Adapt to env variable
+# Path to systemc installation
 SCPATH = $(SYSTEMC_HOME)
 
 # Additional flags for the compiler

@@ -13,9 +13,7 @@ SC_MODULE(InstrMemoryMock) {
 
     sc_in<bool> validInstrRequest;
     sc_in<std::uint32_t> pcBus;
-    sc_out<bool> instrWeBus;
-    sc_out<std::uint32_t> instrAddressBus;
-    sc_out<std::uint32_t> instrDataOutBus;
+    sc_out<Request> instrBus;
     sc_out<bool> instrReadyBus;
 
     std::unordered_map<std::uint32_t, Request> instructionMemory;
@@ -30,9 +28,7 @@ SC_MODULE(InstrMemoryMock) {
             }
             auto requestToWrite = instructionMemory.at(pc);
             std::cout << "Located request to write" << std::endl;
-            instrWeBus.write(requestToWrite.we);
-            instrAddressBus.write(requestToWrite.addr);
-            instrDataOutBus.write(requestToWrite.data);
+            instrBus.write(requestToWrite);
             instrReadyBus.write(true);
             std::cout << "Recording instruction..." << std::endl;
             instructionsProvided.push_back(pc);
@@ -104,11 +100,8 @@ class CPUTests : public testing::Test {
     sc_signal<std::uint32_t> dataInSignal;
     sc_signal<bool, SC_MANY_WRITERS> dataReadySignal;
 
-    // TODO: move decoding into CPU maybe
     // Instr Cache -> CPU
-    sc_signal<bool> instrWeSignal;
-    sc_signal<std::uint32_t> instrAddressSignal;
-    sc_signal<std::uint32_t> instrDataOutSignal;
+    sc_signal<Request> instrSignal;
     sc_signal<bool, SC_MANY_WRITERS> instrReadySignal;
 
     // CPU -> Instr Cache
@@ -125,20 +118,16 @@ class CPUTests : public testing::Test {
         cpu.dataInBus.bind(dataInSignal);
         cpu.dataReadyBus.bind(dataReadySignal);
 
-        cpu.instrWeBus.bind(instrWeSignal);
-        cpu.instrAddressBus.bind(instrAddressSignal);
-        cpu.instrDataOutBus.bind(instrDataOutSignal);
+        cpu.instrBus.bind(instrSignal);
         cpu.instrReadyBus.bind(instrReadySignal);
 
         cpu.pcBus.bind(pcSignal);
-        cpu.validInstrRequest.bind(validInstrRequestSignal);
+        cpu.validInstrRequestBus.bind(validInstrRequestSignal);
         cpu.validDataRequest.bind(validDataRequestSignal);
 
         std::cout << "done binding cpu" << std::endl;
         instrMock.pcBus.bind(pcSignal);
-        instrMock.instrWeBus.bind(instrWeSignal);
-        instrMock.instrDataOutBus.bind(instrDataOutSignal);
-        instrMock.instrAddressBus.bind(instrAddressSignal);
+        instrMock.instrBus.bind(instrSignal);
         instrMock.instrReadyBus.bind(instrReadySignal);
         instrMock.validInstrRequest.bind(validInstrRequestSignal);
 

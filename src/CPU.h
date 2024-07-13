@@ -17,15 +17,12 @@ SC_MODULE(CPU) {
     sc_core::sc_in<std::uint32_t> dataInBus;
     sc_core::sc_in<bool> dataReadyBus;
 
-    // TODO: move decoding into CPU maybe
     // Instr Cache -> CPU
-    sc_core::sc_in<bool> instrWeBus;
-    sc_core::sc_in<std::uint32_t> instrAddressBus;
-    sc_core::sc_in<std::uint32_t> instrDataOutBus;
+    sc_core::sc_in<Request> instrBus;
     sc_core::sc_in<bool> instrReadyBus;
 
     // CPU -> Instr Cache
-    sc_core::sc_out<bool> validInstrRequest;
+    sc_core::sc_out<bool> validInstrRequestBus;
     sc_core::sc_out<std::uint32_t> pcBus;
 
     sc_core::sc_in<bool> clock;

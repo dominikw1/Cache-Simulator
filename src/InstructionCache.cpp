@@ -1,12 +1,16 @@
 #include "InstructionCache.h"
 
 using namespace sc_core;
-InstructionCache::InstructionCache(sc_module_name name)
-    : sc_module{name}, memoryDataInBusses{cacheLineSize}, memoryDataOutBusses{cacheLineSize} {
+
+InstructionCache::InstructionCache(sc_module_name name, unsigned int cacheLines, unsigned int cacheLineSize,
+                                   std::vector<Request> instructions)
+        : sc_module{name}, cacheLineNum{cacheLines}, cacheLineSize{cacheLineSize}, instructions{instructions},
+          memoryDataInBusses{cacheLineSize}, memoryDataOutBusses{cacheLineSize} {
 
     SC_METHOD(decode);
     sensitive << cache.ready;
     dont_initialize();
+
     SC_METHOD(fetch);
     sensitive << validInstrRequestBus;
     dont_initialize();

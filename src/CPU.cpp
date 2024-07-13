@@ -22,12 +22,12 @@ CPU::CPU(sc_module_name name) : sc_module{name} {
 void CPU::dispatchInstruction() {
     ++cycleNum;
     if (instrReadyBus.read()) {
-        validInstrRequest.write(false);
-        currInstruction = Request{instrAddressBus.read(), instrDataOutBus.read(), instrWeBus.read()};
+        validInstrRequestBus.write(false);
+        currInstruction = instrBus;
         weBus.write(currInstruction.we); // maybe bind these ports directly?
         addressBus.write(currInstruction.addr);
         dataOutBus.write(currInstruction.data);
-        validDataRequest.write(true);
+        validInstrRequestBus.write(true);
 
         // kick off next instruction fetch
         instructionCycleDone.notify(SC_ZERO_TIME);
@@ -49,7 +49,7 @@ void CPU::requestInstruction() {
     validDataRequest.write(false);
     std::cout << "Requesting instruction " << program_counter << std::endl;
     pcBus.write(program_counter);
-    validInstrRequest.write(true);
+    validInstrRequestBus.write(true);
     ++program_counter; // TODO: Figure out how large our instructiosn are supposed to be
 }
 

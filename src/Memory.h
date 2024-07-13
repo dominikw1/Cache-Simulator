@@ -5,7 +5,7 @@
 
 SC_MODULE(RAM) {
   public:
-    sc_core::sc_in<bool> validDataRequest;
+    sc_core::sc_in<bool> validRequest;
     sc_core::sc_in<bool> weBus;
     sc_core::sc_in<std::uint32_t> addressBus;
     std::vector<sc_core::sc_in<std::uint8_t>> dataInBusses;
@@ -24,11 +24,11 @@ SC_MODULE(RAM) {
         : sc_module{name}, dataOutBusses(interfaceSize), dataInBusses(interfaceSize), interfaceSize{interfaceSize},
           latency{latency} {
         SC_THREAD(provideData);
-        sensitive << validDataRequest.pos();
+        sensitive << validRequest.pos();
         dont_initialize();
 
         SC_METHOD(stopProviding);
-        sensitive << validDataRequest.neg();
+        sensitive << validRequest.neg();
         dont_initialize();
     }
 

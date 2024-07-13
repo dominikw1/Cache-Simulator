@@ -9,20 +9,24 @@
 
 // optimsiation: instruction buffer
 SC_MODULE(InstructionCache) {
-  private:
-    std::uint32_t cacheLineSize = 64;
-    std::uint32_t cacheLineNum = 10;
+private:
+    unsigned int cacheLineNum;
+    unsigned int cacheLineSize;
     Cache<MappingType::Direct> cache{"Cache", cacheLineNum, cacheLineSize, 10,
-                                     std::make_unique<RandomPolicy<std::uint32_t>>(10)};
+                                     std::make_unique<RandomPolicy<std::uint32_t>>(cacheLineNum)};
 
     std::vector<Request> instructions;
 
     SC_CTOR(InstructionCache);
 
     void decode();
+
     void fetch();
 
-  public:
+public:
+    InstructionCache(sc_core::sc_module_name name, unsigned int cacheLines, unsigned int cacheLineSize,
+                     std::vector<Request> instructions);
+
     // -> CPU
     sc_core::sc_out<Request> instructionBus;
     sc_core::sc_out<bool> instrReadyBus;
