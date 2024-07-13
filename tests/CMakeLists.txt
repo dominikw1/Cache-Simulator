@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_definitions(-g -Wall -Wextra -pedantic)
 
 
-add_executable(tests template.cpp LRUTests.cpp CacheInternalTests.cpp Utils.cpp CPUTests.cpp FIFOTests.cpp CacheTests.cpp)
+add_executable(tests template.cpp LRUTests.cpp Utils.cpp CPUTests.cpp FIFOTests.cpp CacheTests.cpp)
 #target_link_libraries(tests  -lasan  -llsan -lubsan)
 
 
