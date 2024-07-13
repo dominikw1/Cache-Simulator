@@ -1,30 +1,32 @@
 #include "Simulation.h"
 #include "CPU.h"
 #include "Cache.h"
-//#include "InstructionCache.h"
+// #include "InstructionCache.h"
+#include "FIFOPolicy.h"
+#include "InstructionCache.h"
+#include "LRUPolicy.h"
+#include "Memory.h"
+#include "Policy.h"
+#include "RandomPolicy.h"
 #include "Request.h"
 #include "Result.h"
-#include "Policy.h"
-#include "Memory.h"
-#include "LRUPolicy.h"
-#include "FIFOPolicy.h"
-#include "RandomPolicy.h"
-#include "InstructionCache.h"
 
 #include <systemc>
 
 std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(int replacementPolicy, int cacheSize);
 
-struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
-                             unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
-                             struct Request requests[], const char* tracefile, int policy, int usingCache) {
+template <MappingType mappingType>
+Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLineSize, unsigned int cacheLatency,
+                      unsigned int memoryLatency, size_t numRequests, struct Request requests[], const char* tracefile,
+                      int policy, int usingCache) {
+
     std::cout << "Starting Simulation...\n";
 
     CPU cpu{"CPU"}; // TODO: How does to latency work in the CPU
     RAM ram{"RAM", cacheLineSize, memoryLatency};
     Cache<MappingType::Direct> dataCache{"Data cache", cacheLines, cacheLineSize, cacheLatency,
                                          getReplacementPolity(policy, cacheLines)};
-    //InstructionCache{"Instruction Cache"};
+    // InstructionCache{"Instruction Cache"};
 
     sc_core::sc_clock clk;
 
@@ -92,19 +94,31 @@ struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLin
     sc_core::sc_start();
 
     return Result{
-            0, dataCache.missCount, dataCache.hitCount, 1 // TODO: primitiveGateCount
+        cpu.getElapsedCycleCount(), dataCache.missCount, dataCache.hitCount, 1 // TODO: primitiveGateCount
     };
 }
 
+struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
+                             unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
+                             struct Request requests[], const char* tracefile, int policy, int usingCache) {
+    if (directMapped == 0) { // is 0 <=> direct?
+        return run_simulation<MappingType::Direct>(cycles, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
+                                                   numRequests, requests, tracefile, policy, usingCache);
+    } else {
+        return run_simulation<MappingType::Fully_Associative>(cycles, cacheLines, cacheLineSize, cacheLatency,
+                                                              memoryLatency, numRequests, requests, tracefile, policy,
+                                                              usingCache);
+    }
+}
 
 std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(int replacementPolicy, int cacheSize) {
     switch (replacementPolicy) {
-        case 0:
-            return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
-        case 1:
-            return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
-        case 2:
-            return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
+    case 0:
+        return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
+    case 1:
+        return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
+    case 2:
+        return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
     }
 }
 
