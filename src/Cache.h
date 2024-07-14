@@ -1,208 +1,98 @@
 #pragma once
 
-#include "ReplacementPolicy.h"
-#include "Request.h"
-#include "Result.h"
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <memory>
+
 #include <systemc>
 
+#include "Cacheline.h"
+#include "DecomposedAddress.h"
+#include "ReplacementPolicy.h"
+#include "Request.h"
+#include "Result.h"
+#include "SubRequest.h"
 #include "WriteBuffer.h"
+
 enum class MappingType { Direct, Fully_Associative };
 
-struct Cacheline {
-    bool isUsed = false; // let's pretend this is a single bit
-    std::uint32_t tag = 0;
-    std::vector<std::uint8_t> data;
-};
-
-// Debug purposes
-static inline std::ostream& operator<<(std::ostream& os, const Cacheline& cacheline) {
-    os << "Cacheline used: " << cacheline.isUsed << "\n";
-    os << "Tag: " << cacheline.tag << "\n";
-    os << "Data: " << std::endl;
-    for (auto& byte : cacheline.data) {
-        os << unsigned(byte) << " ";
-    }
-    os << "\n";
-    return os;
-}
-
-struct DecomposedAddress {
-    std::uint32_t tag;
-    std::uint32_t index;
-    std::uint32_t offset;
-};
-
-struct SubRequest {
-    std::uint32_t addr;
-    std::uint8_t size;
-    std::uint32_t data;
-    std::uint8_t bitsBefore;
-    int we;
-};
-
-inline static std::vector<SubRequest> splitRequestIntoSubRequests(Request request, std::uint32_t cacheLineSizeInByte) {
-    std::uint32_t currAlignedAddr = (request.addr / cacheLineSizeInByte) * cacheLineSizeInByte;
-    std::uint8_t remainingBits = 32;
-    std::vector<SubRequest> subrequests;
-    while (currAlignedAddr < request.addr + 4) {
-        std::uint32_t startPoint = std::max(request.addr, currAlignedAddr);
-        std::uint8_t size = std::min(request.addr + 4, currAlignedAddr + cacheLineSizeInByte) - startPoint;
-        std::uint32_t data = (request.data >> (32 - remainingBits)) & ((1ull << size * 8) - 1ull);
-        std::uint8_t bitsBefore = 32 - remainingBits;
-
-        remainingBits -= size * 8;
-        currAlignedAddr += cacheLineSizeInByte;
-        subrequests.push_back(SubRequest{startPoint, size, data, bitsBefore, request.we});
-    }
-    return subrequests;
-}
-
-inline static std::uint32_t applyPartialRead(SubRequest subReq, std::uint32_t curr, std::uint32_t newVal) {
-    return curr | (newVal << subReq.bitsBefore);
-}
-
-static constexpr inline std::uint32_t safeCeilLog2(std::uint32_t val) noexcept {
-    // taken from: https://stackoverflow.com/a/35758355
-    return (val > 1) ? 1 + std::log2l(val >> 1) : 0;
-}
-
 template <MappingType mappingType> SC_MODULE(Cache) {
-
   public:
+    // ========== External Ports  ==============
     // Global Clock
-    sc_core::sc_in<bool> clock{"Global_Clock"};
+    sc_core::sc_in<bool> SC_NAMED(clock);
 
     // CPU -> Cache
-    sc_core::sc_in<std::uint32_t> cpuAddrBus{"cpuAddrBus"};
-    sc_core::sc_in<std::uint32_t> cpuDataInBus{"cpuDataInBus"};
-    sc_core::sc_in<bool> cpuWeBus{"cpuWeBus"};
-    sc_core::sc_in<bool> cpuValidRequest{"cpuValidRequest"};
+    sc_core::sc_in<std::uint32_t> SC_NAMED(cpuAddrBus);
+    sc_core::sc_in<std::uint32_t> SC_NAMED(cpuDataInBus);
+    sc_core::sc_in<bool> SC_NAMED(cpuWeBus);
+    sc_core::sc_in<bool> SC_NAMED(cpuValidRequest);
 
     // Cache -> RAM
-    sc_core::sc_out<std::uint32_t> memoryAddrBus{"memoryAddrBus"};
-    sc_core::sc_out<std::uint32_t> memoryDataOutBus{"memoryDataOutBus"};
-    sc_core::sc_out<bool> memoryWeBus{"memoryWeBus"};
-    sc_core::sc_out<bool> memoryValidRequestBus{"memoryValidRequestBus"};
+    sc_core::sc_out<std::uint32_t> SC_NAMED(memoryAddrBus);
+    sc_core::sc_out<std::uint32_t> SC_NAMED(memoryDataOutBus);
+    sc_core::sc_out<bool> SC_NAMED(memoryWeBus);
+    sc_core::sc_out<bool> SC_NAMED(memoryValidRequestBus);
 
     // RAM -> Cache
-    sc_core::sc_in<sc_dt::sc_bv<128>> memoryDataInBus{"memoryDataInBus"};
-    sc_core::sc_in<bool> memoryReadyBus{"memoryReadyBus"};
+    sc_core::sc_in<sc_dt::sc_bv<128>> SC_NAMED(memoryDataInBus);
+    sc_core::sc_in<bool> SC_NAMED(memoryReadyBus);
 
     // Cache -> CPU
-    sc_core::sc_out<bool> ready{"readyBus"};
-    sc_core::sc_out<std::uint32_t> cpuDataOutBus{"cpuDataOutBus"};
+    sc_core::sc_out<bool> SC_NAMED(ready);
+    sc_core::sc_out<std::uint32_t> SC_NAMED(cpuDataOutBus);
 
-    // ========== SIGNALS ==============
-
+    // ========== Internal Signals  ==============
     // Buffer -> Cache
-    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> writeBufferReady{"WBready"};
-    sc_core::sc_signal<sc_dt::sc_bv<128>> writeBufferDataOut{"WBDataOut"};
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(writeBufferReady);
+    sc_core::sc_signal<sc_dt::sc_bv<128>> SC_NAMED(writeBufferDataOut);
 
     // Cache -> Buffer
-    sc_core::sc_signal<std::uint32_t> writeBufferAddr{"WBAddr"};
-    sc_core::sc_signal<std::uint32_t> writeBufferDataIn{"cacheDataInBus"};
-    sc_core::sc_signal<bool> writeBufferWE{"cacheWeBus"};
-    sc_core::sc_signal<bool> writeBufferValidRequest{"cacheValidRequest"};
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(writeBufferAddr);
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(writeBufferDataIn);
+    sc_core::sc_signal<bool> SC_NAMED(writeBufferWE);
+    sc_core::sc_signal<bool> SC_NAMED(writeBufferValidRequest);
 
+    // ========== Hit/Miss Bookkeeping  ==============
     std::uint64_t hitCount = 0;
     std::uint64_t missCount = 0;
 
   private:
+    // ========== Config  ==============
+    std::uint64_t numCacheLines = 0; // in Byte
+    std::uint64_t cacheLineSize = 0; // in Byte
+    std::uint64_t cacheLatency = 0;  // in Cycles
     std::unique_ptr<ReplacementPolicy<std::uint32_t>> replacementPolicy = nullptr;
 
-    std::uint64_t numCacheLines = 0;
-    std::uint64_t cacheLineSize = 0; // in Byte
-
-    std::uint64_t cacheLatency = 0;
-
-    // yes this is dynamic memory allocation, but only happens during constructor
+    // ========== Internals ==============
     std::vector<Cacheline> cacheInternal;
-
-    // index and tag depend on type of cache, could also be precomputed but would require more template magic
-    std::uint8_t numOffsetBitsInAddress = 0;
-
     WriteBuffer<4> writeBuffer;
 
-    // private since this is never to be called, just a convenient way to get proper systemc side definition
-    SC_CTOR(Cache);
+    // ========== Precomputation ==============
+    std::uint8_t addressOffsetBits = 0;
+    std::uint8_t addressIndexBits = 0;
+    std::uint8_t addressTagBits = 0;
+    std::uint32_t addressOffsetBitMask = 0;
+    std::uint32_t addressIndexBitMask = 0;
+    std::uint32_t addressTagBitMask = 0;
 
   public:
     Cache(sc_core::sc_module_name name, unsigned int numCacheLines, unsigned int cacheLineSize,
-          unsigned int cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy)
-        : sc_module{name}, replacementPolicy{std::move(policy)}, numCacheLines{numCacheLines},
-          cacheLineSize{cacheLineSize}, cacheLatency{cacheLatency}, cacheInternal{numCacheLines},
-          numOffsetBitsInAddress{static_cast<std::uint8_t>(safeCeilLog2(cacheLineSize))},
-          writeBuffer{"writeBuffer", cacheLineSize / 16} {
-        using namespace sc_core; // in scope as to not pollute global namespace
-        for (auto& cacheline : cacheInternal) {
-            cacheline.data = std::vector<std::uint8_t>(cacheLineSize, 0);
-        }
-
-        writeBuffer.clock.bind(clock);
-
-        writeBuffer.ready.bind(writeBufferReady);
-        writeBuffer.cacheDataOutBus.bind(writeBufferDataOut);
-
-        writeBuffer.cacheAddrBus.bind(writeBufferAddr);
-        writeBuffer.cacheDataInBus.bind(writeBufferDataIn);
-        writeBuffer.cacheWeBus.bind(writeBufferWE);
-        writeBuffer.cacheValidRequest.bind(writeBufferValidRequest);
-
-        writeBuffer.memoryAddrBus.bind(memoryAddrBus);
-        writeBuffer.memoryDataOutBus.bind(memoryDataOutBus);
-        writeBuffer.memoryWeBus.bind(memoryWeBus);
-        writeBuffer.memoryValidRequestBus.bind(memoryValidRequestBus);
-
-        writeBuffer.memoryDataInBus.bind(memoryDataInBus);
-        writeBuffer.memoryReadyBus.bind(memoryReadyBus);
-
-        SC_THREAD(handleRequest);
-        sensitive << clock.pos();
-        dont_initialize();
-    }
+          unsigned int cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy);
 
   private:
+    // private since this is never to be called, just a convenient way to get proper systemc side definition
+    SC_CTOR(Cache);
+    void setUpWriteBufferConnects();
+    void zeroInitialiseCachelines();
+    constexpr void precomputeAddressDecompositionBits() noexcept;
     constexpr DecomposedAddress decomposeAddress(std::uint32_t address) noexcept;
     std::vector<Cacheline>::iterator getCachelineOwnedByAddr(DecomposedAddress decomposedAddr);
     std::vector<Cacheline>::iterator chooseWhichCachelineToFillFromRAM(DecomposedAddress decomposedAddr);
     void registerUsage(std::vector<Cacheline>::iterator cacheline);
     void waitForRAM();
-
-    std::vector<Cacheline>::iterator writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) {
-        std::cout << "Writing RAM Read into cacheline " << std::endl;
-        auto cachelineToWriteInto = chooseWhichCachelineToFillFromRAM(decomposedAddr);
-
-        // we do not allow any inputs violating this rule
-        assert(cachelineToWriteInto->data.size() % 16 == 0);
-        sc_dt::sc_bv<128> dataRead;
-        std::uint32_t numReadEvents = (cachelineToWriteInto->data.size() / 16);
-
-        //        throw std::runtime_error("actually reading??");
-        // dont need to wait before first one because we can only get here if RAM tells us it is ready
-        for (int i = 0; i < numReadEvents; ++i) {
-            dataRead = writeBufferDataOut.read();
-
-            // 128 bits -> 16 bytes
-            for (int byte = 0; byte < 16; ++byte) {
-                cachelineToWriteInto->data[16 * i + byte] = dataRead.range(16 * i + 15, 16 * i).to_uint();
-            }
-
-            // if this is the last one we don't need to wait anymore
-            if (i + 1 <= numReadEvents)
-                wait(clock.posedge_event());
-        }
-        writeBufferValidRequest.write(false);
-        std::cout << "Unsetting valid request now" << std::endl;
-        cachelineToWriteInto->isUsed = true;
-        cachelineToWriteInto->tag = decomposedAddr.tag;
-
-        std::cout << "Done writing RAM Read into cacheline " << std::endl;
-        return cachelineToWriteInto;
-    }
+    std::vector<Cacheline>::iterator writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr);
 
     std::vector<Cacheline>::iterator fetchIfNotPresent(std::uint32_t addr, DecomposedAddress decomposedAddr) {
         auto cacheline = getCachelineOwnedByAddr(decomposedAddr);
@@ -388,22 +278,16 @@ Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(Decompo
 
 template <>
 inline constexpr DecomposedAddress Cache<MappingType::Direct>::decomposeAddress(std::uint32_t address) noexcept {
-    std::uint8_t numIndexBits = safeCeilLog2(numCacheLines);
-    std::uint32_t offsetBitMask = (1ll << numOffsetBitsInAddress) - 1;
-    std::uint32_t indexBitMask = (1ll << numIndexBits) - 1;
-    std::uint32_t tagBitMask = (1ll << (32 - numIndexBits - numOffsetBitsInAddress)) - 1;
-    assert(offsetBitMask > 0 && indexBitMask > 0 && tagBitMask > 0);
-    return DecomposedAddress{((address >> numOffsetBitsInAddress) >> numIndexBits) & tagBitMask,
-                             (address >> numOffsetBitsInAddress) & indexBitMask, address & offsetBitMask};
+    assert(addressOffsetBitMask > 0 && addressIndexBitMask > 0 && addressTagBitMask > 0);
+    return DecomposedAddress{((address >> addressOffsetBits) >> addressIndexBits) & addressTagBitMask,
+                             (address >> addressOffsetBits) & addressIndexBitMask, address & addressOffsetBitMask};
 }
 
 template <>
 inline constexpr DecomposedAddress
 Cache<MappingType::Fully_Associative>::decomposeAddress(std::uint32_t address) noexcept {
-    std::uint32_t offsetBitMask = (1ll << numOffsetBitsInAddress) - 1;
-    std::uint32_t tagBitMask = (1ll << (32 - numOffsetBitsInAddress)) - 1;
-    assert(offsetBitMask > 0 && tagBitMask > 0);
-    return DecomposedAddress{(address >> numOffsetBitsInAddress) & tagBitMask, 0, address & offsetBitMask};
+    assert(addressOffsetBitMask > 0 && addressIndexBitMask == 0 && addressTagBitMask > 0);
+    return DecomposedAddress{(address >> addressOffsetBits) & addressTagBitMask, 0, address & addressOffsetBitMask};
 }
 
 template <> inline void Cache<MappingType::Direct>::registerUsage(std::vector<Cacheline>::iterator cacheline) {
@@ -422,4 +306,98 @@ template <MappingType mappingType> inline void Cache<mappingType>::waitForRAM() 
         cyclesPassedInRequest++;
     } while (!writeBufferReady.read());
     std::cout << " Done waiting for WriteBuffer" << std::endl;
+}
+
+template <> constexpr inline void Cache<MappingType::Fully_Associative>::precomputeAddressDecompositionBits() noexcept {
+    addressOffsetBits = safeCeilLog2(cacheLineSize);
+    addressIndexBits = 0;
+    addressTagBits = 32 - addressOffsetBits;
+
+    addressOffsetBitMask = (1ll << addressOffsetBits) - 1;
+    addressTagBitMask = (1ll << addressTagBits) - 1;
+}
+
+template <> constexpr inline void Cache<MappingType::Direct>::precomputeAddressDecompositionBits() noexcept {
+    addressOffsetBits = safeCeilLog2(cacheLineSize);
+    addressIndexBits = safeCeilLog2(numCacheLines);
+    addressTagBits = 32 - addressIndexBits - addressOffsetBits;
+
+    addressOffsetBitMask = (1ll << addressOffsetBits) - 1;
+    addressIndexBitMask = (1ll << addressIndexBits) - 1;
+    addressTagBitMask = (1ll << addressTagBits) - 1;
+}
+
+template <MappingType mappingType> inline void Cache<mappingType>::setUpWriteBufferConnects() {
+    writeBuffer.clock.bind(clock);
+
+    writeBuffer.ready.bind(writeBufferReady);
+    writeBuffer.cacheDataOutBus.bind(writeBufferDataOut);
+
+    writeBuffer.cacheAddrBus.bind(writeBufferAddr);
+    writeBuffer.cacheDataInBus.bind(writeBufferDataIn);
+    writeBuffer.cacheWeBus.bind(writeBufferWE);
+    writeBuffer.cacheValidRequest.bind(writeBufferValidRequest);
+
+    writeBuffer.memoryAddrBus.bind(memoryAddrBus);
+    writeBuffer.memoryDataOutBus.bind(memoryDataOutBus);
+    writeBuffer.memoryWeBus.bind(memoryWeBus);
+    writeBuffer.memoryValidRequestBus.bind(memoryValidRequestBus);
+
+    writeBuffer.memoryDataInBus.bind(memoryDataInBus);
+    writeBuffer.memoryReadyBus.bind(memoryReadyBus);
+}
+
+template <MappingType mappingType> inline void Cache<mappingType>::zeroInitialiseCachelines() {
+    for (auto& cacheline : cacheInternal) {
+        cacheline.data = std::vector<std::uint8_t>(cacheLineSize, 0);
+    }
+}
+
+template <MappingType mappingType>
+inline Cache<mappingType>::Cache(sc_core::sc_module_name name, unsigned int numCacheLines, unsigned int cacheLineSize,
+                                 unsigned int cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy)
+    : sc_module{name}, replacementPolicy{std::move(policy)}, numCacheLines{numCacheLines}, cacheLineSize{cacheLineSize},
+      cacheLatency{cacheLatency}, cacheInternal{numCacheLines}, writeBuffer{"writeBuffer", cacheLineSize / 16} {
+
+    using namespace sc_core; // in scope as to not pollute global namespace
+    zeroInitialiseCachelines();
+    precomputeAddressDecompositionBits();
+    setUpWriteBufferConnects();
+
+    SC_THREAD(handleRequest);
+    sensitive << clock.pos();
+}
+
+template <MappingType mappingType>
+inline std::vector<Cacheline>::iterator
+Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) {
+    std::cout << "Writing RAM Read into cacheline " << std::endl;
+    auto cachelineToWriteInto = chooseWhichCachelineToFillFromRAM(decomposedAddr);
+
+    // we do not allow any inputs violating this rule
+    assert(cachelineToWriteInto->data.size() % 16 == 0);
+    sc_dt::sc_bv<128> dataRead;
+    std::uint32_t numReadEvents = (cachelineToWriteInto->data.size() / 16);
+
+    //        throw std::runtime_error("actually reading??");
+    // dont need to wait before first one because we can only get here if RAM tells us it is ready
+    for (int i = 0; i < numReadEvents; ++i) {
+        dataRead = writeBufferDataOut.read();
+
+        // 128 bits -> 16 bytes
+        for (int byte = 0; byte < 16; ++byte) {
+            cachelineToWriteInto->data[16 * i + byte] = dataRead.range(16 * i + 15, 16 * i).to_uint();
+        }
+
+        // if this is the last one we don't need to wait anymore
+        if (i + 1 <= numReadEvents)
+            wait(clock.posedge_event());
+    }
+    writeBufferValidRequest.write(false);
+    std::cout << "Unsetting valid request now" << std::endl;
+    cachelineToWriteInto->isUsed = true;
+    cachelineToWriteInto->tag = decomposedAddr.tag;
+
+    std::cout << "Done writing RAM Read into cacheline " << std::endl;
+    return cachelineToWriteInto;
 }
