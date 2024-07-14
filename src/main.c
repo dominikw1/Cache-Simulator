@@ -21,12 +21,13 @@
 #define LEAST_RECENTLY_USED 134
 #define FIRST_IN_FIRST_OUT 135
 #define RANDOM_CHOICE 136
-#define NO_CACHE 137
+#define USE_CACHE 137
 #define TRACEFILE 138
 
 extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
                                     unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
                                     struct Request requests[], const char* tracefile, int policy, int usingCache);
+
 
 // Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
 const char* usage_msg = "usage: %s <filename> [-c/--cycles c] [--directmapped] [--fullassociative] "
@@ -42,7 +43,7 @@ const char* usage_msg = "usage: %s <filename> [-c/--cycles c] [--directmapped] [
                         "   --lru                   Use LRU as cache-replacement policy\n"
                         "   --fifo                  Use FIFO as cache-replacement policy\n"
                         "   --random                Use random cache-replacement policy\n"
-                        "   --no-cache              Simulates a system with no cache\n"
+                        "   --use-cache=<Y,n>       Simulates a system with cache or no cache\n"
                         "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
                         "trace file will be created\n"
                         "   -h / --help             Show help message and exit\n";
@@ -61,7 +62,7 @@ const char* help_msg = "Positional arguments:\n"
                        "   --lru                   Use LRU as cache-replacement policy (Set as default)\n"
                        "   --fifo                  Use FIFO as cache-replacement policy\n"
                        "   --random                Use random cache-replacement policy\n"
-                       "   --no-cache              Simulates a system with no cache\n"
+                       "   --use-cache=<Y,n>       Simulates a system with cache or no cache (default: Y)\n"
                        "   --tf=<filename>         The name for a trace file containing all signals. If not set, no "
                        "trace file will be created\n"
                        "   -h / --help             Show this help message and exit\n";
@@ -75,6 +76,7 @@ void check_for_invalid_input(const char* progname, struct Request* requests, cha
         fprintf(stderr, "Invalid input: %s does not expect an argument.", option);
         print_usage(progname);
         free(requests);
+        requests = NULL;
         exit(EXIT_FAILURE);
     }
 }
@@ -85,15 +87,17 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
         fprintf(stderr, "Error: Option %s requires an argument.\n", option);
         print_usage(progname);
         free(requests);
+        requests = NULL;
         exit(EXIT_FAILURE);
     }
 
     endptr = NULL;
     long n = strtol(optarg, &endptr, 10);
     if (*endptr != '\0' || endptr == optarg) {
-        fprintf(stderr, "Invalid input: %s is not a number.", optarg);
+        fprintf(stderr, "Invalid input: %s is not a number.\n", optarg);
         print_usage(progname);
         free(requests);
+        requests = NULL;
         exit(EXIT_FAILURE);
     }
 
@@ -108,6 +112,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
         }
         print_usage(progname);
         free(requests);
+        requests = NULL;
         exit(EXIT_FAILURE);
     }
     return (unsigned) n;
@@ -119,6 +124,7 @@ FILE* check_file (const char* progname, const char* filename, struct Request* re
         print_usage(progname);
         if (requests != NULL) {
             free(requests);
+            requests = NULL;
         }
         exit(EXIT_FAILURE);
     }
@@ -129,6 +135,7 @@ FILE* check_file (const char* progname, const char* filename, struct Request* re
         print_usage(progname);
         if (requests != NULL) {
             free(requests);
+            requests = NULL;
         }
         exit(EXIT_FAILURE);
     }
@@ -141,6 +148,7 @@ FILE* check_file (const char* progname, const char* filename, struct Request* re
         print_usage(progname);
         if (requests != NULL) {
             free(requests);
+            requests = NULL;
         }
         exit(EXIT_FAILURE);
     }
@@ -151,6 +159,7 @@ FILE* check_file (const char* progname, const char* filename, struct Request* re
         print_usage(progname);
         if (requests != NULL) {
             free(requests);
+            requests = NULL;
         }
         exit(EXIT_FAILURE);
     }
@@ -161,6 +170,7 @@ FILE* check_file (const char* progname, const char* filename, struct Request* re
         print_usage(progname);
         if (requests != NULL) {
             free(requests);
+            requests = NULL;
         }
         exit(EXIT_FAILURE);
     }
@@ -187,6 +197,7 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
                 fclose(file);
                 print_usage(progname);
                 free(requests);
+                requests = NULL;
                 exit(EXIT_FAILURE);
             }
             if (read_line < 2) { // Address was not read from file
@@ -194,6 +205,7 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
                 fclose(file);
                 print_usage(progname);
                 free(requests);
+                requests = NULL;
                 exit(EXIT_FAILURE);
             }
         }
@@ -203,6 +215,7 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
             fclose(file);
             print_usage(progname);
             free(requests);
+            requests = NULL;
             exit(EXIT_FAILURE);
         }
         if ((we == 'R' || we == 'r') && read_line == 3) {  // Read should not have data written in the file
@@ -210,6 +223,7 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
             fclose(file);
             print_usage(progname);
             free(requests);
+            requests = NULL;
             exit(EXIT_FAILURE);
         }
 
@@ -224,6 +238,7 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
             fclose(file);
             print_usage(progname);
             free(requests);
+            requests = NULL;
             exit(EXIT_FAILURE);
         }
 
@@ -234,6 +249,7 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
             fclose(file);
             print_usage(progname);
             free(requests);
+            requests = NULL;
             exit(EXIT_FAILURE);
         }
 
@@ -244,6 +260,8 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
 
 // Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
 int isPowerOfTwo(unsigned long n) { return n && !(n & (n - 1)); }
+
+int isPowerOfSixteen(unsigned long n) { return n && !(n & (n - 4)); }
 
 int main(int argc, char** argv) {
 
@@ -277,12 +295,13 @@ int main(int argc, char** argv) {
     }
 
     size_t numRequests = 0;
-    struct Request *requests = (struct Request *) malloc(sizeof(struct Request)*file_info.st_size);
+    struct Request *requests = (struct Request *) malloc(sizeof(struct Request) * file_info.st_size);
     if (requests == NULL) {
         perror("Error allocating memory buffer for file");
         fclose(file);
         print_usage(progname);
         free(requests);
+        requests = NULL;
         return EXIT_FAILURE;
     }
 
@@ -304,7 +323,7 @@ int main(int argc, char** argv) {
         {"lru", no_argument, 0, LEAST_RECENTLY_USED},
         {"fifo", no_argument, 0, FIRST_IN_FIRST_OUT},
         {"random", no_argument, 0, RANDOM_CHOICE},
-        {"no-cache", no_argument, 0, NO_CACHE},
+        {"use-cache", required_argument, 0, USE_CACHE},
         {"tf=", required_argument, 0, TRACEFILE},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}};
@@ -352,10 +371,11 @@ int main(int argc, char** argv) {
             unsigned long s = check_user_input(endptr, error_message, progname,"--cacheline-size",
                                                requests);
 
-            if (!isPowerOfTwo(s)) {
-                fprintf(stderr, "Invalid Input: Cacheline size should be a power of two!\n");
+            if (!isPowerOfSixteen(s)) {
+                fprintf(stderr, "Invalid Input: Cacheline size should be a multiple of 16 bytes!\n");
                 print_usage(progname);
                 free(requests);
+                requests = NULL;
                 return EXIT_FAILURE;
             }
 
@@ -364,7 +384,7 @@ int main(int argc, char** argv) {
 
         case CACHELINES:
             error_message = "Number of cache-lines must be at least 1.";
-            unsigned long n = check_user_input(endptr, error_message, progname, "--cachelines", requests);
+            unsigned long n = check_user_input(endptr, error_message, progname, "-c /--cachelines", requests);
             // TODO: Warning oder Abbruch?
             if (!isPowerOfTwo(s)) {
                 fprintf(stderr, "Warning: Number of cachelines are usually a power of two!\n");
@@ -386,7 +406,6 @@ int main(int argc, char** argv) {
 
         case LEAST_RECENTLY_USED:
             check_for_invalid_input(progname, requests, "--lru");
-            // TODO: Mehrere Policies gesetzt
             if (policy == FIFO || policy == RANDOM) {
                 fprintf(stderr, "Warning: More than one policy set. "
                                 "Simulating cache using default value LRU!");
@@ -416,9 +435,20 @@ int main(int argc, char** argv) {
             policy = RANDOM;
             break;
 
-        case NO_CACHE:
-            check_for_invalid_input(progname, requests, "--no-cache");
-            usingCache = 0;
+        case USE_CACHE:
+            if ((strcmp(optarg, "n") == 0) || (strcmp(optarg, "N") == 0) || (strcmp(optarg, "no") == 0) ||
+                (strcmp(optarg, "No") == 0)) {
+                usingCache = 0;
+                break;
+            } else if ((strcmp(optarg, "y") == 0) || (strcmp(optarg, "Y") == 0) || (strcmp(optarg, "yes") == 0) ||
+                       (strcmp(optarg, "Yes") == 0)) {
+                break;
+            }
+            if (optarg == NULL) {
+                fprintf(stderr, "Warning: Option --use-cache is not set. Using default value 'Y'.");
+            } else {
+                fprintf(stderr, "Warning: Not a valid option for --use-cache. Using default value 'Y'.");
+            }
             break;
 
         case TRACEFILE:
@@ -429,6 +459,8 @@ int main(int argc, char** argv) {
 
         default:
             print_usage(progname);
+            free(requests);
+            requests = NULL;
             return EXIT_FAILURE;
         }
     }
@@ -437,22 +469,26 @@ int main(int argc, char** argv) {
     if (memoryLatency < cacheLatency) {
         fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
         // TODO: Wenn Memory < Cache latency => Warning
-    } else if (cacheLines < 32 || cacheLineSize < 32) {
+    } /*else if (cacheLines < 32 || cacheLineSize < 32) {
         // TODO: Cachelines und CachlineSize sind kleiner als 32 Bit
         fprintf(stderr, "Error: Cachelines and Cacheline-Size must be at least 32.\n");
         print_usage(progname);
         free(requests);
+        requests = NULL;
         return EXIT_FAILURE;
     } // TODO: Cycles macht keinen Sinn
 
+    */
     struct Result result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
                                           numRequests, requests, tracefile, policy, usingCache);
+
     free(requests);
 
     // TODO: Error Handling result
 
     fprintf(stderr, "Results:\n\tCycles: %zu\n\tMisses: %zu\n\tHits: %zu\n\tPrimitive gate count: %zu\n",
             result.cycles, result.misses, result.hits, result.primitiveGateCount);
+
     fprintf(stderr, "End of Simulation");
 
     return EXIT_SUCCESS;
