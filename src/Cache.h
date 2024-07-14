@@ -9,6 +9,7 @@
 #include <memory>
 #include <systemc>
 
+#include "WriteBuffer.h"
 enum class MappingType { Direct, Fully_Associative };
 
 struct Cacheline {
@@ -73,7 +74,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
 
   public:
     // Global Clock
-    sc_core::sc_in<bool> clock{"Global Clock"};
+    sc_core::sc_in<bool> clock{"Global_Clock"};
 
     // CPU -> Cache
     sc_core::sc_in<std::uint32_t> cpuAddrBus{"cpuAddrBus"};
@@ -95,6 +96,18 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     sc_core::sc_out<bool> ready{"readyBus"};
     sc_core::sc_out<std::uint32_t> cpuDataOutBus{"cpuDataOutBus"};
 
+    // ========== SIGNALS ==============
+
+    // Buffer -> Cache
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> writeBufferReady{"WBready"};
+    sc_core::sc_signal<sc_dt::sc_bv<128>> writeBufferDataOut{"WBDataOut"};
+
+    // Cache -> Buffer
+    sc_core::sc_signal<std::uint32_t> writeBufferAddr{"WBAddr"};
+    sc_core::sc_signal<std::uint32_t> writeBufferDataIn{"cacheDataInBus"};
+    sc_core::sc_signal<bool> writeBufferWE{"cacheWeBus"};
+    sc_core::sc_signal<bool> writeBufferValidRequest{"cacheValidRequest"};
+
     std::uint64_t hitCount = 0;
     std::uint64_t missCount = 0;
 
@@ -112,6 +125,8 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     // index and tag depend on type of cache, could also be precomputed but would require more template magic
     std::uint8_t numOffsetBitsInAddress = 0;
 
+    WriteBuffer<4> writeBuffer;
+
     // private since this is never to be called, just a convenient way to get proper systemc side definition
     SC_CTOR(Cache);
 
@@ -120,11 +135,30 @@ template <MappingType mappingType> SC_MODULE(Cache) {
           unsigned int cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy)
         : sc_module{name}, replacementPolicy{std::move(policy)}, numCacheLines{numCacheLines},
           cacheLineSize{cacheLineSize}, cacheLatency{cacheLatency}, cacheInternal{numCacheLines},
-          numOffsetBitsInAddress{static_cast<std::uint8_t>(safeCeilLog2(cacheLineSize))} {
+          numOffsetBitsInAddress{static_cast<std::uint8_t>(safeCeilLog2(cacheLineSize))},
+          writeBuffer{"writeBuffer", cacheLineSize / 16} {
         using namespace sc_core; // in scope as to not pollute global namespace
         for (auto& cacheline : cacheInternal) {
             cacheline.data = std::vector<std::uint8_t>(cacheLineSize, 0);
         }
+
+        writeBuffer.clock.bind(clock);
+
+        writeBuffer.ready.bind(writeBufferReady);
+        writeBuffer.cacheDataOutBus.bind(writeBufferDataOut);
+
+        writeBuffer.cacheAddrBus.bind(writeBufferAddr);
+        writeBuffer.cacheDataInBus.bind(writeBufferDataIn);
+        writeBuffer.cacheWeBus.bind(writeBufferWE);
+        writeBuffer.cacheValidRequest.bind(writeBufferValidRequest);
+
+        writeBuffer.memoryAddrBus.bind(memoryAddrBus);
+        writeBuffer.memoryDataOutBus.bind(memoryDataOutBus);
+        writeBuffer.memoryWeBus.bind(memoryWeBus);
+        writeBuffer.memoryValidRequestBus.bind(memoryValidRequestBus);
+
+        writeBuffer.memoryDataInBus.bind(memoryDataInBus);
+        writeBuffer.memoryReadyBus.bind(memoryReadyBus);
 
         SC_THREAD(handleRequest);
         sensitive << clock.pos();
@@ -139,9 +173,6 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     void waitForRAM();
 
     std::vector<Cacheline>::iterator writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) {
-        // he is ready after all, dont want to confuse him
-        memoryValidRequestBus.write(false);
-
         std::cout << "Writing RAM Read into cacheline " << std::endl;
         auto cachelineToWriteInto = chooseWhichCachelineToFillFromRAM(decomposedAddr);
 
@@ -150,9 +181,10 @@ template <MappingType mappingType> SC_MODULE(Cache) {
         sc_dt::sc_bv<128> dataRead;
         std::uint32_t numReadEvents = (cachelineToWriteInto->data.size() / 16);
 
+        //        throw std::runtime_error("actually reading??");
         // dont need to wait before first one because we can only get here if RAM tells us it is ready
         for (int i = 0; i < numReadEvents; ++i) {
-            dataRead = memoryDataInBus.read();
+            dataRead = writeBufferDataOut.read();
 
             // 128 bits -> 16 bytes
             for (int byte = 0; byte < 16; ++byte) {
@@ -163,7 +195,8 @@ template <MappingType mappingType> SC_MODULE(Cache) {
             if (i + 1 <= numReadEvents)
                 wait(clock.posedge_event());
         }
-
+        writeBufferValidRequest.write(false);
+        std::cout << "Unsetting valid request now" << std::endl;
         cachelineToWriteInto->isUsed = true;
         cachelineToWriteInto->tag = decomposedAddr.tag;
 
@@ -180,6 +213,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
         }
         std::cout << "MISS" << std::endl;
         ++missCount;
+
         startReadFromRAM(addr);
         waitForRAM();
         return writeRAMReadIntoCacheline(decomposedAddr);
@@ -286,35 +320,28 @@ template <MappingType mappingType> SC_MODULE(Cache) {
         data |= (cacheline.data[startByte + 2]) << 2 * 8;
         data |= (cacheline.data[startByte + 3]) << 3 * 8;
 
-        startWriteToRAM(data, addr);
-        std::cout << "Wainting for RAM write " << std::endl;
+        std::cout << "Passing to write buffer" << std::endl;
+        writeBufferAddr.write(addr);
+        writeBufferDataIn.write(data);
+        writeBufferWE.write(true);
+        writeBufferValidRequest.write(true);
+
+        // write buffer takes at least one cycle (DEFINITION)
         do {
             wait(clock.posedge_event());
             cyclesPassedInRequest++;
-        } while ((!memoryReadyBus.read()));
-        std::cout << "Done waiting for RAM write " << std::endl;
-        endWriteToRAM();
-    }
+        } while (!writeBufferReady);
 
-    void endWriteToRAM() {
-        std::cout << "ENDING RAM WRITE REQUEST" << std::endl;
-        memoryValidRequestBus.write(false);
-    }
-
-    // precondition: cacheline is in cache
-    void startWriteToRAM(std::uint32_t data, std::uint32_t addr) {
-        memoryAddrBus.write(addr);
-        memoryWeBus.write(true);
-        std::cout << "Writing true???" << std::endl;
-        memoryDataOutBus.write(data);
-        memoryValidRequestBus.write(true);
+        writeBufferValidRequest.write(false);
+        std::cout << "Passed to write buffer " << std::endl;
     }
 
     void startReadFromRAM(std::uint32_t addr) {
         std::uint32_t alignedAddr = (addr / cacheLineSize) * cacheLineSize;
-        memoryAddrBus.write(alignedAddr);
-        memoryWeBus.write(false);
-        memoryValidRequestBus.write(true);
+        writeBufferAddr.write(alignedAddr);
+        writeBufferWE.write(false);
+        std::cout << "Setting WB valid req to true in read " << std::endl;
+        writeBufferValidRequest.write(true);
     }
 };
 
@@ -389,10 +416,10 @@ inline void Cache<MappingType::Fully_Associative>::registerUsage(std::vector<Cac
 }
 
 template <MappingType mappingType> inline void Cache<mappingType>::waitForRAM() {
-    std::cout << "Now waiting for RAM" << std::endl;
+    std::cout << "Now waiting for WriteBuffer" << std::endl;
     do {
         wait(clock.posedge_event());
         cyclesPassedInRequest++;
-    } while (!memoryReadyBus.read());
-    std::cout << " Done waiting for RAM" << std::endl;
+    } while (!writeBufferReady.read());
+    std::cout << " Done waiting for WriteBuffer" << std::endl;
 }

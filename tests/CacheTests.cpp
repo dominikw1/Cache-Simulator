@@ -35,7 +35,6 @@ SC_MODULE(CPUMock) {
             std::cout << "Providing instruction at " << currPC << std::endl;
             if (instructions.size() <= currPC) {
                 std::cout << "Ending simulation" << std::endl;
-                sc_stop();
                 return;
             }
             Request requestToWrite = instructions.at(currPC);
@@ -116,6 +115,7 @@ SC_MODULE(RAMMock) {
         while (true) {
             readyBus.write(false);
             wait(clock.posedge_event());
+
             if (!validDataRequest.read())
                 continue;
             // std::cout << "RAM: dealing with new request" << std::endl;
@@ -140,7 +140,6 @@ SC_MODULE(RAMMock) {
                     }
                     dataOutBus.write(toWrite);
                     readyBus.write(true);
-
                     wait(clock.posedge_event());
                 }
             }
@@ -170,10 +169,10 @@ class CacheTests : public testing::Test {
     sc_signal<bool> cpuDataReadySignal;
 
     // Cache -> RAM
-    sc_signal<bool> ramWeSignal;
-    sc_signal<std::uint32_t> ramAdressSignal;
+    sc_signal<bool, SC_MANY_WRITERS> ramWeSignal;
+    sc_signal<std::uint32_t, SC_MANY_WRITERS> ramAdressSignal;
     sc_signal<sc_dt::sc_bv<128>> ramDataOutSignal;
-    sc_signal<bool> ramValidDataRequestSignal;
+    sc_signal<bool, SC_MANY_WRITERS> ramValidDataRequestSignal;
 
     // RAM -> Cache
     sc_signal<std::uint32_t> ramDataInSignal;
@@ -292,7 +291,7 @@ TEST_F(CacheTests, CacheReadReturnsSameValueAsWrittenBefore) {
         cpu.instructions.push_back(Request{addresses.at(i), currData, 1});
         cpu.instructions.push_back(Request{addresses.at(i), 0, 0});
     }
-    sc_start(10, SC_SEC);
+    sc_start(5, SC_MS);
 
     ASSERT_EQ(cpu.instructionsProvided.size(), 2 * numRequests);
     for (int i = 0; i < numRequests; ++i) {
@@ -381,7 +380,7 @@ TEST_F(CacheTests, CacheTestReadWriteReturnsSameInFailureCase) {
     cpu.instructions.push_back(w);
     cpu.instructions.push_back(r);
 
-    sc_start(2, SC_SEC);
+    sc_start(2, SC_MS);
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), 2);
     ASSERT_EQ(std::get<1>(cpu.dataReceivedForAddress.at(0)), std::get<1>(cpu.dataReceivedForAddress.at(1)));
     ASSERT_EQ(std::get<1>(cpu.dataReceivedForAddress.at(0)), problematicVal);
@@ -396,7 +395,7 @@ TEST_F(CacheTests, CacheRightNumberHitsForOnlyReadsOnSameAddr) {
         cpu.instructions.push_back(r);
     }
 
-    sc_start(2, SC_SEC);
+    sc_start(2, SC_MS);
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), numRequests);
     ASSERT_EQ(cache.hitCount, numRequests - 1);
     ASSERT_EQ(cache.missCount, 1);
@@ -411,7 +410,7 @@ TEST_F(CacheTests, CacheNumberRightHitsAllReadsUnalignedAddress) {
         cpu.instructions.push_back(r);
     }
 
-    sc_start(2, SC_SEC);
+    sc_start(2, SC_MS);
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), numRequests);
     ASSERT_EQ(cache.hitCount, 2 * numRequests - 2);
     ASSERT_EQ(cache.missCount, 2);
@@ -439,7 +438,7 @@ TEST_F(CacheTests, CacheNumberRightHitsMixedReadWritesIndependentAligned) {
     cpu.instructions.push_back(r3);
     cpu.instructions.push_back(r3);
 
-    sc_start(2, SC_SEC);
+    sc_start(2, SC_MS);
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), 8);
     ASSERT_EQ(cache.hitCount, 5);
     ASSERT_EQ(cache.missCount, 3);
