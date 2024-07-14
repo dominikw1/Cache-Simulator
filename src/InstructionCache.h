@@ -12,7 +12,9 @@ SC_MODULE(InstructionCache) {
 private:
     unsigned int cacheLineNum;
     unsigned int cacheLineSize;
-    Cache<MappingType::Direct> cache{"Cache", cacheLineNum, cacheLineSize, 10,
+    unsigned int cacheLatency;
+
+    Cache<MappingType::Direct> cache{"Cache", cacheLineNum, cacheLineSize, cacheLatency,
                                      std::make_unique<RandomPolicy<std::uint32_t>>(cacheLineNum)};
 
     std::vector<Request> instructions;
@@ -25,7 +27,7 @@ private:
 
 public:
     InstructionCache(sc_core::sc_module_name name, unsigned int cacheLines, unsigned int cacheLineSize,
-                     std::vector<Request> instructions);
+                     unsigned int cacheLatency, std::vector<Request> instructions);
 
     // -> CPU
     sc_core::sc_out<Request> instructionBus;
@@ -37,11 +39,11 @@ public:
 
     // Cache -> RAM
     sc_core::sc_out<std::uint32_t> memoryAddrBus{"memoryAddrBus"};
-    std::vector<sc_core::sc_out<std::uint8_t>> memoryDataOutBusses;
+    sc_core::sc_out<std::uint32_t> memoryDataOutBus{"memoryDataOutBus"};
     sc_core::sc_out<bool> memoryWeBus{"memoryWeBus"};
     sc_core::sc_out<bool> memoryValidRequestBus{"memoryValidRequestBus"};
 
     // RAM -> Cache
-    std::vector<sc_core::sc_in<std::uint8_t>> memoryDataInBusses;
+    sc_core::sc_in<sc_dt::sc_bv<128>> memoryDataInBus;
     sc_core::sc_in<bool> memoryReadyBus{"memoryReadyBus"};
 };

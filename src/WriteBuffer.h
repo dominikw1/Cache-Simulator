@@ -33,7 +33,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
     sc_core::sc_in<sc_dt::sc_bv<128>> memoryDataInBus{"memoryDataInBus"};
     sc_core::sc_in<bool> memoryReadyBus{"memoryReadyBus"};
 
-    WriteBuffer(sc_core::sc_module_name name, std::uint8_t readsPerCacheline)
+    WriteBuffer(sc_core::sc_module_name name, std::uint32_t readsPerCacheline)
         : sc_module{name}, readsPerCacheline{readsPerCacheline} {
         using namespace sc_core;
         SC_THREAD(handleIncomingRequests);
@@ -63,7 +63,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         memoryValidRequestBus.write(false);
     }
 
-    const std::uint8_t readsPerCacheline;
+    const std::uint32_t readsPerCacheline;
 
     void passReadAlong() {
         memoryAddrBus.write(cacheAddrBus.read());

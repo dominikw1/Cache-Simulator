@@ -3,9 +3,9 @@
 using namespace sc_core;
 
 InstructionCache::InstructionCache(sc_module_name name, unsigned int cacheLines, unsigned int cacheLineSize,
-                                   std::vector<Request> instructions)
-        : sc_module{name}, cacheLineNum{cacheLines}, cacheLineSize{cacheLineSize}, instructions{instructions},
-          memoryDataInBusses{cacheLineSize}, memoryDataOutBusses{cacheLineSize} {
+                                   unsigned int cacheLatency, std::vector<Request> instructions)
+        : sc_module{name}, cacheLineNum{cacheLines}, cacheLineSize{cacheLineSize}, cacheLatency{cacheLatency},
+          instructions{instructions} {
 
     SC_METHOD(decode);
     sensitive << cache.ready;
