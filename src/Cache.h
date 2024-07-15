@@ -68,6 +68,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     // ========== Internals ==============
     std::vector<Cacheline> cacheInternal;
     WriteBuffer<4> writeBuffer;
+    std::uint32_t cyclesPassedInRequest = 0;
 
     // ========== Precomputation ==============
     std::uint8_t addressOffsetBits = 0;
@@ -82,157 +83,33 @@ template <MappingType mappingType> SC_MODULE(Cache) {
           unsigned int cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy);
 
   private:
-    // private since this is never to be called, just a convenient way to get proper systemc side definition
-    SC_CTOR(Cache);
+    // ========== Set-Up ==============
+    SC_CTOR(Cache); // private since this is never to be called, just to get systemc typedef
     void setUpWriteBufferConnects();
     void zeroInitialiseCachelines();
+
+    // ========== Main Request Handling ==============
+    void handleRequest();
+    void handleSubRequest(SubRequest subRequest, std::uint32_t & readData);
+    Request constructRequestFromBusses();
+
+    // ========== Helpers to determine which cache line to read from / write to ==============
     constexpr void precomputeAddressDecompositionBits() noexcept;
     constexpr DecomposedAddress decomposeAddress(std::uint32_t address) noexcept;
     std::vector<Cacheline>::iterator getCachelineOwnedByAddr(DecomposedAddress decomposedAddr);
     std::vector<Cacheline>::iterator chooseWhichCachelineToFillFromRAM(DecomposedAddress decomposedAddr);
     void registerUsage(std::vector<Cacheline>::iterator cacheline);
-    void waitForRAM();
+
+    // ========== Reading from Cache ==============
+    std::vector<Cacheline>::iterator fetchIfNotPresent(std::uint32_t addr, DecomposedAddress decomposedAddr);
+    void startReadFromRAM(std::uint32_t addr);
+    std::uint32_t doRead(DecomposedAddress decomposedAddr, Cacheline & cacheline, std::uint8_t numBytes);
     std::vector<Cacheline>::iterator writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr);
+    void waitForRAM();
 
-    std::vector<Cacheline>::iterator fetchIfNotPresent(std::uint32_t addr, DecomposedAddress decomposedAddr) {
-        auto cacheline = getCachelineOwnedByAddr(decomposedAddr);
-        if (cacheline != cacheInternal.end()) {
-            std::cout << "HIT" << std::endl;
-            ++hitCount;
-            return cacheline;
-        }
-        std::cout << "MISS" << std::endl;
-        ++missCount;
-
-        startReadFromRAM(addr);
-        waitForRAM();
-        return writeRAMReadIntoCacheline(decomposedAddr);
-    }
-
-    std::uint32_t cyclesPassedInRequest = 0;
-
-    Request constructRequestFromBusses() { return Request{cpuAddrBus.read(), cpuDataInBus.read(), cpuWeBus.read()}; }
-
-    void handleSubRequest(SubRequest subRequest, std::uint32_t & readData) { // readData is an OUT parameter
-        std::cout << "Starting handling subrequest " << subRequest.addr << " " << subRequest.data << " "
-                  << unsigned(subRequest.size) << " " << subRequest.we << " " << unsigned(subRequest.bitsBefore)
-                  << std::endl;
-
-        std::cout << "Potentially reading into cache if not present...\n";
-        auto addr = subRequest.addr;
-
-        // split into tag - index - offset
-        auto decomposedAddr = decomposeAddress(addr);
-        // check if in cache - if not read from RAM
-
-        auto cacheline = fetchIfNotPresent(addr, decomposedAddr);
-        std::cout << "Done reading into cache\n";
-
-        // if a fully associative Cache and we use a stateful policy we declare the use of the cacheline here
-        registerUsage(cacheline);
-        std::cout << "Cacheline we read looks like: " << *cacheline << std::endl;
-
-        if (subRequest.we) {
-            doWrite(*cacheline, decomposedAddr, subRequest.data, subRequest.size);
-            passWriteOnToRAM(*cacheline, decomposedAddr, addr);
-            std::cout << "After writing it now looks like: " << *cacheline << std::endl;
-        } else {
-            auto tempReadData = doRead(decomposedAddr, *cacheline, subRequest.size);
-            std::cout << "Just read " << tempReadData << " from cache\n";
-            readData = applyPartialRead(subRequest, readData, tempReadData);
-        }
-
-        // wait out the rest here!!
-        while (cyclesPassedInRequest < cacheLatency) {
-            wait(clock.posedge_event());
-            ++cyclesPassedInRequest;
-        }
-        std::cout << "Done with subcycle" << std::endl;
-    }
-
-    void handleRequest() {
-        while (true) {
-            wait();
-            if (!cpuValidRequest.read())
-                continue;
-
-            cyclesPassedInRequest = 0;
-            // Tell CPU we are not ready yet (since he waits for us in the next cycle (not this) this is not a race)
-            ready.write(false);
-
-            auto request = constructRequestFromBusses();
-            std::cout << "Received request:\n" << request << "\n";
-            auto subRequests = splitRequestIntoSubRequests(request, cacheLineSize);
-
-            std::uint32_t readData = 0;
-            for (auto&& subRequest : subRequests) {
-                handleSubRequest(std::move(subRequest), readData);
-            }
-            if (!request.we) {
-                std::cout << "Sending " << readData << " back to CPU" << std::endl;
-                cpuDataOutBus.write(readData);
-            }
-            std::cout << "Done with cycle" << std::endl;
-            ready.write(true);
-        }
-    }
-
-    // precondition: cacheline is in cache
-    std::uint32_t doRead(DecomposedAddress decomposedAddr, Cacheline & cacheline, std::uint8_t numBytes) {
-        std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
-        assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
-
-        std::uint32_t retVal = 0;
-        for (std::size_t byteNr = 0; byteNr < numBytes; ++byteNr) {
-            retVal += cacheline.data.at(decomposedAddr.offset + byteNr) << (byteNr * 8);
-        }
-        return retVal;
-    }
-
-    void doWrite(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t data, std::uint8_t numBytes) {
-        std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
-
-        assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
-        std::cout << "Attempting to write " << data << std::endl;
-        for (std::size_t byteNr = 0; byteNr < numBytes; ++byteNr) {
-            cacheline.data[(decomposedAddr.offset + byteNr)] = (data >> 8 * byteNr) & ((1 << 8) - 1);
-        }
-        std::cout << "Done writing into cacheline" << std::endl;
-    }
-
-    void passWriteOnToRAM(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t addr) {
-        std::uint32_t data = 0;
-
-        std::size_t startByte = std::min(static_cast<std::size_t>(decomposedAddr.offset), cacheline.data.size() - 4);
-
-        data |= (cacheline.data[startByte + 0]) << 0 * 8;
-        data |= (cacheline.data[startByte + 1]) << 1 * 8;
-        data |= (cacheline.data[startByte + 2]) << 2 * 8;
-        data |= (cacheline.data[startByte + 3]) << 3 * 8;
-
-        std::cout << "Passing to write buffer" << std::endl;
-        writeBufferAddr.write(addr);
-        writeBufferDataIn.write(data);
-        writeBufferWE.write(true);
-        writeBufferValidRequest.write(true);
-
-        // write buffer takes at least one cycle (DEFINITION)
-        do {
-            wait(clock.posedge_event());
-            cyclesPassedInRequest++;
-        } while (!writeBufferReady);
-
-        writeBufferValidRequest.write(false);
-        std::cout << "Passed to write buffer " << std::endl;
-    }
-
-    void startReadFromRAM(std::uint32_t addr) {
-        std::uint32_t alignedAddr = (addr / cacheLineSize) * cacheLineSize;
-        writeBufferAddr.write(alignedAddr);
-        writeBufferWE.write(false);
-        std::cout << "Setting WB valid req to true in read " << std::endl;
-        writeBufferValidRequest.write(true);
-    }
+    // ========== Writing to Cache ==============
+    void doWrite(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t data, std::uint8_t numBytes);
+    void passWriteOnToRAM(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t addr);
 };
 
 template <>
@@ -400,4 +277,152 @@ Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) 
 
     std::cout << "Done writing RAM Read into cacheline " << std::endl;
     return cachelineToWriteInto;
+}
+
+template <MappingType mappingType>
+inline std::vector<Cacheline>::iterator Cache<mappingType>::fetchIfNotPresent(std::uint32_t addr,
+                                                                              DecomposedAddress decomposedAddr) {
+    auto cacheline = getCachelineOwnedByAddr(decomposedAddr);
+    if (cacheline != cacheInternal.end()) {
+        std::cout << "HIT" << std::endl;
+        ++hitCount;
+        return cacheline;
+    }
+    std::cout << "MISS" << std::endl;
+    ++missCount;
+
+    startReadFromRAM(addr);
+    waitForRAM();
+    return writeRAMReadIntoCacheline(decomposedAddr);
+}
+
+template <MappingType mappingType>
+inline void Cache<mappingType>::handleSubRequest(SubRequest subRequest, std::uint32_t& readData) {
+    std::cout << "Starting handling subrequest " << subRequest.addr << " " << subRequest.data << " "
+              << unsigned(subRequest.size) << " " << subRequest.we << " " << unsigned(subRequest.bitsBefore)
+              << std::endl;
+
+    std::cout << "Potentially reading into cache if not present...\n";
+    auto addr = subRequest.addr;
+
+    // split into tag - index - offset
+    auto decomposedAddr = decomposeAddress(addr);
+    // check if in cache - if not read from RAM
+
+    auto cacheline = fetchIfNotPresent(addr, decomposedAddr);
+    std::cout << "Done reading into cache\n";
+
+    // if a fully associative Cache and we use a stateful policy we declare the use of the cacheline here
+    registerUsage(cacheline);
+    std::cout << "Cacheline we read looks like: " << *cacheline << std::endl;
+
+    if (subRequest.we) {
+        doWrite(*cacheline, decomposedAddr, subRequest.data, subRequest.size);
+        passWriteOnToRAM(*cacheline, decomposedAddr, addr);
+        std::cout << "After writing it now looks like: " << *cacheline << std::endl;
+    } else {
+        auto tempReadData = doRead(decomposedAddr, *cacheline, subRequest.size);
+        std::cout << "Just read " << tempReadData << " from cache\n";
+        readData = applyPartialRead(subRequest, readData, tempReadData);
+    }
+
+    // wait out the rest here!!
+    while (cyclesPassedInRequest < cacheLatency) {
+        wait(clock.posedge_event());
+        ++cyclesPassedInRequest;
+    }
+    std::cout << "Done with subcycle" << std::endl;
+}
+
+template <MappingType mappingType>
+inline std::uint32_t Cache<mappingType>::doRead(DecomposedAddress decomposedAddr, Cacheline& cacheline,
+                                                std::uint8_t numBytes) {
+    std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
+    assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
+
+    std::uint32_t retVal = 0;
+    for (std::size_t byteNr = 0; byteNr < numBytes; ++byteNr) {
+        retVal += cacheline.data.at(decomposedAddr.offset + byteNr) << (byteNr * 8);
+    }
+    return retVal;
+}
+
+template <MappingType mappingType> inline void Cache<mappingType>::handleRequest() {
+    while (true) {
+        wait();
+        if (!cpuValidRequest.read())
+            continue;
+
+        cyclesPassedInRequest = 0;
+        // Tell CPU we are not ready yet (since he waits for us in the next cycle (not this) this is not a race)
+        ready.write(false);
+
+        auto request = constructRequestFromBusses();
+        std::cout << "Received request:\n" << request << "\n";
+        auto subRequests = splitRequestIntoSubRequests(request, cacheLineSize);
+
+        std::uint32_t readData = 0;
+        for (auto&& subRequest : subRequests) {
+            handleSubRequest(std::move(subRequest), readData);
+        }
+        if (!request.we) {
+            std::cout << "Sending " << readData << " back to CPU" << std::endl;
+            cpuDataOutBus.write(readData);
+        }
+        std::cout << "Done with cycle" << std::endl;
+        ready.write(true);
+    }
+}
+
+template <MappingType mappingType>
+inline void Cache<mappingType>::doWrite(Cacheline& cacheline, DecomposedAddress decomposedAddr, std::uint32_t data,
+                                        std::uint8_t numBytes) {
+    std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
+
+    assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
+    std::cout << "Attempting to write " << data << std::endl;
+    for (std::size_t byteNr = 0; byteNr < numBytes; ++byteNr) {
+        cacheline.data[(decomposedAddr.offset + byteNr)] = (data >> 8 * byteNr) & ((1 << 8) - 1);
+    }
+    std::cout << "Done writing into cacheline" << std::endl;
+}
+
+template <MappingType mappingType>
+inline void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddress decomposedAddr,
+                                                 std::uint32_t addr) {
+    std::uint32_t data = 0;
+
+    std::size_t startByte = std::min(static_cast<std::size_t>(decomposedAddr.offset), cacheline.data.size() - 4);
+
+    data |= (cacheline.data[startByte + 0]) << 0 * 8;
+    data |= (cacheline.data[startByte + 1]) << 1 * 8;
+    data |= (cacheline.data[startByte + 2]) << 2 * 8;
+    data |= (cacheline.data[startByte + 3]) << 3 * 8;
+
+    std::cout << "Passing to write buffer" << std::endl;
+    writeBufferAddr.write(addr);
+    writeBufferDataIn.write(data);
+    writeBufferWE.write(true);
+    writeBufferValidRequest.write(true);
+
+    // write buffer takes at least one cycle (DEFINITION)
+    do {
+        wait(clock.posedge_event());
+        cyclesPassedInRequest++;
+    } while (!writeBufferReady);
+
+    writeBufferValidRequest.write(false);
+    std::cout << "Passed to write buffer " << std::endl;
+}
+
+template <MappingType mappingType> inline void Cache<mappingType>::startReadFromRAM(std::uint32_t addr) {
+    std::uint32_t alignedAddr = (addr / cacheLineSize) * cacheLineSize;
+    writeBufferAddr.write(alignedAddr);
+    writeBufferWE.write(false);
+    std::cout << "Setting WB valid req to true in read " << std::endl;
+    writeBufferValidRequest.write(true);
+}
+
+template <MappingType mappingType> inline Request Cache<mappingType>::constructRequestFromBusses() {
+    return Request{cpuAddrBus.read(), cpuDataInBus.read(), cpuWeBus.read()};
 }
