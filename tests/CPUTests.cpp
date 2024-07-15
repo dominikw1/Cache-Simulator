@@ -137,11 +137,13 @@ protected:
         cpu.validDataRequestBus.bind(validDataRequestSignal);
 
         std::cout << "done binding cpu" << std::endl;
+        instrMock.clock.bind(clock);
         instrMock.pcBus.bind(pcSignal);
         instrMock.instrBus.bind(instrSignal);
         instrMock.instrReadyBus.bind(instrReadySignal);
         instrMock.validInstrRequest.bind(validInstrRequestSignal);
 
+        dataMock.clock.bind(clock);
         dataMock.weBus.bind(weSignal);
         dataMock.addressBus.bind(addressSignal);
         dataMock.dataInBus.bind(dataOutSignal);
