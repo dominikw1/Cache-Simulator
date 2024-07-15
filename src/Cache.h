@@ -190,11 +190,11 @@ template <MappingType mappingType> inline void Cache<mappingType>::waitForRAM() 
 
 template <> constexpr inline void Cache<MappingType::Fully_Associative>::precomputeAddressDecompositionBits() noexcept {
     addressOffsetBits = safeCeilLog2(cacheLineSize);
-    addressIndexBits = 0;
+    addressIndexBits = 0; // no index bits in fully associative cache
     addressTagBits = 32 - addressOffsetBits;
 
-    addressOffsetBitMask = (1ll << addressOffsetBits) - 1;
-    addressTagBitMask = (1ll << addressTagBits) - 1;
+    addressOffsetBitMask = generateBitmaskForLowestNBits(addressOffsetBits);
+    addressTagBitMask = generateBitmaskForLowestNBits(addressTagBits);
 }
 
 template <> constexpr inline void Cache<MappingType::Direct>::precomputeAddressDecompositionBits() noexcept {
@@ -202,9 +202,9 @@ template <> constexpr inline void Cache<MappingType::Direct>::precomputeAddressD
     addressIndexBits = safeCeilLog2(numCacheLines);
     addressTagBits = 32 - addressIndexBits - addressOffsetBits;
 
-    addressOffsetBitMask = (1ll << addressOffsetBits) - 1;
-    addressIndexBitMask = (1ll << addressIndexBits) - 1;
-    addressTagBitMask = (1ll << addressTagBits) - 1;
+    addressOffsetBitMask = generateBitmaskForLowestNBits(addressOffsetBits);
+    addressIndexBitMask = generateBitmaskForLowestNBits(addressIndexBits);
+    addressTagBitMask = generateBitmaskForLowestNBits(addressTagBits);
 }
 
 template <MappingType mappingType> inline void Cache<mappingType>::setUpWriteBufferConnects() {
