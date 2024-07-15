@@ -47,7 +47,9 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         validMemoryRequestOr.out.bind(memoryValidRequestBus);
 
         SC_THREAD(handleIncomingRequests);
+        sensitive << clock.pos();
         SC_THREAD(doWrites);
+        sensitive << clock.pos();
     }
 
   private:
@@ -81,11 +83,11 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         writerThreadValidMemoryRequest.write(true);
         std::cout << "Waiting for RAM write " << std::endl;
         do {
-            wait(clock.posedge_event());
+            wait();
         } while ((!memoryReadyBus.read()));
         std::cout << "Done waiting for RAM write " << std::endl;
         writerThreadValidMemoryRequest.write(false);
-     //   wait(clock.posedge_event());
+        //   wait(clock.posedge_event());
     }
 
     const std::uint32_t readsPerCacheline;
@@ -97,7 +99,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
 
         std::cout << "Now waiting for RAM" << std::endl;
         do {
-            wait(clock.posedge_event());
+            wait();
         } while (!memoryReadyBus.read());
         readerThreadValidMemoryRequest.write(false);
         std::cout << " Done waiting for RAM" << std::endl;
@@ -106,17 +108,16 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         // dont need to wait before first one because we can only get here if RAM tells us it is ready
         for (int i = 0; i < readsPerCacheline; ++i) {
             cacheDataOutBus.write(memoryDataOutBus.read());
-            wait(clock.posedge_event());
+            wait();
         }
 
         ready.write(false);
-        wait(clock.posedge_event());
+        wait();
     }
 
     void handleIncomingRequests() {
         while (true) {
-            wait(clock.posedge_event());
-
+            wait();
             if (cacheValidRequest.read()) {
                 std::cout << "WB: found valid instr request" << std::endl;
                 ready.write(false);
@@ -128,7 +129,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
                         // can only handle if there is space in buffer
                         buffer.push(WriteBufferEntry{cacheAddrBus.read(), cacheDataInBus.read()});
                         ready.write(true);
-                        wait(clock.posedge_event());
+                        wait();
                     }
                 }
             }
@@ -137,15 +138,10 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
 
     void doWrites() {
         while (true) {
-            wait(clock.posedge_event());
-            // std::unique_lock<std::mutex> lock{mutex};
+            wait();
             if (cacheValidRequest.read()) {
                 continue;
             }
-            // handledRequestForCycleCV.wait(lock, [this] { return handledRequestForCycle; });
-
-            // if write reqeust: just add it to the buffer
-
             if (buffer.getSize() > 0) {
                 setCurrWriting(true);
                 writeToRAM();
