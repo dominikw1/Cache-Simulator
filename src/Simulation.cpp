@@ -1,7 +1,6 @@
 #include "Simulation.h"
 #include "CPU.h"
 #include "Cache.h"
-// #include "InstructionCache.h"
 #include "FIFOPolicy.h"
 #include "InstructionCache.h"
 #include "LRUPolicy.h"
@@ -17,12 +16,11 @@
 
 std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(int replacementPolicy, int cacheSize);
 
-template<MappingType mappingType>
+template <MappingType mappingType>
 
 Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLineSize, unsigned int cacheLatency,
                       unsigned int memoryLatency, size_t numRequests, struct Request requests[], const char* tracefile,
                       int policy, int usingCache) {
-
 
     std::cout << "Starting Simulation...\n";
 
@@ -34,8 +32,8 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
     RAM instructionRam{"Instruction_RAM", instructionCacheLineSize, memoryLatency};
     Cache<mappingType> dataCache{"Data_cache", cacheLines, cacheLineSize, cacheLatency,
                                  getReplacementPolity(policy, cacheLines)};
-    InstructionCache instructionCache{"Instruction_Cache", instructionCacheLines, instructionCacheLineSize, cacheLatency,
-                                      std::vector<Request>(requests, requests + numRequests)};
+    InstructionCache instructionCache{"Instruction_Cache", instructionCacheLines, instructionCacheLineSize,
+                                      cacheLatency, std::vector<Request>(requests, requests + numRequests)};
 
     sc_core::sc_clock clk("Clock", sc_core::sc_time(1, sc_core::SC_NS));
 
@@ -186,7 +184,7 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
     }
 
     return Result{
-            cpu.getElapsedCycleCount(), dataCache.missCount, dataCache.hitCount, 1 // TODO: primitiveGateCount
+        cpu.getElapsedCycleCount(), dataCache.missCount, dataCache.hitCount, 1 // TODO: primitiveGateCount
     };
 }
 
@@ -195,30 +193,29 @@ struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLin
                              struct Request requests[], const char* tracefile, int policy, int usingCache) {
     if (directMapped == 0) {
         return run_simulation<MappingType::Fully_Associative>(cycles, cacheLines, cacheLineSize, cacheLatency,
-                                                              memoryLatency,
-                                                              numRequests, requests, tracefile, policy, usingCache);
+                                                              memoryLatency, numRequests, requests, tracefile, policy,
+                                                              usingCache);
     } else {
-        return run_simulation<MappingType::Direct>(cycles, cacheLines, cacheLineSize, cacheLatency,
-                                                   memoryLatency, numRequests, requests, tracefile, policy,
-                                                   usingCache);
+        return run_simulation<MappingType::Direct>(cycles, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
+                                                   numRequests, requests, tracefile, policy, usingCache);
     }
 }
 
-std::unique_ptr <ReplacementPolicy<std::uint32_t>> getReplacementPolity(int replacementPolicy, int cacheSize) {
+std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(int replacementPolicy, int cacheSize) {
     switch (replacementPolicy) {
-        case 0:
-            return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
-        case 1:
-            return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
-        case 2:
-            return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
-        default:
-            throw std::runtime_error("Encountered unknown policy type");
+    case 0:
+        return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
+    case 1:
+        return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
+    case 2:
+        return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
+    default:
+        throw std::runtime_error("Encountered unknown policy type");
     }
 }
 
 using namespace sc_core;
-
+//
 int sc_main(int argc, char* argv[]) {
     std::cout << "ERROR: call to sc_main method" << std::endl;
     return 1;

@@ -77,7 +77,7 @@ SC_MODULE(CPUMock) {
         sensitive << clock.pos();
     }
 };
-
+#include <map>
 SC_MODULE(RAMMock) {
 
     sc_in<bool> clock;
@@ -90,7 +90,7 @@ SC_MODULE(RAMMock) {
     sc_out<sc_dt::sc_bv<128>> dataOutBus;
     sc_out<bool> readyBus;
 
-    std::unordered_map<std::uint32_t, std::uint8_t> dataMemory{};
+    std::map<std::uint32_t, std::uint8_t> dataMemory{};
     std::uint32_t numRequestsPerformed;
 
     SC_CTOR(RAMMock) {}
@@ -132,16 +132,17 @@ SC_MODULE(RAMMock) {
                 wait(clock.posedge_event());
             } else {
                 // 128 / 8 -> 16
+                std::cout << "Actually reading from RAM: " << addressBus.read() << " " << std::endl;
+
                 sc_dt::sc_bv<128> toWrite;
                 for (int i = 0; i < wordsPerRead; ++i) {
-                    //   std::cout << "Doing a part read " << i << std::endl;
+                    std::cout << "Doing a part read " << i << std::endl;
                     for (int byte = 0; byte < 16; ++byte) {
                         // std::cout << "Doing it for a byte " << std::endl;
 
-                        // std::cout << "Reading byte " << i << " as " << unsigned(readByteFromMem(addressBus.read() +
-                        // i))
-                        //         << std::endl;
-                        toWrite.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() + byte);
+                        std::cout << "Reading byte " << i * byte << " as "
+                                  << unsigned(readByteFromMem(addressBus.read() + i)) << std::endl;
+                        toWrite.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() +  i*16 +byte);
                     }
                     dataOutBus.write(toWrite);
                     readyBus.write(true);
@@ -149,6 +150,10 @@ SC_MODULE(RAMMock) {
                 }
             }
 
+            std::cout << "Total written ram now looks like: " << std::endl;
+            for (auto& pair : dataMemory) {
+                std::cout << pair.first << ": " << pair.second << std::endl;
+            }
             // std::cout << "recording data op" << std::endl;
 
             ++numRequestsPerformed;

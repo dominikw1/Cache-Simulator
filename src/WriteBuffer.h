@@ -132,6 +132,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
                 writeToRAM();
                 holdingLock = true;
             }
+            wait();
         }
     }
 
@@ -166,6 +167,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
                     }
                 }
             }
+            wait();
         }
     }
 
@@ -190,6 +192,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
                 }
                 std::cout << "Ending actual write" << std::endl;
             }
+            wait();
         }
     }
 };
