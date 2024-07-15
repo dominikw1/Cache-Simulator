@@ -112,8 +112,8 @@ SC_MODULE(RAMMock) {
 
     void provideData() {
         while (true) {
-            readyBus.write(false);
             wait(clock.posedge_event());
+            readyBus.write(false);
 
             if (!validDataRequest.read())
                 continue;
@@ -520,4 +520,56 @@ TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
     ASSERT_EQ(cpu.instructionsProvided.size(), 4);
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), 4);
     ASSERT_EQ(ram.numRequestsPerformed, 1); // only the read
+}
+
+TEST_F(CacheTests, CacheWriteBufferHandlesMoreWritesThanCapacity) {
+    ram.latency = 2000;
+    Request writeRequest1{10, 100, 1};
+    Request writeRequest2{20, 100, 1};
+    Request writeRequest3{1, 914919, 1};
+    Request writeRequest4{5, 100, 1};
+    Request writeRequest5{50, 100, 1};
+    Request writeRequest6{40, 914919, 1};
+    cpu.instructions.push_back(writeRequest1);
+    cpu.instructions.push_back(writeRequest2);
+    cpu.instructions.push_back(writeRequest3);
+    cpu.instructions.push_back(writeRequest4);
+    cpu.instructions.push_back(writeRequest5);
+    cpu.instructions.push_back(writeRequest6);
+
+    sc_start(5, SC_MS);
+     ASSERT_EQ(ram.numRequestsPerformed, 6);
+}
+
+TEST_F(CacheTests, CacheReadsResultInSameValuesAsManuallyRecorded) {
+    int numRequests = 100;
+    auto addresses = generateRandomVector(numRequests, UINT32_MAX);
+    auto data = generateRandomVector(numRequests, UINT32_MAX);
+    std::unordered_map<std::uint32_t, std::uint8_t> memRecord;
+
+    std::vector<Request> requests;
+    for (int i = 0; i < numRequests; ++i) {
+        std::uint32_t currData = data.at(i);
+        cpu.instructions.push_back(Request{addresses.at(i), currData, 1});
+        memRecord[addresses.at(i)] = (currData) & ((1 << 8) - 1);
+        memRecord[addresses.at(i)] = (currData >> 8) & ((1 << 8) - 1);
+        memRecord[addresses.at(i)] = (currData >> 16) & ((1 << 8) - 1);
+        memRecord[addresses.at(i)] = (currData >> 24) & ((1 << 8) - 1);
+    }
+
+    for (int i = 0; i < numRequests; ++i) {
+        cpu.instructions.push_back(Request{addresses.at(i), 0, 0});
+    }
+
+    sc_start(2, SC_MS);
+    ASSERT_EQ(cpu.instructionsProvided.size(), 2 * numRequests);
+
+    for (int i = 0; i < numRequests; ++i) {
+        auto addrRead = std::get<0>(cpu.dataReceivedForAddress.at(numRequests + i));
+        auto dataRead = std::get<1>(cpu.dataReceivedForAddress.at(numRequests + i));
+        ASSERT_EQ(memRecord[i], dataRead & ((1 << 8) - 1));
+        ASSERT_EQ(memRecord[i + 1], (dataRead >> 8) & ((1 << 8) - 1));
+        ASSERT_EQ(memRecord[i + 2], (dataRead >> 16) & ((1 << 8) - 1));
+        ASSERT_EQ(memRecord[i + 3], (dataRead >> 24) & ((1 << 8) - 1));
+    }
 }

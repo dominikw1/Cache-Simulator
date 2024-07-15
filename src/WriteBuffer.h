@@ -69,9 +69,19 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         return currWritingMarker;
     }
 
-    void setCurrWriting(bool newValue) {
+    void relinquishWriting() {
         std::lock_guard<std::mutex> g{currWritingMarkerLock};
-        currWritingMarker = newValue;
+        currWritingMarker = false;
+    }
+
+    bool tryAcquireWriting() {
+        std::lock_guard<std::mutex> g{currWritingMarkerLock};
+        if (!currWritingMarker) {
+            currWritingMarker = true;
+            return true;
+        } else {
+            return false;
+        }
     }
 
     void writeToRAM() {
@@ -107,7 +117,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         ready.write(true);
         // dont need to wait before first one because we can only get here if RAM tells us it is ready
         for (int i = 0; i < readsPerCacheline; ++i) {
-            cacheDataOutBus.write(memoryDataOutBus.read());
+            cacheDataOutBus.write(memoryDataInBus.read());
             wait();
         }
 
@@ -115,14 +125,33 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         wait();
     }
 
+    void forceBufferFlush(bool& holdingLock) {
+        while (buffer.getSize() > 0) {
+            std::cout << "FORCE Entering actual write" << std::endl;
+            if (tryAcquireWriting()) {
+                writeToRAM();
+                holdingLock = true;
+            }
+        }
+    }
+
     void handleIncomingRequests() {
+        bool holdingWriteLock = false;
         while (true) {
             wait();
+            if (holdingWriteLock) {
+                relinquishWriting();
+                holdingWriteLock = false;
+            }
             if (cacheValidRequest.read()) {
-                std::cout << "WB: found valid instr request" << std::endl;
+                // std::cout << "WB: found valid instr request" << std::endl;
+                // std::cout << "State: " << cacheWeBus.read() << " " << buffer.getSize() << " " <<
+                // currentlyWriting()
+                //        << std::endl;
                 ready.write(false);
                 if (!cacheWeBus.read() && buffer.getSize() == 0 && !currentlyWriting()) {
                     // can only handle if all writes are through for sequential consistency reasons
+                    std::cout << "Passing along read " << std::endl;
                     passReadAlong();
                 } else {
                     if (cacheWeBus.read() && buffer.getSize() != buffer.getCapacity()) {
@@ -130,6 +159,10 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
                         buffer.push(WriteBufferEntry{cacheAddrBus.read(), cacheDataInBus.read()});
                         ready.write(true);
                         wait();
+                    } else {
+                        if (!cacheWeBus.read() && !currentlyWriting()) {
+                            forceBufferFlush(holdingWriteLock);
+                        }
                     }
                 }
             }
@@ -137,15 +170,25 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
     }
 
     void doWrites() {
+        bool holdingWriteLock = false;
         while (true) {
             wait();
-            if (cacheValidRequest.read()) {
+            if (holdingWriteLock) {
+                relinquishWriting();
+                holdingWriteLock = false;
+            }
+            //   std::cout << "Entering write loop " << std::endl;
+            if ((cacheValidRequest.read() && cacheWeBus.read()) || currentlyWriting()) {
                 continue;
             }
+            //  std::cout << "Trying to write" << std::endl;
             if (buffer.getSize() > 0) {
-                setCurrWriting(true);
-                writeToRAM();
-                setCurrWriting(false);
+                std::cout << "Entering actual write" << std::endl;
+                if (tryAcquireWriting()) {
+                    writeToRAM();
+                    holdingWriteLock = true;
+                }
+                std::cout << "Ending actual write" << std::endl;
             }
         }
     }
