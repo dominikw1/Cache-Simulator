@@ -129,6 +129,12 @@ SC_MODULE(RAMMock) {
                 std::cout << "Actually writing to RAM: " << addressBus.read() << " " << dataInBus.read() << std::endl;
                 dataMemory[addressBus.read()] = dataInBus.read();
                 readyBus.write(true);
+                std::cout << "Memory done writing" << std::endl;
+
+                std::cout << "Total written ram now looks like: " << std::endl;
+                for (auto& pair : dataMemory) {
+                    std::cout << pair.first << ": " << pair.second << std::endl;
+                }
                 wait(clock.posedge_event());
             } else {
                 // 128 / 8 -> 16
@@ -148,11 +154,7 @@ SC_MODULE(RAMMock) {
                     readyBus.write(true);
                     wait(clock.posedge_event());
                 }
-            }
-
-            std::cout << "Total written ram now looks like: " << std::endl;
-            for (auto& pair : dataMemory) {
-                std::cout << pair.first << ": " << pair.second << std::endl;
+                std::cout << "Memory done reading" << std::endl;
             }
             // std::cout << "recording data op" << std::endl;
 
