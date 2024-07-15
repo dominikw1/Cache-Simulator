@@ -97,7 +97,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         } while ((!memoryReadyBus.read()));
         std::cout << "Done waiting for RAM write " << std::endl;
         writerThreadValidMemoryRequest.write(false);
-        //   wait(clock.posedge_event());
+        wait();
     }
 
     const std::uint32_t readsPerCacheline;

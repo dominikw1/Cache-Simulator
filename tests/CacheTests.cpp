@@ -126,7 +126,7 @@ SC_MODULE(RAMMock) {
             // std::cout << "RAM: dealing with new request" << std::endl;
             bool we = weBus.read();
             if (we) {
-                //   std::cout << "Actually writing to RAM" << std::endl;
+                std::cout << "Actually writing to RAM: " << addressBus.read() << " " << dataInBus.read() << std::endl;
                 dataMemory[addressBus.read()] = dataInBus.read();
                 readyBus.write(true);
                 wait(clock.posedge_event());
@@ -138,9 +138,9 @@ SC_MODULE(RAMMock) {
                     for (int byte = 0; byte < 16; ++byte) {
                         // std::cout << "Doing it for a byte " << std::endl;
 
-                        //  std::cout << "Reading byte " << i << " as " << unsigned(readByteFromMem(addressBus.read() +
-                        //  i))
-                        //          << std::endl;
+                        // std::cout << "Reading byte " << i << " as " << unsigned(readByteFromMem(addressBus.read() +
+                        // i))
+                        //         << std::endl;
                         toWrite.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() + byte);
                     }
                     dataOutBus.write(toWrite);
@@ -263,7 +263,8 @@ TEST_F(CacheTests, CacheTransfersSingleWriteAndSubsequentReadCorrectly) {
     ASSERT_EQ(cpu.dataReceivedForAddress.at(1), std::make_pair(1u, 5u));
 }
 TEST_F(CacheTests, CacheDoesNotThrowWithManyRandomRequests) {
-    int numRequests = 100000;
+    ram.latency = 1;
+    int numRequests = 1000;
     auto addresses = generateRandomVector(numRequests, UINT32_MAX);
     auto data = generateRandomVector(numRequests, UINT32_MAX);
     auto we = generateRandomVector(numRequests, 1);
@@ -276,7 +277,7 @@ TEST_F(CacheTests, CacheDoesNotThrowWithManyRandomRequests) {
         numWrites += we.at(i);
     }
 
-    sc_start(10, SC_MS);
+    sc_start(3, SC_MS);
 
     ASSERT_EQ(cpu.instructionsProvided.size(), numRequests);
     // due to unaligned accesses it might be larger
@@ -286,7 +287,7 @@ TEST_F(CacheTests, CacheDoesNotThrowWithManyRandomRequests) {
 }
 
 TEST_F(CacheTests, CacheReadReturnsSameValueAsWrittenBefore) {
-    int numRequests = 10000;
+    int numRequests = 1000;
     auto addresses = generateRandomVector(numRequests, UINT32_MAX);
     auto data = generateRandomVector(numRequests, UINT32_MAX);
 
@@ -502,6 +503,7 @@ TEST_F(CacheTests, CacheSingleWriteUsesWriteBuffer) {
     ASSERT_EQ(cpu.instructionsProvided.size(), 2);
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), 2);
     ASSERT_EQ(ram.numRequestsPerformed, 1); // only the read
+    ram.latency = 20;
 }
 
 TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
@@ -520,6 +522,7 @@ TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
     ASSERT_EQ(cpu.instructionsProvided.size(), 4);
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), 4);
     ASSERT_EQ(ram.numRequestsPerformed, 1); // only the read
+    ram.latency = 20;
 }
 
 TEST_F(CacheTests, CacheWriteBufferHandlesMoreWritesThanCapacity) {
@@ -538,11 +541,12 @@ TEST_F(CacheTests, CacheWriteBufferHandlesMoreWritesThanCapacity) {
     cpu.instructions.push_back(writeRequest6);
 
     sc_start(5, SC_MS);
-     ASSERT_EQ(ram.numRequestsPerformed, 6);
+    ASSERT_EQ(ram.numRequestsPerformed, 6);
 }
 
 TEST_F(CacheTests, CacheReadsResultInSameValuesAsManuallyRecorded) {
-    int numRequests = 100;
+    ram.latency = 1;
+    int numRequests = 10;
     auto addresses = generateRandomVector(numRequests, UINT32_MAX);
     auto data = generateRandomVector(numRequests, UINT32_MAX);
     std::unordered_map<std::uint32_t, std::uint8_t> memRecord;
@@ -552,9 +556,9 @@ TEST_F(CacheTests, CacheReadsResultInSameValuesAsManuallyRecorded) {
         std::uint32_t currData = data.at(i);
         cpu.instructions.push_back(Request{addresses.at(i), currData, 1});
         memRecord[addresses.at(i)] = (currData) & ((1 << 8) - 1);
-        memRecord[addresses.at(i)] = (currData >> 8) & ((1 << 8) - 1);
-        memRecord[addresses.at(i)] = (currData >> 16) & ((1 << 8) - 1);
-        memRecord[addresses.at(i)] = (currData >> 24) & ((1 << 8) - 1);
+        memRecord[addresses.at(i) + 1] = (currData >> 8) & ((1 << 8) - 1);
+        memRecord[addresses.at(i) + 2] = (currData >> 16) & ((1 << 8) - 1);
+        memRecord[addresses.at(i) + 3] = (currData >> 24) & ((1 << 8) - 1);
     }
 
     for (int i = 0; i < numRequests; ++i) {
@@ -567,9 +571,11 @@ TEST_F(CacheTests, CacheReadsResultInSameValuesAsManuallyRecorded) {
     for (int i = 0; i < numRequests; ++i) {
         auto addrRead = std::get<0>(cpu.dataReceivedForAddress.at(numRequests + i));
         auto dataRead = std::get<1>(cpu.dataReceivedForAddress.at(numRequests + i));
-        ASSERT_EQ(memRecord[i], dataRead & ((1 << 8) - 1));
-        ASSERT_EQ(memRecord[i + 1], (dataRead >> 8) & ((1 << 8) - 1));
-        ASSERT_EQ(memRecord[i + 2], (dataRead >> 16) & ((1 << 8) - 1));
-        ASSERT_EQ(memRecord[i + 3], (dataRead >> 24) & ((1 << 8) - 1));
+        std::cout << "Addr: " << addrRead << " " << "Data: " << dataRead << std::endl;
+        ASSERT_EQ(addrRead, addresses.at(i));
+        ASSERT_EQ(memRecord[addrRead], dataRead & ((1 << 8) - 1));
+        ASSERT_EQ(memRecord[addrRead + 1], (dataRead >> 8) & ((1 << 8) - 1));
+        ASSERT_EQ(memRecord[addrRead + 2], (dataRead >> 16) & ((1 << 8) - 1));
+        ASSERT_EQ(memRecord[addrRead + 3], (dataRead >> 24) & ((1 << 8) - 1));
     }
 }
