@@ -67,7 +67,7 @@ public:
                 for (int i = 0; i < wordsPerRead; ++i) {
                     // 128 / 8 -> 16
                     for (int byte = 0; byte < 16; ++byte) {
-                        readData.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() + byte);
+                        readData.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() + i * 16 + byte);
                     }
                     dataOutBus.write(readData);
 
