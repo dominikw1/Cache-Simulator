@@ -89,7 +89,7 @@ SC_MODULE(DataMemoryMock) {
             dataReadyBus.write(true);
 
             dataProvided.push_back(Request{addressBus.read(), dataInBus.read(), weBus.read()});
-            std::cout << "Done providing/writing data";
+            std::cout << "Done providing/writing data" << std::endl;
 
             wait();
         }
