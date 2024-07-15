@@ -18,6 +18,7 @@
 std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(int replacementPolicy, int cacheSize);
 
 template<MappingType mappingType>
+
 Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLineSize, unsigned int cacheLatency,
                       unsigned int memoryLatency, size_t numRequests, struct Request requests[], const char* tracefile,
                       int policy, int usingCache) {
@@ -144,12 +145,45 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
     dataRam.clock(clk);
     instructionRam.clock(clk);
 
-    sc_core::sc_trace_file* file = sc_core::sc_create_vcd_trace_file(tracefile);
-    // TODO: Add all signals
+    // Create tracefile if option is set
+    sc_core::sc_trace_file* trace;
+    if (tracefile != NULL) {
+        trace = sc_core::sc_create_vcd_trace_file(tracefile);
+
+        // Data Cache signals
+        sc_core::sc_trace(trace, cpuWeSignal, "cpuWeSignal");
+        sc_core::sc_trace(trace, cpuAddressSignal, "cpuAddressSignal");
+        sc_core::sc_trace(trace, cpuDataOutSignal, "cpuDataOutSignal");
+        sc_core::sc_trace(trace, cpuValidDataRequestSignal, "cpuValidDataRequestSignal");
+        sc_core::sc_trace(trace, cpuDataInSignal, "cpuDataInSignal");
+        sc_core::sc_trace(trace, cpuDataReadySignal, "cpuDataReadySignal");
+
+        sc_core::sc_trace(trace, ramWeSignal, "ramWeSignal");
+        sc_core::sc_trace(trace, ramAddressSignal, "ramAddressSignal");
+        sc_core::sc_trace(trace, ramDataInSignal, "ramDataInSignal");
+        sc_core::sc_trace(trace, ramValidRequestSignal, "ramValidRequestSignal");
+        sc_core::sc_trace(trace, ramDataOutSignal, "ramDataOutSignal");
+        sc_core::sc_trace(trace, ramReadySignal, "ramReadySignal");
+
+        // Instruction Cache signals
+        sc_core::sc_trace(trace, validInstrRequestSignal, "validInstrRequestSignal");
+        sc_core::sc_trace(trace, pcSignal, "pcSignal");
+        sc_core::sc_trace(trace, instructionSignal, "instructionSignal");
+        sc_core::sc_trace(trace, instrReadySignal, "instrReadySignal");
+
+        sc_core::sc_trace(trace, instrRamAddressSignal, "instrRamAddressSignal");
+        sc_core::sc_trace(trace, instrRamWeBus, "instrRamWeBus");
+        sc_core::sc_trace(trace, instrRamValidRequestBus, "instrRamValidRequestBus");
+        sc_core::sc_trace(trace, instrRamDataInBus, "instrRamDataInBus");
+        sc_core::sc_trace(trace, instrRamDataOutSignal, "instrRamDataOutSignal");
+        sc_core::sc_trace(trace, instrRamReadySignal, "instrRamReadySignal");
+    }
 
     sc_core::sc_start(cycles, sc_core::SC_NS);
 
-    sc_core::sc_close_vcd_trace_file(file);
+    if (tracefile != NULL) {
+        sc_core::sc_close_vcd_trace_file(trace);
+    }
 
     return Result{
             cpu.getElapsedCycleCount(), dataCache.missCount, dataCache.hitCount, 1 // TODO: primitiveGateCount
