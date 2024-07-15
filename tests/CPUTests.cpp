@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include "../src/CPU.h"
-#include "../src/Request.h"
 #include "Utils.h"
 #include <systemc>
 #include <unordered_map>
