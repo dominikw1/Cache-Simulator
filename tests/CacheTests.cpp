@@ -140,9 +140,9 @@ SC_MODULE(RAMMock) {
                     for (int byte = 0; byte < 16; ++byte) {
                         // std::cout << "Doing it for a byte " << std::endl;
 
-                        std::cout << "Reading byte " << i * byte << " as "
-                                  << unsigned(readByteFromMem(addressBus.read() + i)) << std::endl;
-                        toWrite.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() +  i*16 +byte);
+                        std::cout << "Reading byte " << i * 16 + byte << " as "
+                                  << unsigned(readByteFromMem(addressBus.read() + i * 16 + byte)) << std::endl;
+                        toWrite.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() + i * 16 + byte);
                     }
                     dataOutBus.write(toWrite);
                     readyBus.write(true);
