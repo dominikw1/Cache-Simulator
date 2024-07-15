@@ -21,7 +21,7 @@ SC_MODULE(InstrMemoryMock) {
     std::unordered_map<std::uint32_t, Request> instructionMemory;
 
     SC_CTOR(InstrMemoryMock) {
-        SC_METHOD(provideInstr);
+        SC_THREAD(provideInstr);
         sensitive << clock.pos();
         dont_initialize();
     }
@@ -68,7 +68,7 @@ SC_MODULE(DataMemoryMock) {
     std::vector<Request> dataProvided;
 
     SC_CTOR(DataMemoryMock) {
-        SC_METHOD(provideData);
+        SC_THREAD(provideData);
         sensitive << clock.pos();
         dont_initialize();
     }
