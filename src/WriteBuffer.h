@@ -47,9 +47,9 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         validMemoryRequestOr.out.bind(memoryValidRequestBus);
 
         SC_THREAD(handleIncomingRequests);
-        sensitive << clock.pos();
+        //    sensitive << clock.pos();
         SC_THREAD(doWrites);
-        sensitive << clock.pos();
+        //  sensitive << clock.pos();
     }
 
   private:
@@ -85,19 +85,25 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
     }
 
     void writeToRAM() {
+        std::cout << "Write Buffer: Popping off next write " << std::endl;
         assert(buffer.getSize() > 0);
         WriteBufferEntry next = buffer.pop();
         memoryAddrBus.write(next.address);
         memoryDataOutBus.write(next.data);
         memoryWeBus.write(true);
+        // wait(clock.posedge_event()); // DEBUG
+        // wait(clock.posedge_event()); // DEBUG
         writerThreadValidMemoryRequest.write(true);
-        std::cout << "Waiting for RAM write " << std::endl;
+        std::cout << "WriteBuffer: " << "Waiting for RAM write " << std::endl;
+        wait(clock.posedge_event());
         do {
-            wait();
+            wait(clock.posedge_event());
         } while ((!memoryReadyBus.read()));
-        std::cout << "Done waiting for RAM write " << std::endl;
+        std::cout << "WriteBuffer: " << "Done waiting for RAM write " << std::endl;
         writerThreadValidMemoryRequest.write(false);
-        wait();
+        // wait(clock.posedge_event()); // DEBUG
+        // wait(clock.posedge_event()); // DEBUG
+        wait(clock.posedge_event());
     }
 
     const std::uint32_t readsPerCacheline;
@@ -105,94 +111,85 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
     void passReadAlong() {
         memoryAddrBus.write(cacheAddrBus.read());
         memoryWeBus.write(false);
+        // wait(clock.posedge_event()); // DEBUG
+        // wait(clock.posedge_event()); // DEBUG
         readerThreadValidMemoryRequest.write(true);
 
-        std::cout << "Now waiting for RAM" << std::endl;
+        std::cout << "WriteBuffer: " << "Now waiting for RAM" << std::endl;
         do {
-            wait();
+            wait(clock.posedge_event());
         } while (!memoryReadyBus.read());
         readerThreadValidMemoryRequest.write(false);
-        std::cout << " Done waiting for RAM" << std::endl;
+        wait(clock.posedge_event());
+        // wait(clock.posedge_event()); // DEBUG
+        // wait(clock.posedge_event()); // DEBUG
+
+        std::cout << "WriteBuffer: " << " Done waiting for RAM" << std::endl;
 
         ready.write(true);
         // dont need to wait before first one because we can only get here if RAM tells us it is ready
         for (int i = 0; i < readsPerCacheline; ++i) {
             cacheDataOutBus.write(memoryDataInBus.read());
-            wait();
+            wait(clock.posedge_event());
         }
 
         ready.write(false);
-        wait();
+        wait(clock.posedge_event()); // DEBUG
+        wait(clock.posedge_event());
     }
 
-    void forceBufferFlush(bool& holdingLock) {
-        while (buffer.getSize() > 0) {
-            std::cout << "FORCE Entering actual write" << std::endl;
-            if (tryAcquireWriting()) {
-                writeToRAM();
-                holdingLock = true;
-            }
-            wait();
-        }
-    }
+
 
     void handleIncomingRequests() {
         bool holdingWriteLock = false;
         while (true) {
-            wait();
-            if (holdingWriteLock) {
-                relinquishWriting();
-                holdingWriteLock = false;
-            }
+            wait(clock.posedge_event());
             if (cacheValidRequest.read()) {
-                // std::cout << "WB: found valid instr request" << std::endl;
-                // std::cout << "State: " << cacheWeBus.read() << " " << buffer.getSize() << " " <<
-                // currentlyWriting()
-                //        << std::endl;
-                ready.write(false);
+                //    std::cout << "WriteBuffer: " << "WB: found valid instr request" << std::endl;
+                //  std::cout << "WriteBuffer: " << "State: " << cacheWeBus.read() << " " << buffer.getSize() << " "
+                //          << currentlyWriting() << std::endl;
+
                 if (!cacheWeBus.read() && buffer.getSize() == 0 && !currentlyWriting()) {
                     // can only handle if all writes are through for sequential consistency reasons
-                    std::cout << "Passing along read " << std::endl;
+                    std::cout << "WriteBuffer: " << "Passing along read " << std::endl;
                     passReadAlong();
+                    wait(clock.posedge_event());
+                    ready.write(false);
                 } else {
-                    if (cacheWeBus.read() && buffer.getSize() != buffer.getCapacity()) {
+                    if (cacheWeBus.read() && buffer.getSize() != SIZE) {
                         // can only handle if there is space in buffer
+                        std::cout << "Placing new write buffer request in buffer " << std::endl;
                         buffer.push(WriteBufferEntry{cacheAddrBus.read(), cacheDataInBus.read()});
+                        std::cout << "New size: " << buffer.getSize() << std::endl;
                         ready.write(true);
-                        wait();
-                    } else {
-                        if (!cacheWeBus.read() && !currentlyWriting()) {
-                            forceBufferFlush(holdingWriteLock);
-                        }
+                        wait(clock.posedge_event());
+                        ready.write(false);
                     }
                 }
             }
-            wait();
+            wait(clock.posedge_event());
         }
     }
 
     void doWrites() {
-        bool holdingWriteLock = false;
         while (true) {
-            wait();
-            if (holdingWriteLock) {
-                relinquishWriting();
-                holdingWriteLock = false;
-            }
-            //   std::cout << "Entering write loop " << std::endl;
-            if ((cacheValidRequest.read() && cacheWeBus.read()) || currentlyWriting()) {
+            wait(clock.posedge_event());
+            //   std::cout << "WriteBuffer: " << "Entering write loop " << std::endl;
+            if (cacheValidRequest.read() && !cacheWeBus.read() && buffer.getSize() == 0) {
                 continue;
             }
-            //  std::cout << "Trying to write" << std::endl;
+            //  std::cout << "WriteBuffer: " << "Trying to write" << std::endl;
             if (buffer.getSize() > 0) {
-                std::cout << "Entering actual write" << std::endl;
+                std::cout << "WriteBuffer: " << "Entering actual write" << std::endl;
                 if (tryAcquireWriting()) {
                     writeToRAM();
-                    holdingWriteLock = true;
+                    relinquishWriting();
+                } else {
+                    std::cout << "Failed to acquire lock" << std::endl;
                 }
-                std::cout << "Ending actual write" << std::endl;
+                std::cout << "WriteBuffer: " << "Ending actual write" << std::endl;
+                std::cout << "WriteBuffer: ending cycle at size " << buffer.getSize() << std::endl;
             }
-            wait();
         }
     }
 };
