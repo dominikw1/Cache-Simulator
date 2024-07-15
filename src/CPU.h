@@ -71,6 +71,8 @@ private:
 
             validDataRequestBus.write(false);
             ++program_counter;
+            
+            wait();
         }
     }
 
