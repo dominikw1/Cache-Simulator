@@ -1,4 +1,5 @@
 #pragma once
+#include "OrGate.h"
 #include "RingQueue.h"
 #include <mutex>
 #include <systemc>
@@ -8,45 +9,68 @@ struct WriteBufferEntry {
     std::uint32_t data;
 };
 
-// at runtime übergene!!
 template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
   public:
     sc_core::sc_in<bool> clock;
 
     // Buffer -> Cache
-    sc_core::sc_out<bool> ready{"readyBus"};
-    sc_core::sc_out<sc_dt::sc_bv<128>> cacheDataOutBus{"cpuDataOutBus"};
+    sc_core::sc_out<bool> SC_NAMED(ready);
+    sc_core::sc_out<sc_dt::sc_bv<128>> SC_NAMED(cacheDataOutBus);
 
     // Cache -> Buffer
-    sc_core::sc_in<std::uint32_t> cacheAddrBus{"cacheAddrBus"};
-    sc_core::sc_in<std::uint32_t> cacheDataInBus{"cacheDataInBus"};
-    sc_core::sc_in<bool> cacheWeBus{"cacheWeBus"};
-    sc_core::sc_in<bool> cacheValidRequest{"cacheValidRequest"};
+    sc_core::sc_in<std::uint32_t> SC_NAMED(cacheAddrBus);
+    sc_core::sc_in<std::uint32_t> SC_NAMED(cacheDataInBus);
+    sc_core::sc_in<bool> SC_NAMED(cacheWeBus);
+    sc_core::sc_in<bool> SC_NAMED(cacheValidRequest);
 
     // Buffer -> RAM
-    sc_core::sc_out<std::uint32_t> memoryAddrBus{"memoryAddrBus"};
-    sc_core::sc_out<std::uint32_t> memoryDataOutBus{"memoryDataOutBus"};
-    sc_core::sc_out<bool> memoryWeBus{"memoryWeBus"};
-    sc_core::sc_out<bool> memoryValidRequestBus{"memoryValidRequestBus"};
+    sc_core::sc_out<std::uint32_t> SC_NAMED(memoryAddrBus);
+    sc_core::sc_out<std::uint32_t> SC_NAMED(memoryDataOutBus);
+    sc_core::sc_out<bool> SC_NAMED(memoryWeBus);
+    sc_core::sc_out<bool> SC_NAMED(memoryValidRequestBus);
 
     // RAM -> Buffer
-    sc_core::sc_in<sc_dt::sc_bv<128>> memoryDataInBus{"memoryDataInBus"};
-    sc_core::sc_in<bool> memoryReadyBus{"memoryReadyBus"};
+    sc_core::sc_in<sc_dt::sc_bv<128>> SC_NAMED(memoryDataInBus);
+    sc_core::sc_in<bool> SC_NAMED(memoryReadyBus);
+
+    // Internal Signals
+    sc_core::sc_signal<bool> writerThreadValidMemoryRequest;
+    sc_core::sc_signal<bool> readerThreadValidMemoryRequest;
+    OrGate SC_NAMED(validMemoryRequestOr);
 
     WriteBuffer(sc_core::sc_module_name name, std::uint32_t readsPerCacheline)
         : sc_module{name}, readsPerCacheline{readsPerCacheline} {
         using namespace sc_core;
-        SC_THREAD(handleIncomingRequests);
-        // sensitive << clock.pos();
 
+        validMemoryRequestOr.a.bind(writerThreadValidMemoryRequest);
+        validMemoryRequestOr.b.bind(readerThreadValidMemoryRequest);
+        validMemoryRequestOr.out.bind(memoryValidRequestBus);
+
+        SC_THREAD(handleIncomingRequests);
         SC_THREAD(doWrites);
-        // sensitive << clock.pos();
     }
 
   private:
     SC_CTOR(WriteBuffer);
 
     RingQueue<WriteBufferEntry> buffer{SIZE};
+    std::mutex currWritingMarkerLock;
+    bool currWritingMarker = false;
+
+    void setCurrRequest(bool newValue) {
+        std::lock_guard<std::mutex> g{currWritingMarkerLock};
+        currWritingMarker = newValue;
+    }
+
+    bool currentlyWriting() {
+        std::lock_guard<std::mutex> g{currWritingMarkerLock};
+        return currWritingMarker;
+    }
+
+    void setCurrWriting(bool newValue) {
+        std::lock_guard<std::mutex> g{currWritingMarkerLock};
+        currWritingMarker = newValue;
+    }
 
     void writeToRAM() {
         assert(buffer.getSize() > 0);
@@ -54,13 +78,14 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         memoryAddrBus.write(next.address);
         memoryDataOutBus.write(next.data);
         memoryWeBus.write(true);
-        memoryValidRequestBus.write(true);
+        writerThreadValidMemoryRequest.write(true);
         std::cout << "Waiting for RAM write " << std::endl;
         do {
             wait(clock.posedge_event());
         } while ((!memoryReadyBus.read()));
         std::cout << "Done waiting for RAM write " << std::endl;
-        memoryValidRequestBus.write(false);
+        writerThreadValidMemoryRequest.write(false);
+     //   wait(clock.posedge_event());
     }
 
     const std::uint32_t readsPerCacheline;
@@ -68,13 +93,13 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
     void passReadAlong() {
         memoryAddrBus.write(cacheAddrBus.read());
         memoryWeBus.write(false);
-        memoryValidRequestBus.write(true);
+        readerThreadValidMemoryRequest.write(true);
 
         std::cout << "Now waiting for RAM" << std::endl;
         do {
             wait(clock.posedge_event());
         } while (!memoryReadyBus.read());
-        memoryValidRequestBus.write(false);
+        readerThreadValidMemoryRequest.write(false);
         std::cout << " Done waiting for RAM" << std::endl;
 
         ready.write(true);
@@ -95,7 +120,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
             if (cacheValidRequest.read()) {
                 std::cout << "WB: found valid instr request" << std::endl;
                 ready.write(false);
-                if (!cacheWeBus.read() && buffer.getSize() == 0) {
+                if (!cacheWeBus.read() && buffer.getSize() == 0 && !currentlyWriting()) {
                     // can only handle if all writes are through for sequential consistency reasons
                     passReadAlong();
                 } else {
@@ -122,8 +147,9 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
             // if write reqeust: just add it to the buffer
 
             if (buffer.getSize() > 0) {
-
+                setCurrWriting(true);
                 writeToRAM();
+                setCurrWriting(false);
             }
         }
     }
