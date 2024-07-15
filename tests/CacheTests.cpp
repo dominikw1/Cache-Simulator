@@ -27,10 +27,12 @@ SC_MODULE(CPUMock) {
     sc_in<std::uint32_t> dataInBus;
     sc_in<bool> cacheReadyBus;
 
+    sc_in<bool> clock;
     sc_event nextCycleStart;
 
     void dispatchInstr() {
         while (true) {
+            wait();
             std::cout << " --------------------------- " << std::endl;
             std::cout << "Providing instruction at " << currPC << std::endl;
             if (instructions.size() <= currPC) {
@@ -46,14 +48,11 @@ SC_MODULE(CPUMock) {
             std::cout << "Recording instruction..." << std::endl;
             instructionsProvided.push_back(requestToWrite);
             std::cout << "Done providing instruction" << std::endl;
-            wait(nextCycleStart);
-        }
-    }
+            wait();
+            do {
+                wait();
+            } while (!cacheReadyBus.read());
 
-    std::vector<std::pair<std::uint32_t, std::uint32_t>> dataReceivedForAddress;
-    void receiveRequestDone() {
-        while (true) {
-            wait(cacheReadyBus.posedge_event());
             std::cout << "Cache request done " << std::endl;
             std::cout << "Logging received data" << std::endl;
             if (instructions.at(currPC).we) {
@@ -67,15 +66,15 @@ SC_MODULE(CPUMock) {
             std::cout << "Incrementing pc" << std::endl;
             ++currPC;
             validRequestBus.write(false);
-            nextCycleStart.notify(SC_ZERO_TIME);
-            std::cout << "Got past event" << std::endl;
+            std::cout << "Done with cycle" << std::endl;
         }
     }
 
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> dataReceivedForAddress;
+
     SC_CTOR(CPUMock) {
         SC_THREAD(dispatchInstr);
-
-        SC_THREAD(receiveRequestDone);
+        sensitive << clock.pos();
     }
 };
 
@@ -95,7 +94,7 @@ SC_MODULE(RAMMock) {
     std::uint32_t numRequestsPerformed;
 
     SC_CTOR(RAMMock) {}
-
+    std::uint32_t latency = 20;
     std::uint32_t wordsPerRead;
     RAMMock(sc_module_name name, std::uint32_t wordsPerRead) : sc_module{name}, wordsPerRead{wordsPerRead} {
         SC_THREAD(provideData);
@@ -118,6 +117,12 @@ SC_MODULE(RAMMock) {
 
             if (!validDataRequest.read())
                 continue;
+
+            // wait for a few cycles
+            for (size_t i = 0; i < latency; ++i) {
+                wait(clock.posedge_event());
+            }
+
             // std::cout << "RAM: dealing with new request" << std::endl;
             bool we = weBus.read();
             if (we) {
@@ -159,28 +164,28 @@ class CacheTests : public testing::Test {
     RAMMock ram{"RAM", 64 / 16};
 
     // CPU -> Cache
-    sc_signal<bool> cpuWeSignal;
-    sc_signal<std::uint32_t> cpuAddressSignal;
-    sc_signal<std::uint32_t> cpuDataInSignal;
-    sc_signal<bool, SC_MANY_WRITERS> cpuValidDataRequestSignal;
+    sc_signal<bool> SC_NAMED(cpuWeSignal);
+    sc_signal<std::uint32_t> SC_NAMED(cpuAddressSignal);
+    sc_signal<std::uint32_t> SC_NAMED(cpuDataInSignal);
+    sc_signal<bool, SC_MANY_WRITERS> SC_NAMED(cpuValidDataRequestSignal);
 
     // Cache -> CPU
-    sc_signal<std::uint32_t> cpuDataOutSignal;
-    sc_signal<bool> cpuDataReadySignal;
+    sc_signal<std::uint32_t> SC_NAMED(cpuDataOutSignal);
+    sc_signal<bool> SC_NAMED(cpuDataReadySignal);
 
     // Cache -> RAM
-    sc_signal<bool, SC_MANY_WRITERS> ramWeSignal;
-    sc_signal<std::uint32_t, SC_MANY_WRITERS> ramAdressSignal;
-    sc_signal<sc_dt::sc_bv<128>> ramDataOutSignal;
-    sc_signal<bool, SC_MANY_WRITERS> ramValidDataRequestSignal;
+    sc_signal<bool, SC_MANY_WRITERS> SC_NAMED(ramWeSignal);
+    sc_signal<std::uint32_t, SC_MANY_WRITERS> SC_NAMED(ramAdressSignal);
+    sc_signal<sc_dt::sc_bv<128>> SC_NAMED(ramDataOutSignal);
+    sc_signal<bool, SC_MANY_WRITERS> SC_NAMED(ramValidDataRequestSignal);
 
     // RAM -> Cache
-    sc_signal<std::uint32_t> ramDataInSignal;
-    sc_signal<bool, SC_MANY_WRITERS> ramReadySignal;
+    sc_signal<std::uint32_t> SC_NAMED(ramDataInSignal);
+    sc_signal<bool, SC_MANY_WRITERS> SC_NAMED(ramReadySignal);
 
     sc_clock clock{"clk", sc_time(1, SC_NS)};
     void SetUp() {
-        //   cpu.clock.bind(clock);
+        cpu.clock.bind(clock);
         cpu.weBus.bind(cpuWeSignal);
         cpu.addrBus.bind(cpuAddressSignal);
         cpu.dataOutBus.bind(cpuDataInSignal);
@@ -271,7 +276,7 @@ TEST_F(CacheTests, CacheDoesNotThrowWithManyRandomRequests) {
         numWrites += we.at(i);
     }
 
-    sc_start(5, SC_MS);
+    sc_start(10, SC_MS);
 
     ASSERT_EQ(cpu.instructionsProvided.size(), numRequests);
     // due to unaligned accesses it might be larger
@@ -291,7 +296,7 @@ TEST_F(CacheTests, CacheReadReturnsSameValueAsWrittenBefore) {
         cpu.instructions.push_back(Request{addresses.at(i), currData, 1});
         cpu.instructions.push_back(Request{addresses.at(i), 0, 0});
     }
-    sc_start(5, SC_MS);
+    sc_start(10, SC_MS);
 
     ASSERT_EQ(cpu.instructionsProvided.size(), 2 * numRequests);
     for (int i = 0; i < numRequests; ++i) {
@@ -421,9 +426,9 @@ TEST_F(CacheTests, CacheNumberRightHitsMixedReadWritesIndependentAligned) {
     std::uint32_t addr2 = 4 + 64;
     std::uint32_t addr3 = 20 + 64 * 2;
 
-    Request w1{addr1, 5, 0};
-    Request w2{addr2, 10, 0};
-    Request w3{addr3, 23, 0};
+    Request w1{addr1, 5, 1};
+    Request w2{addr2, 10, 1};
+    Request w3{addr3, 23, 1};
     Request r1{addr1, 0, 0};
     Request r2{addr2, 0, 0};
     Request r3{addr3, 0, 0};
@@ -442,4 +447,77 @@ TEST_F(CacheTests, CacheNumberRightHitsMixedReadWritesIndependentAligned) {
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), 8);
     ASSERT_EQ(cache.hitCount, 5);
     ASSERT_EQ(cache.missCount, 3);
+}
+
+TEST_F(CacheTests, CacheReadsCorrectValueAfterUnalignedWrite) {
+    std::uint32_t addr1 = 60;
+    std::uint32_t addr2 = 62;
+    std::uint32_t addr3 = 64;
+
+    std::uint32_t data1 = 591591u;
+    std::uint32_t data2 = UINT32_MAX - 1052u;
+    std::uint32_t data3 = 9591951942u;
+
+    std::uint32_t expectedData1 = (data1 & ((1 << 16) - 1)) | ((data2 & (1 << 16) - 1) << 16);
+    std::uint32_t expectedData2 = data2;
+    std::uint32_t expectedData3 = ((data2 >> 16) & ((1 << 16) - 1)) | (data3 & (~((1 << 16) - 1)));
+
+    Request w1{addr1, data1, 1};
+    Request w2{addr2, data2, 1};
+    Request w3{addr3, data3, 1};
+    Request r1{addr1, 0, 0};
+    Request r2{addr2, 0, 0};
+    Request r3{addr3, 0, 0};
+
+    cpu.instructions.push_back(w1);
+    cpu.instructions.push_back(w3);
+    cpu.instructions.push_back(w2);
+
+    cpu.instructions.push_back(r1);
+    cpu.instructions.push_back(r2);
+    cpu.instructions.push_back(r3);
+
+    sc_start(2, SC_MS);
+
+    auto readForLocation1 = *(cpu.dataReceivedForAddress.end() - 3);
+    auto readForLocation2 = *(cpu.dataReceivedForAddress.end() - 2);
+    auto readForLocation3 = *(cpu.dataReceivedForAddress.end() - 1);
+
+    ASSERT_EQ(std::get<0>(readForLocation1), addr1);
+    ASSERT_EQ(std::get<0>(readForLocation2), addr2);
+    ASSERT_EQ(std::get<0>(readForLocation3), addr3);
+    ASSERT_EQ(std::get<1>(readForLocation1), expectedData1);
+    ASSERT_EQ(std::get<1>(readForLocation2), expectedData2);
+    ASSERT_EQ(std::get<1>(readForLocation3), expectedData3);
+}
+
+TEST_F(CacheTests, CacheSingleWriteUsesWriteBuffer) {
+    ram.latency = 1000;
+    Request writeRequest{10, 100, 1};
+    Request readRequest{10, 100, 0};
+    cpu.instructions.push_back(writeRequest);
+    cpu.instructions.push_back(readRequest);
+
+    sc_start(1000 + 100, SC_NS);
+    ASSERT_EQ(cpu.instructionsProvided.size(), 2);
+    ASSERT_EQ(cpu.dataReceivedForAddress.size(), 2);
+    ASSERT_EQ(ram.numRequestsPerformed, 1); // only the read
+}
+
+TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
+    ram.latency = 1000;
+    Request writeRequest1{10, 100, 1};
+    Request writeRequest2{20, 100, 1};
+    Request writeRequest3{1, 914919, 1};
+    Request readRequest{10, 100, 0};
+
+    cpu.instructions.push_back(writeRequest1);
+    cpu.instructions.push_back(writeRequest2);
+    cpu.instructions.push_back(writeRequest3);
+    cpu.instructions.push_back(readRequest);
+
+    sc_start(1000 + 400, SC_NS);
+    ASSERT_EQ(cpu.instructionsProvided.size(), 4);
+    ASSERT_EQ(cpu.dataReceivedForAddress.size(), 4);
+    ASSERT_EQ(ram.numRequestsPerformed, 1); // only the read
 }
