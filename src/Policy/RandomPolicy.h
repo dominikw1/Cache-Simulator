@@ -19,9 +19,9 @@ template <typename T> class RandomPolicy : public ReplacementPolicy<T> {
     std::mt19937 generator;
 };
 
-template <typename T> void inline RandomPolicy<T>::logUse(T usage) {
+template <typename T> void inline RandomPolicy<T>::logUse(__attribute__((unused)) T usage) {
     // no use to book-keep for random policy
 }
 
-// Precondition:  FULL Cache
+// Precondition: FULL Cache
 template <typename T> inline T RandomPolicy<T>::pop() { return randomDistr(generator); }

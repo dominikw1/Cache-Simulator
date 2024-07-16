@@ -84,7 +84,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
 
   public:
     Cache(sc_core::sc_module_name name, std::uint32_t numCacheLines, std::uint32_t cacheLineSize,
-          std::uint32_t cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy);
+          std::uint32_t cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy = nullptr);
 
   private:
     // ========== Set-Up ==============
@@ -148,8 +148,8 @@ Cache<MappingType::Direct>::chooseWhichCachelineToFillFromRAM(DecomposedAddress 
 }
 
 template <>
-inline std::vector<Cacheline>::iterator
-Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(DecomposedAddress decomposedAddr) {
+inline std::vector<Cacheline>::iterator Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(
+    __attribute__((unused)) DecomposedAddress decomposedAddr) {
     auto firstUnusedCacheline = std::find_if(cacheInternal.begin(), cacheInternal.end(),
                                              [](const Cacheline& cacheline) { return !cacheline.isUsed; });
     if (firstUnusedCacheline == cacheInternal.end()) {
@@ -173,7 +173,9 @@ Cache<MappingType::Fully_Associative>::decomposeAddress(std::uint32_t address) n
     return DecomposedAddress{(address >> addressOffsetBits) & addressTagBitMask, 0, address & addressOffsetBitMask};
 }
 
-template <> inline void Cache<MappingType::Direct>::registerUsage(std::vector<Cacheline>::iterator cacheline) {
+template <>
+inline void
+Cache<MappingType::Direct>::registerUsage(__attribute__((unused)) std::vector<Cacheline>::iterator cacheline) {
     // no bookeeping needed
 }
 
@@ -236,11 +238,15 @@ template <MappingType mappingType> inline void Cache<mappingType>::zeroInitialis
 template <MappingType mappingType>
 inline Cache<mappingType>::Cache(sc_core::sc_module_name name, unsigned int numCacheLines, unsigned int cacheLineSize,
                                  unsigned int cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy)
-    : sc_module{name}, replacementPolicy{std::move(policy)}, numCacheLines{numCacheLines}, cacheLineSize{cacheLineSize},
-      cacheLatency{cacheLatency}, cacheInternal{numCacheLines},
+    : sc_module{name}, numCacheLines{numCacheLines}, cacheLineSize{cacheLineSize}, cacheLatency{cacheLatency},
+      replacementPolicy{std::move(policy)}, cacheInternal{numCacheLines},
       writeBuffer{"writeBuffer", cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE} {
 
     using namespace sc_core; // in scope as to not pollute global namespace
+    if (replacementPolicy != nullptr && mappingType == MappingType::Direct) {
+        std::cout << "Replacement Policy is set on a direct mapped cache - this has no effect.\n";
+    }
+
     zeroInitialiseCachelines();
     precomputeAddressDecompositionBits();
     setUpWriteBufferConnects();
@@ -261,7 +267,7 @@ Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) 
     std::uint32_t numReadEvents = (cachelineToWriteInto->data.size() / RAM_READ_BUS_SIZE_IN_BYTE);
 
     // dont need to wait before first one because we can only get here if RAM tells us it is ready
-    for (int i = 0; i < numReadEvents; ++i) {
+    for (std::size_t i = 0; i < numReadEvents; ++i) {
         dataRead = writeBufferDataOut.read();
         std::cout << "Cache received: " << writeBufferDataOut.read() << std::endl;
 
