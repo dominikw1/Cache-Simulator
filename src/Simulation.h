@@ -2,7 +2,7 @@
 
 #include "Request.h"
 #include "Result.h"
-#include "Policy.h"
+#include "Policy/Policy.h"
 #include "stddef.h"
 #ifdef __cplusplus
 extern "C" {

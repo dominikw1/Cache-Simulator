@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "../src/LRUPolicy.h"
+#include "../src/Policy/LRUPolicy.h"
 #include "Utils.h"
 
 #include <algorithm>

@@ -9,7 +9,7 @@
 
 #include "Cacheline.h"
 #include "DecomposedAddress.h"
-#include "ReplacementPolicy.h"
+#include "Policy/ReplacementPolicy.h"
 #include "Request.h"
 #include "Result.h"
 #include "SubRequest.h"

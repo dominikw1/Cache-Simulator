@@ -10,7 +10,7 @@
 
 #include "Request.h"
 #include "Result.h"
-#include "Policy.h"
+#include "Policy/Policy.h"
 
 #define DIRECTMAPPED 128
 #define FULLASSOCIATIVE 129

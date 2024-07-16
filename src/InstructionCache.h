@@ -3,7 +3,7 @@
 #include "Cache.h"
 #include "Request.h"
 
-#include "FIFOPolicy.h"
+#include "Policy/FIFOPolicy.h"
 #include <memory>
 #include <systemc>
 

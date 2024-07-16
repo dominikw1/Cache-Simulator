@@ -1,6 +1,6 @@
 #include "../src/Cache.h"
-#include "../src/LRUPolicy.h"
-#include "../src/RandomPolicy.h"
+#include "../src/Policy/LRUPolicy.h"
+#include "../src/Policy/RandomPolicy.h"
 #include "../src/Request.h"
 #include "Utils.h"
 #include <cassert>

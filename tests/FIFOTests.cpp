@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "../src/FIFOPolicy.h"
+#include "../src/Policy/FIFOPolicy.h"
 #include "Utils.h"
 
 #include <algorithm>
