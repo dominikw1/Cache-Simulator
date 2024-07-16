@@ -3,7 +3,7 @@
 #include "Cache.h"
 #include "Request.h"
 
-#include "RandomPolicy.h"
+#include "FIFOPolicy.h"
 #include <memory>
 #include <systemc>
 
@@ -15,19 +15,14 @@ private:
     unsigned int cacheLatency;
 
     Cache<MappingType::Direct> cache{"Cache", cacheLineNum, cacheLineSize, cacheLatency,
-                                     std::make_unique<RandomPolicy<std::uint32_t>>(cacheLineNum)};
+                                     std::make_unique<FIFOPolicy<std::uint32_t>>(cacheLineNum)};
 
     std::vector<Request> instructions;
 
     SC_CTOR(InstructionCache);
 
-    void decode();
-
-    void fetch();
-
 public:
-    InstructionCache(sc_core::sc_module_name name, unsigned int cacheLines, unsigned int cacheLineSize,
-                     unsigned int cacheLatency, std::vector<Request> instructions);
+    sc_core::sc_in<bool> clock;
 
     // -> CPU
     sc_core::sc_out<Request> instructionBus;
@@ -46,4 +41,43 @@ public:
     // RAM -> Cache
     sc_core::sc_in<sc_dt::sc_bv<128>> memoryDataInBus;
     sc_core::sc_in<bool> memoryReadyBus{"memoryReadyBus"};
+
+    InstructionCache(sc_core::sc_module_name name, unsigned int cacheLines, unsigned int cacheLineSize,
+                     unsigned int cacheLatency, std::vector<Request> instructions) : sc_module{name},
+                                                                                     cacheLineNum{cacheLines},
+                                                                                     cacheLineSize{cacheLineSize},
+                                                                                     cacheLatency{cacheLatency},
+                                                                                     instructions{instructions} {
+        SC_THREAD(provideInstruction);
+        sensitive << clock.pos();
+    }
+
+    void provideInstruction() {
+        while (true) {
+            wait(clock.posedge_event());
+            instrReadyBus.write(false);
+
+            do {
+                wait(clock.posedge_event());
+            } while (!validInstrRequestBus);
+
+            auto pc = pcBus.read();
+            if (pc >= instructions.size()) {
+                sc_core::sc_stop();
+                return;
+            }
+
+            // Act like we are fetching data from Memory
+            cache.memoryAddrBus.write(pcBus.read());
+            cache.memoryWeBus.write(false);
+            cache.memoryValidRequestBus.write(true);
+
+            do {
+                wait(clock.posedge_event());
+            } while (!cache.memoryReadyBus);
+
+            instructionBus.write(instructions[pc]);
+            instrReadyBus.write(true);
+        }
+    }
 };

@@ -45,6 +45,8 @@ public:
 private:
     void handleInstruction() {
         while (true) {
+            wait(clock.posedge_event());
+
             std::cout << "Requesting instruction " << program_counter << std::endl;
             pcBus.write(program_counter);
             validInstrRequestBus.write(true);
@@ -73,8 +75,6 @@ private:
 
             validDataRequestBus.write(false);
             ++program_counter;
-            
-            wait();
         }
     }
 
