@@ -51,6 +51,8 @@ private:
 
             waitForInstruction();
 
+            validInstrRequestBus.write(false);
+
             Request currentRequest = instrBus.read();
             addressBus.write(currentRequest.addr);
             dataOutBus.write(currentRequest.data);
@@ -71,6 +73,8 @@ private:
 
             validDataRequestBus.write(false);
             ++program_counter;
+            
+            wait();
         }
     }
 

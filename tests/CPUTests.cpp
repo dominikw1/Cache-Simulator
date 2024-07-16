@@ -5,19 +5,34 @@
 #include <systemc>
 #include <unordered_map>
 #include <vector>
+
 using namespace sc_core;
 
 SC_MODULE(InstrMemoryMock) {
     std::vector<uint32_t> instructionsProvided;
 
+    sc_in<bool> clock;
     sc_in<bool> validInstrRequest;
     sc_in<std::uint32_t> pcBus;
+
     sc_out<Request> instrBus;
     sc_out<bool> instrReadyBus;
 
     std::unordered_map<std::uint32_t, Request> instructionMemory;
+
+    SC_CTOR(InstrMemoryMock) {
+        SC_THREAD(provideInstr);
+        sensitive << clock.pos();
+        dont_initialize();
+    }
+
     void provideInstr() {
-        if (validInstrRequest) {
+        while (true) {
+            do {
+                wait(clock.posedge_event());
+            } while (!validInstrRequest);
+
+            instrReadyBus.write(false);
             auto pc = pcBus.read();
             std::cout << "Providing instruction at " << pc << std::endl;
             if (instructionMemory.find(pc) == instructionMemory.end()) {
@@ -25,6 +40,7 @@ SC_MODULE(InstrMemoryMock) {
                 sc_stop();
                 return;
             }
+
             auto requestToWrite = instructionMemory.at(pc);
             std::cout << "Located request to write" << std::endl;
             instrBus.write(requestToWrite);
@@ -32,23 +48,14 @@ SC_MODULE(InstrMemoryMock) {
             std::cout << "Recording instruction..." << std::endl;
             instructionsProvided.push_back(pc);
             std::cout << "Done providing instruction" << std::endl;
+
+            wait();
         }
-    }
-
-    void stopProviding() { instrReadyBus.write(false); }
-
-    SC_CTOR(InstrMemoryMock) {
-        SC_METHOD(provideInstr);
-        sensitive << pcBus << validInstrRequest.pos();
-        dont_initialize();
-
-        SC_METHOD(stopProviding);
-        sensitive << validInstrRequest.neg();
-        dont_initialize();
     }
 };
 
 SC_MODULE(DataMemoryMock) {
+    sc_in<bool> clock;
     sc_in<bool> validDataRequest;
     sc_in<bool> weBus;
     sc_in<std::uint32_t> addressBus;
@@ -56,22 +63,23 @@ SC_MODULE(DataMemoryMock) {
 
     sc_out<std::uint32_t> dataOutBus;
     sc_out<bool> dataReadyBus;
+
     std::unordered_map<std::uint32_t, std::uint32_t> dataMemory;
     std::vector<Request> dataProvided;
-    SC_CTOR(DataMemoryMock) {
-        SC_METHOD(provideData);
-        sensitive << dataInBus << addressBus << weBus << validDataRequest.pos();
-        dont_initialize();
 
-        SC_METHOD(stopProviding);
-        sensitive << validDataRequest.neg();
+    SC_CTOR(DataMemoryMock) {
+        SC_THREAD(provideData);
+        sensitive << clock.pos();
         dont_initialize();
     }
 
-    void stopProviding() { dataReadyBus.write(false); }
-
     void provideData() {
-        if (validDataRequest) {
+        while (true) {
+            do {
+                wait(clock.posedge_event());
+            } while (!validDataRequest);
+            dataReadyBus.write(false);
+
             // std::cout << "Providing/writing data at " << addressBus.read() << std::endl;
             if (weBus.read() == 0) {
                 dataOutBus.write(dataMemory[addressBus.read()]);
@@ -79,14 +87,17 @@ SC_MODULE(DataMemoryMock) {
                 dataMemory[addressBus.read()] = dataInBus.read();
             }
             dataReadyBus.write(true);
+
             dataProvided.push_back(Request{addressBus.read(), dataInBus.read(), weBus.read()});
-            std::cout << "Done providing/writing data";
+            std::cout << "Done providing/writing data" << std::endl;
+
+            wait();
         }
     }
 };
 
 class CPUTests : public testing::Test {
-  protected:
+protected:
     CPU cpu{"cpu"};
     InstrMemoryMock instrMock{"instrMock"};
     DataMemoryMock dataMock{"dataMock"};
@@ -108,6 +119,7 @@ class CPUTests : public testing::Test {
     sc_signal<bool, SC_MANY_WRITERS> validInstrRequestSignal;
 
     sc_clock clock{"clk", sc_time(1, SC_NS)};
+
     void SetUp() {
         cpu.clock.bind(clock);
         cpu.weBus.bind(weSignal);
@@ -125,11 +137,13 @@ class CPUTests : public testing::Test {
         cpu.validDataRequestBus.bind(validDataRequestSignal);
 
         std::cout << "done binding cpu" << std::endl;
+        instrMock.clock.bind(clock);
         instrMock.pcBus.bind(pcSignal);
         instrMock.instrBus.bind(instrSignal);
         instrMock.instrReadyBus.bind(instrReadySignal);
         instrMock.validInstrRequest.bind(validInstrRequestSignal);
 
+        dataMock.clock.bind(clock);
         dataMock.weBus.bind(weSignal);
         dataMock.addressBus.bind(addressSignal);
         dataMock.dataInBus.bind(dataOutSignal);
@@ -205,8 +219,8 @@ TEST_F(CPUTests, CPUHandlesRandomInputWithoutThrowing) {
 
     for (std::size_t i = 0; i < numRequests; ++i) {
         instrMock.instructionMemory[i] =
-            Request{static_cast<std::uint32_t>(randomAddresses[i]), static_cast<std::uint32_t>(randomData[i]),
-                    static_cast<int>(randomWE[i])};
+                Request{static_cast<std::uint32_t>(randomAddresses[i]), static_cast<std::uint32_t>(randomData[i]),
+                        static_cast<int>(randomWE[i])};
     }
 
     sc_start(5, SC_SEC);
