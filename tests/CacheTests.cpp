@@ -70,11 +70,16 @@ SC_MODULE(CPUMock) {
         }
     }
 
+    void deliminateCycle() { std::cout << "==== CYCLE END ====" << std::endl; }
+
     std::vector<std::pair<std::uint32_t, std::uint32_t>> dataReceivedForAddress;
 
     SC_CTOR(CPUMock) {
         SC_THREAD(dispatchInstr);
         sensitive << clock.pos();
+
+        SC_METHOD(deliminateCycle);
+        sensitive << clock.neg();
     }
 };
 #include <map>
@@ -139,19 +144,21 @@ SC_MODULE(RAMMock) {
             } else {
                 // 128 / 8 -> 16
                 std::cout << "Actually reading from RAM: " << addressBus.read() << " " << std::endl;
-
+                wait(clock.posedge_event());
+                wait(clock.posedge_event());
+                readyBus.write(true);
+                wait(clock.posedge_event());
                 sc_dt::sc_bv<128> toWrite;
                 for (int i = 0; i < wordsPerRead; ++i) {
                     std::cout << "Doing a part read " << i << std::endl;
                     for (int byte = 0; byte < 16; ++byte) {
                         // std::cout << "Doing it for a byte " << std::endl;
-
-                        std::cout << "Reading byte " << i * 16 + byte << " as "
-                                  << unsigned(readByteFromMem(addressBus.read() + i * 16 + byte)) << std::endl;
+                        // std::cout << unsigned(readByteFromMem(addressBus.read() + i * 16 + byte)) << " ";
                         toWrite.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() + i * 16 + byte);
                     }
+                    std::cout << "RAM sending: " << toWrite << std::endl;
                     dataOutBus.write(toWrite);
-                    readyBus.write(true);
+
                     wait(clock.posedge_event());
                 }
                 std::cout << "Memory done reading" << std::endl;
@@ -533,7 +540,7 @@ TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
 }
 
 TEST_F(CacheTests, CacheWriteBufferHandlesMoreWritesThanCapacity) {
-    ram.latency = 2000;
+    ram.latency = 500;
     Request writeRequest1{10, 100, 1};
     Request writeRequest2{20, 100, 1};
     Request writeRequest3{1, 914919, 1};
@@ -548,7 +555,7 @@ TEST_F(CacheTests, CacheWriteBufferHandlesMoreWritesThanCapacity) {
     cpu.instructions.push_back(writeRequest6);
 
     sc_start(5, SC_MS);
-    ASSERT_EQ(ram.numRequestsPerformed, 6);
+    ASSERT_EQ(ram.numRequestsPerformed, 7); // 6 writes + 1 read
 }
 
 TEST_F(CacheTests, CacheReadsResultInSameValuesAsManuallyRecorded) {
