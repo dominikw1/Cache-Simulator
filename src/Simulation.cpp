@@ -1,10 +1,10 @@
 #include "Simulation.h"
 #include "CPU.h"
 #include "Cache.h"
-#include "Policy/FIFOPolicy.h"
 #include "InstructionCache.h"
-#include "Policy/LRUPolicy.h"
 #include "Memory.h"
+#include "Policy/FIFOPolicy.h"
+#include "Policy/LRUPolicy.h"
 #include "Policy/Policy.h"
 #include "Policy/RandomPolicy.h"
 #include "Request.h"
@@ -216,7 +216,7 @@ std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(int repla
 
 using namespace sc_core;
 //
-int sc_main(int argc, char* argv[]) {
-    std::cout << "ERROR: call to sc_main method" << std::endl;
+int sc_main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
+    std::cout << "ERROR: call to sc_main method\n";
     return 1;
 }

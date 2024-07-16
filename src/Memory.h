@@ -5,7 +5,7 @@
 #include <unordered_map>
 
 SC_MODULE(RAM) {
-public:
+  public:
     // Global Clock
     sc_core::sc_in<bool> clock{"Global_Clock"};
 
@@ -17,7 +17,7 @@ public:
     sc_core::sc_out<sc_dt::sc_bv<128>> dataOutBus{"dataOutBus"};
     sc_core::sc_out<bool> readyBus{"readyBus"};
 
-private:
+  private:
     std::unordered_map<std::uint32_t, std::uint8_t> dataMemory{};
     std::uint32_t cyclesPassedInRequest = 0;
     std::uint32_t numRequestsPerformed;
@@ -26,22 +26,15 @@ private:
 
     SC_CTOR(RAM) {}
 
-public:
-    RAM(sc_core::sc_module_name name, std::uint32_t latency, std::uint32_t wordsPerRead) : sc_module{name},
-                                                                                           latency{latency},
-                                                                                           wordsPerRead{wordsPerRead} {
+  public:
+    RAM(sc_core::sc_module_name name, std::uint32_t latency, std::uint32_t wordsPerRead)
+        : sc_module{name}, latency{latency}, wordsPerRead{wordsPerRead} {
         SC_THREAD(provideData);
         sensitive << clock.pos();
         dont_initialize();
     }
 
-    std::uint8_t readByteFromMem(std::uint32_t addr) {
-        if (dataMemory.find(addr) == dataMemory.end()) {
-            return 0;
-        } else {
-            return dataMemory[addr];
-        }
-    }
+    std::uint8_t readByteFromMem(std::uint32_t addr) { return dataMemory[addr]; }
 
     void provideData() {
         while (true) {
@@ -58,15 +51,18 @@ public:
 
             if (weBus.read()) {
                 // Writing happens in one cycle -> one able to write 32 bits
-                dataMemory[addressBus.read()] = dataInBus.read();
+                dataMemory[addressBus.read()] = (dataInBus.read() & ((1 << 8) - 1));
+                dataMemory[addressBus.read() + 1] = (dataInBus.read() >> 8) & ((1 << 8) - 1);
+                dataMemory[addressBus.read() + 2] = (dataInBus.read() >> 16) & ((1 << 8) - 1);
+                dataMemory[addressBus.read() + 3] = (dataInBus.read() >> 24) & ((1 << 8) - 1);
                 readyBus.write(true);
                 wait(clock.posedge_event());
             } else {
                 // Reading takes wordsPerRead cycles
                 sc_dt::sc_bv<128> readData;
-                for (int i = 0; i < wordsPerRead; ++i) {
+                for (std::size_t i = 0; i < wordsPerRead; ++i) {
                     // 128 / 8 -> 16
-                    for (int byte = 0; byte < 16; ++byte) {
+                    for (std::size_t byte = 0; byte < 16; ++byte) {
                         readData.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() + i * 16 + byte);
                     }
                     dataOutBus.write(readData);

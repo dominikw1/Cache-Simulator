@@ -17,7 +17,7 @@ SC_MODULE(CPUMock) {
     std::vector<Request> instructions;
     std::vector<Request> instructionsProvided;
 
-    int currPC = 0;
+    std::uint64_t currPC = 0;
 
     sc_out<std::uint32_t> addrBus;
     sc_out<std::uint32_t> dataOutBus;
@@ -152,7 +152,7 @@ SC_MODULE(RAMMock) {
                 readyBus.write(true);
                 wait(clock.posedge_event());
                 sc_dt::sc_bv<128> toWrite;
-                for (int i = 0; i < wordsPerRead; ++i) {
+                for (std::size_t i = 0; i < wordsPerRead; ++i) {
                     std::cout << "Doing a part read " << i << std::endl;
                     for (int byte = 0; byte < 16; ++byte) {
                         // std::cout << "Doing it for a byte " << std::endl;
@@ -202,6 +202,7 @@ class CacheTests : public testing::Test {
 
     sc_clock clock{"clk", sc_time(1, SC_NS)};
     void SetUp() {
+        ram.latency = 20;
         cpu.clock.bind(clock);
         cpu.weBus.bind(cpuWeSignal);
         cpu.addrBus.bind(cpuAddressSignal);
@@ -260,7 +261,7 @@ TEST_F(CacheTests, CacheTransfersManyReadInstructionsCorrectly) {
     ASSERT_EQ(cpu.instructionsProvided.size(), req.size());
     ASSERT_EQ(ram.numRequestsPerformed, req.size() - 1); // 1 cache hit
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), req.size());
-    for (int i = 0; i < req.size(); ++i) {
+    for (std::size_t i = 0; i < req.size(); ++i) {
         ASSERT_EQ(cpu.instructionsProvided.at(i), req.at(i));
         ASSERT_EQ(cpu.dataReceivedForAddress.at(i), std::make_pair(req.at(i).addr, 0u));
     }
@@ -289,7 +290,8 @@ TEST_F(CacheTests, CacheDoesNotThrowWithManyRandomRequests) {
     std::vector<Request> requests;
     int numWrites = 0;
     for (int i = 0; i < numRequests; ++i) {
-        requests.push_back(Request{addresses.at(i), data.at(i), we.at(i)});
+        requests.push_back(Request{static_cast<std::uint32_t>(addresses.at(i)), static_cast<std::uint32_t>(data.at(i)),
+                                   static_cast<std::uint32_t>(we.at(i))});
         cpu.instructions.push_back(requests[i]);
         numWrites += we.at(i);
     }
@@ -472,11 +474,11 @@ TEST_F(CacheTests, CacheReadsCorrectValueAfterUnalignedWrite) {
     std::uint32_t addr2 = 62;
     std::uint32_t addr3 = 64;
 
-    std::uint32_t data1 = 591591u;
-    std::uint32_t data2 = UINT32_MAX - 1052u;
-    std::uint32_t data3 = 9591951942u;
+    std::uint32_t data1 = 591591ull;
+    std::uint32_t data2 = UINT32_MAX - 1052ull;
+    std::uint32_t data3 = 9591951942ull;
 
-    std::uint32_t expectedData1 = (data1 & ((1 << 16) - 1)) | ((data2 & (1 << 16) - 1) << 16);
+    std::uint32_t expectedData1 = (data1 & ((1 << 16) - 1)) | ((data2 & ((1 << 16) - 1)) << 16);
     std::uint32_t expectedData2 = data2;
     std::uint32_t expectedData3 = ((data2 >> 16) & ((1 << 16) - 1)) | (data3 & (~((1 << 16) - 1)));
 
@@ -563,7 +565,7 @@ TEST_F(CacheTests, CacheWriteBufferHandlesMoreWritesThanCapacity) {
 
 TEST_F(CacheTests, CacheReadsResultInSameValuesAsManuallyRecorded) {
     ram.latency = 1;
-    int numRequests = 10;
+    int numRequests = 10000;
     auto addresses = generateRandomVector(numRequests, UINT32_MAX);
     auto data = generateRandomVector(numRequests, UINT32_MAX);
     std::unordered_map<std::uint32_t, std::uint8_t> memRecord;
@@ -572,7 +574,7 @@ TEST_F(CacheTests, CacheReadsResultInSameValuesAsManuallyRecorded) {
     for (int i = 0; i < numRequests; ++i) {
         std::uint32_t currData = data.at(i);
         cpu.instructions.push_back(Request{addresses.at(i), currData, 1});
-        memRecord[addresses.at(i)] = (currData) & ((1 << 8) - 1);
+        memRecord[addresses.at(i) + 0] = (currData >> 0) & ((1 << 8) - 1);
         memRecord[addresses.at(i) + 1] = (currData >> 8) & ((1 << 8) - 1);
         memRecord[addresses.at(i) + 2] = (currData >> 16) & ((1 << 8) - 1);
         memRecord[addresses.at(i) + 3] = (currData >> 24) & ((1 << 8) - 1);
