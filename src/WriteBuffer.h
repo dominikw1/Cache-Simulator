@@ -54,7 +54,35 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
 
   private:
     SC_CTOR(WriteBuffer);
+
     RingQueue<WriteBufferEntry> buffer{SIZE};
+    std::mutex currWritingMarkerLock;
+    bool currWritingMarker = false;
+
+    void setCurrRequest(bool newValue) {
+        std::lock_guard<std::mutex> g{currWritingMarkerLock};
+        currWritingMarker = newValue;
+    }
+
+    bool currentlyWriting() {
+        std::lock_guard<std::mutex> g{currWritingMarkerLock};
+        return currWritingMarker;
+    }
+
+    void relinquishWriting() {
+        std::lock_guard<std::mutex> g{currWritingMarkerLock};
+        currWritingMarker = false;
+    }
+
+    bool tryAcquireWriting() {
+        std::lock_guard<std::mutex> g{currWritingMarkerLock};
+        if (!currWritingMarker) {
+            currWritingMarker = true;
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     void writeToRAM() {
         std::cout << "Write Buffer: Popping off next write " << std::endl;
@@ -100,7 +128,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
 
         ready.write(true);
         // dont need to wait before first one because we can only get here if RAM tells us it is ready
-        for (std::size_t i = 0; i < readsPerCacheline; ++i) {
+        for (int i = 0; i < readsPerCacheline; ++i) {
             std::cout << "Write buffer received: " << memoryDataInBus.read() << std::endl;
             cacheDataOutBus.write(memoryDataInBus.read());
             wait(clock.posedge_event());
@@ -112,6 +140,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
     }
 
     void handleIncomingRequests() {
+        bool holdingWriteLock = false;
         while (true) {
             wait(clock.posedge_event());
             if (cacheValidRequest.read()) {
@@ -119,7 +148,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
                 //  std::cout << "WriteBuffer: " << "State: " << cacheWeBus.read() << " " << buffer.getSize() << " "
                 //          << currentlyWriting() << std::endl;
 
-                if (!cacheWeBus.read() && buffer.getSize() == 0) {
+                if (!cacheWeBus.read() && buffer.getSize() == 0 && !currentlyWriting()) {
                     // can only handle if all writes are through for sequential consistency reasons
                     std::cout << "WriteBuffer: " << "Passing along read " << std::endl;
                     passReadAlong();
@@ -151,12 +180,15 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
             //  std::cout << "WriteBuffer: " << "Trying to write" << std::endl;
             if (buffer.getSize() > 0) {
                 std::cout << "WriteBuffer: " << "Entering actual write" << std::endl;
-                writeToRAM();
-            } else {
-                std::cout << "Failed to acquire lock" << std::endl;
+                if (tryAcquireWriting()) {
+                    writeToRAM();
+                    relinquishWriting();
+                } else {
+                    std::cout << "Failed to acquire lock" << std::endl;
+                }
+                std::cout << "WriteBuffer: " << "Ending actual write" << std::endl;
+                std::cout << "WriteBuffer: ending cycle at size " << buffer.getSize() << std::endl;
             }
-            std::cout << "WriteBuffer: " << "Ending actual write" << std::endl;
-            std::cout << "WriteBuffer: ending cycle at size " << buffer.getSize() << std::endl;
         }
     }
 };

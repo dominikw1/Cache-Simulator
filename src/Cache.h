@@ -444,7 +444,7 @@ inline void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, Decompose
     data |= (cacheline.data[startByte + 3]) << 3 * BITS_IN_BYTE;
 
     std::cout << "Passing to write buffer" << std::endl;
-    writeBufferAddr.write(addr);
+    writeBufferAddr.write((startByte == static_cast<std::size_t>(decomposedAddr.offset) ? (addr) : ((addr/cacheLineSize)*cacheLineSize + cacheline.data.size() - 4)));
     writeBufferDataIn.write(data);
     writeBufferWE.write(true);
     // wait(clock.posedge_event()); // DEBUG
