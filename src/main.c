@@ -52,11 +52,11 @@ const char* help_msg = "Positional arguments:\n"
                        "   <filename>   The name of the file to be processed\n"
                        "\n"
                        "Optional arguments:\n"
-                       "   -c c / --cycles c       The number of cycles used for the simulation (default: c = 100000)\n"
+                       "   -c c / --cycles c       The number of cycles used for the simulation (default: c = 1000)\n"
                        "   --directmapped          Simulates a direct-mapped cache\n"
                        "   --fullassociative       Simulates a fully associative cache (Set as default)\n"
                        "   --cacheline-size s      The size of a cache line in bytes (default: 64)\n"
-                       "   --cachelines n          The number of cache lines (default: 16)\n"
+                       "   --cachelines n          The number of cache lines (default: 256)\n"
                        "   --cache-latency l       The cache latency in cycles (default: 2)\n"
                        "   --memory-latency m      The memory latency in cycles (default: 100)\n"
                        "   --lru                   Use LRU as cache-replacement policy (Set as default)\n"
@@ -72,8 +72,8 @@ void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, pr
 void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
 
 void check_for_invalid_input(const char* progname, struct Request* requests, char* option) {
-    if (optarg != NULL) {   // TODO: Error oder Warning?
-        fprintf(stderr, "Invalid input: %s does not expect an argument.", option);
+    if (optarg != NULL) {
+        fprintf(stderr, "Invalid input: %s does not expect an argument.\n", option);
         print_usage(progname);
         free(requests);
         requests = NULL;
@@ -103,9 +103,13 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
 
     if (n <= 0 || errno != 0) {
         if (errno == 0 && n <= 0) { // Negative input and 0 not useful for simulation
+            if (n == 0 && strcmp(option, "--cachelines") == 0) {
+                fprintf(stderr, "Warning: --cachelines must be at least 1. Setting use-cache=no.\n");
+                return 0;
+            }
             fprintf(stderr, "Invalid input: %s\n", message);
-        } else if (n > INT32_MAX) { // Input needs to fit into predefined datatypes for run_simulation method
-            fprintf(stderr, "%ld is too big to be converted to an int.\n", n);
+        } else if (n > UINT32_MAX) { // Input needs to fit into predefined datatypes for run_simulation method
+            fprintf(stderr, "%ld is too big to be converted to an unsigned int.\n", n);
         } else {
             char* error_message = strerror(errno);
             fprintf(stderr, "Error parsing number for option %s. %s", option, error_message);
@@ -274,9 +278,9 @@ int main(int argc, char** argv) {
     }
 
     // Default values for fullassociative cache
-    int cycles = 100000;
+    int cycles = 1000;
     int directMapped = 0; // 0 => fullassociative, x => directmapped
-    unsigned int cacheLines = 16;
+    unsigned int cacheLines = 256;
     unsigned int cacheLineSize = 64;
     unsigned int cacheLatency = 2;
     unsigned int memoryLatency = 100;
@@ -339,12 +343,20 @@ int main(int argc, char** argv) {
         case 'c':
             error_message = "Cycles cannot be smaller than 1.";
             unsigned long c = check_user_input(endptr, error_message, progname, "-c/--cycles", requests);
+            if (c > INT32_MAX) {
+                fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
+                print_usage(progname);
+                free(requests);
+                requests = NULL;
+                return EXIT_FAILURE;
+            }
             cycles = (int) c;
             break;
 
         case 'h':
             print_help(progname);
             free(requests);
+            requests = NULL;
             return EXIT_SUCCESS;
 
         case DIRECTMAPPED:
@@ -384,9 +396,14 @@ int main(int argc, char** argv) {
 
         case CACHELINES:
             error_message = "Number of cache-lines must be at least 1.";
-            unsigned long n = check_user_input(endptr, error_message, progname, "-c /--cachelines", requests);
-            // TODO: Warning oder Abbruch?
-            if (!isPowerOfTwo(s)) {
+            unsigned long n = check_user_input(endptr, error_message, progname, "--cachelines", requests);
+            if (n == 0) {
+                usingCache = 0;
+                cacheLines = 0;
+                break;
+            }
+
+            if (!isPowerOfTwo(n)) {
                 fprintf(stderr, "Warning: Number of cachelines are usually a power of two!\n");
             }
             cacheLines = n;
@@ -468,23 +485,19 @@ int main(int argc, char** argv) {
     // TODO: Weitere nicht-sinnvolle inputs abfangen
     if (memoryLatency < cacheLatency) {
         fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
-        // TODO: Wenn Memory < Cache latency => Warning
-    } /*else if (cacheLines < 32 || cacheLineSize < 32) {
-        // TODO: Cachelines und CachlineSize sind kleiner als 32 Bit
-        fprintf(stderr, "Error: Cachelines and Cacheline-Size must be at least 32.\n");
-        print_usage(progname);
-        free(requests);
-        requests = NULL;
-        return EXIT_FAILURE;
     } // TODO: Cycles macht keinen Sinn
 
-    */
     struct Result result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
                                           numRequests, requests, tracefile, policy, usingCache);
 
     free(requests);
 
-    // TODO: Error Handling result
+    // TODO: Further error handling
+    if (result.cycles == 0 && result.misses == 0 && result.hits == 0 && result.primitiveGateCount == 0) {
+        fprintf(stderr, "Result does not contain valid data.\n");
+        print_usage(progname);
+        return EXIT_FAILURE;
+    }
 
     fprintf(stderr, "Results:\n\tCycles: %zu\n\tMisses: %zu\n\tHits: %zu\n\tPrimitive gate count: %zu\n",
             result.cycles, result.misses, result.hits, result.primitiveGateCount);
