@@ -75,10 +75,12 @@ SC_MODULE(DataMemoryMock) {
 
     void provideData() {
         while (true) {
+            wait(clock.posedge_event());
+            dataReadyBus.write(false);
+
             do {
                 wait(clock.posedge_event());
             } while (!validDataRequest);
-            dataReadyBus.write(false);
 
             // std::cout << "Providing/writing data at " << addressBus.read() << std::endl;
             if (weBus.read() == 0) {
@@ -90,8 +92,6 @@ SC_MODULE(DataMemoryMock) {
 
             dataProvided.push_back(Request{addressBus.read(), dataInBus.read(), weBus.read()});
             std::cout << "Done providing/writing data" << std::endl;
-
-            wait();
         }
     }
 };
