@@ -28,11 +28,13 @@ SC_MODULE(InstrMemoryMock) {
 
     void provideInstr() {
         while (true) {
+            wait(clock.posedge_event());
+            instrReadyBus.write(false);
+
             do {
                 wait(clock.posedge_event());
             } while (!validInstrRequest);
 
-            instrReadyBus.write(false);
             auto pc = pcBus.read();
             std::cout << "Providing instruction at " << pc << std::endl;
             if (instructionMemory.find(pc) == instructionMemory.end()) {
@@ -48,8 +50,6 @@ SC_MODULE(InstrMemoryMock) {
             std::cout << "Recording instruction..." << std::endl;
             instructionsProvided.push_back(pc);
             std::cout << "Done providing instruction" << std::endl;
-
-            wait();
         }
     }
 };
