@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-
 #include <getopt.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -71,28 +70,10 @@ void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, pr
 
 void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
 
-void check_for_invalid_input(const char* progname, struct Request* requests, char* option) {
-    if (optarg != NULL) {
-        fprintf(stderr, "Invalid input: %s does not expect an argument.\n", option);
-        print_usage(progname);
-        free(requests);
-        requests = NULL;
-        exit(EXIT_FAILURE);
-    }
-}
-
 unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option,
                                struct Request* requests) {
-    if (optarg == NULL) {
-        fprintf(stderr, "Error: Option %s requires an argument.\n", option);
-        print_usage(progname);
-        free(requests);
-        requests = NULL;
-        exit(EXIT_FAILURE);
-    }
-
     endptr = NULL;
-    long n = strtol(optarg, &endptr, 10);
+    long n = strtol(optarg, &endptr, 10);   // Using datatype 'long' to check for negative input
     if (*endptr != '\0' || endptr == optarg) {
         fprintf(stderr, "Invalid input: %s is not a number.\n", optarg);
         print_usage(progname);
@@ -109,10 +90,9 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
             }
             fprintf(stderr, "Invalid input: %s\n", message);
         } else if (n > UINT32_MAX) { // Input needs to fit into predefined datatypes for run_simulation method
-            fprintf(stderr, "%ld is too big to be converted to an unsigned int.\n", n);
+            fprintf(stderr, "Invalid input: %ld is too big to be converted to an unsigned int.\n", n);
         } else {
-            char* error_message = strerror(errno);
-            fprintf(stderr, "Error parsing number for option %s. %s", option, error_message);
+            fprintf(stderr, "Error parsing number for option %s. %s", option, strerror(errno));
         }
         print_usage(progname);
         free(requests);
@@ -123,17 +103,8 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
 }
 
 FILE* check_file (const char* progname, const char* filename, struct Request* requests, char* filetype) {
-    if (filename == NULL) {
-        perror("Filename does not exist");
-        print_usage(progname);
-        if (requests != NULL) {
-            free(requests);
-            requests = NULL;
-        }
-        exit(EXIT_FAILURE);
-    }
-
     FILE* file = fopen(filename, "r");
+
     if (file == NULL) {
         fprintf(stderr, "Error opening %s: %s\n", filetype, strerror(errno));
         print_usage(progname);
@@ -144,7 +115,7 @@ FILE* check_file (const char* progname, const char* filename, struct Request* re
         exit(EXIT_FAILURE);
     }
 
-    // Lines 78-98 taken and adapted from GRA Week 3 "File IO" files.c
+    // Lines 118-138 taken and adapted from GRA Week 3 "File IO" files.c
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
         perror("Error determining file size");
@@ -156,7 +127,6 @@ FILE* check_file (const char* progname, const char* filename, struct Request* re
         }
         exit(EXIT_FAILURE);
     }
-
     if (!S_ISREG(file_info.st_mode)) {
         fprintf(stderr, "%s is not a regular file\n", filename);
         fclose(file);
@@ -167,7 +137,6 @@ FILE* check_file (const char* progname, const char* filename, struct Request* re
         }
         exit(EXIT_FAILURE);
     }
-
     if (S_ISDIR(file_info.st_mode)) {
         fprintf(stderr, "Filename should not be a directory.\n");
         fclose(file);
@@ -183,7 +152,6 @@ FILE* check_file (const char* progname, const char* filename, struct Request* re
 }
 
 void extract_file_data (const char* progname, FILE* file, struct Request* requests, size_t* numRequests) {
-
     // Check for invalid file format and save file content to requests
     // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
     int read_line;
@@ -197,7 +165,7 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
 
         if (read_line < 3 && !feof(file)) {
             if (read_line == -1) {
-                fprintf(stderr, "Wrong file format! An Error occurred while reading the file.\n");
+                fprintf(stderr, "Wrong file format! An Error occurred while reading from the file.\n");
                 fclose(file);
                 print_usage(progname);
                 free(requests);
@@ -233,12 +201,13 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
 
         requests[*numRequests].addr = addr;
         requests[*numRequests].data = data;
-        if (we == 'R') {
+
+        if (we == 'R'|| we == 'r') {
             requests[*numRequests].we = 0;
-        } else if (we == 'W') {
+        } else if (we == 'W'|| we == 'w') {
             requests[*numRequests].we = 1;
         } else {
-            fprintf(stderr, "Not a valid operation.\n");
+            fprintf(stderr, "'%c' is not a valid operation\n", we);
             fclose(file);
             print_usage(progname);
             free(requests);
@@ -249,7 +218,7 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
         (*numRequests)++;
 
         if (ferror(file)) {
-            printf("Error reading file.\n");
+            fprintf(stderr, "Error reading from file.\n");
             fclose(file);
             print_usage(progname);
             free(requests);
@@ -260,6 +229,31 @@ void extract_file_data (const char* progname, FILE* file, struct Request* reques
     } while (!feof(file));
 
     fclose(file);
+}
+
+char* getOption(const char* progname, struct Request* requests) {
+    switch (optopt) {
+        case 'c':
+            return "-c/--cycles";
+        case CACHELINE_SIZE:
+            return "--cacheline-size";
+        case CACHELINES:
+            return "--cachelines";
+        case CACHE_LATENCY:
+            return "--cache-latency";
+        case MEMORY_LATENCY:
+            return "--memory-latency";
+        case USE_CACHE:
+            return "--use-cache";
+        case TRACEFILE:
+            return "--tf=";
+        default:
+            fprintf(stderr, "Error: Not a valid operation!\n");
+            print_usage(progname);
+            free(requests);
+            requests = NULL;
+            exit(EXIT_FAILURE);
+    }
 }
 
 // Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
@@ -332,19 +326,22 @@ int main(int argc, char** argv) {
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}};
 
-    char* error_message;
+    FILE* t_file;
+    char* error_msg;
+    char* option;
     int isFullassociativeSet = 0;
     int isLruSet = 0;
+    opterr = 0; // Use own error messages
 
     while ((opt = getopt_long(argc, argv, optstring, long_options, &option_index)) != -1) {
         errno = 0;
 
         switch (opt) {
         case 'c':
-            error_message = "Cycles cannot be smaller than 1.";
-            unsigned long c = check_user_input(endptr, error_message, progname, "-c/--cycles", requests);
-            if (c > INT32_MAX) {
-                fprintf(stderr, "%ld is too big to be converted to an int.\n", c);
+            error_msg = "Cycles cannot be smaller than 1.";
+            unsigned long c = check_user_input(endptr, error_msg, progname, "-c/--cycles", requests);
+            if (c > INT32_MAX) {    // Check c before converting it to int
+                fprintf(stderr, "Error: %ld is too big to be converted to an int.\n", c);
                 print_usage(progname);
                 free(requests);
                 requests = NULL;
@@ -360,7 +357,6 @@ int main(int argc, char** argv) {
             return EXIT_SUCCESS;
 
         case DIRECTMAPPED:
-            check_for_invalid_input(progname, requests, "--directmapped");
             if (isFullassociativeSet) {
                 fprintf(stderr, "Warning: --fullassociative and --directmapped are both set. "
                                 "Using default value fullassociative!");
@@ -370,7 +366,6 @@ int main(int argc, char** argv) {
             break;
 
         case FULLASSOCIATIVE:
-            check_for_invalid_input(progname, requests, "--fullassociative");
             if (directMapped) {
                 fprintf(stderr, "Warning: --fullassociative and --directmapped are both set. "
                                 "Using default value fullassociative!");
@@ -379,9 +374,8 @@ int main(int argc, char** argv) {
             break;
 
         case CACHELINE_SIZE:
-            error_message = "Cacheline size should be at least 1.";
-            unsigned long s = check_user_input(endptr, error_message, progname,"--cacheline-size",
-                                               requests);
+            error_msg = "Cacheline size should be at least 1.";
+            unsigned long s = check_user_input(endptr, error_msg, progname,"--cacheline-size", requests);
 
             if (!isPowerOfSixteen(s)) {
                 fprintf(stderr, "Invalid Input: Cacheline size should be a multiple of 16 bytes!\n");
@@ -395,9 +389,9 @@ int main(int argc, char** argv) {
             break;
 
         case CACHELINES:
-            error_message = "Number of cache-lines must be at least 1.";
-            unsigned long n = check_user_input(endptr, error_message, progname, "--cachelines", requests);
-            if (n == 0) {
+            error_msg = "Number of cache-lines must be at least 1.";
+            unsigned long n = check_user_input(endptr, error_msg, progname, "--cachelines", requests);
+            if (n == 0) {   // Use no cache for simulation due to user input --cachelines 0
                 usingCache = 0;
                 cacheLines = 0;
                 break;
@@ -410,39 +404,36 @@ int main(int argc, char** argv) {
             break;
 
         case CACHE_LATENCY:
-            error_message = "Cache-latency cannot be zero or negativ.";
-            unsigned long l = check_user_input(endptr, error_message, progname, "--cache-latency", requests);
+            error_msg = "Cache-latency cannot be zero or negativ.";
+            unsigned long l = check_user_input(endptr, error_msg, progname, "--cache-latency", requests);
             cacheLatency = l;
             break;
 
         case MEMORY_LATENCY:
-            error_message = "Memory-latency cannot be zero or negativ.";
-            unsigned long m = check_user_input(endptr, error_message, progname, "--memory-latency", requests);
+            error_msg = "Memory-latency cannot be zero or negativ.";
+            unsigned long m = check_user_input(endptr, error_msg, progname, "--memory-latency", requests);
             memoryLatency = m;
             break;
 
         case LEAST_RECENTLY_USED:
-            check_for_invalid_input(progname, requests, "--lru");
             if (policy == FIFO || policy == RANDOM) {
                 fprintf(stderr, "Warning: More than one policy set. "
-                                "Simulating cache using default value LRU!");
+                                "Simulating cache using default value LRU!\n");
             }
             policy = LRU;
             isLruSet = 1;
             break;
 
         case FIRST_IN_FIRST_OUT:
-            check_for_invalid_input(progname, requests, "--fifo");
             if (isLruSet) {
                 fprintf(stderr, "Warning: More than one policy set. "
-                                "Simulating cache using default value LRU!");
+                                "Simulating cache using default value LRU!\n");
                 break;
             }
             policy = FIFO;
             break;
 
         case RANDOM_CHOICE:
-            check_for_invalid_input(progname, requests, "--random");
             if (isLruSet) {
                 fprintf(stderr, "Warning: More than one policy set. "
                                 "Simulating cache using default value LRU!");
@@ -469,10 +460,14 @@ int main(int argc, char** argv) {
             break;
 
         case TRACEFILE:
-            FILE* t_file = check_file(progname, optarg, requests, "tracefile");
+            t_file = check_file(progname, optarg, requests, "tracefile");
             tracefile = optarg;
             fclose(t_file);
             break;
+
+        case '?':
+            option = getOption(progname, requests);
+            fprintf(stderr, "Error: Option '%s' requires an argument.\n", option);
 
         default:
             print_usage(progname);
@@ -491,6 +486,7 @@ int main(int argc, char** argv) {
                                           numRequests, requests, tracefile, policy, usingCache);
 
     free(requests);
+    requests = NULL;
 
     // TODO: Further error handling
     if (result.cycles == 0 && result.misses == 0 && result.hits == 0 && result.primitiveGateCount == 0) {
@@ -499,6 +495,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+    // TODO: results zu stdout printen?
     fprintf(stderr, "Results:\n\tCycles: %zu\n\tMisses: %zu\n\tHits: %zu\n\tPrimitive gate count: %zu\n",
             result.cycles, result.misses, result.hits, result.primitiveGateCount);
 
