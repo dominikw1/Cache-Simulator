@@ -1,10 +1,10 @@
 #include "Request.h"
-#include <atomic>
 #include <cstdint>
 #include <systemc>
+#include <vector>
 
 SC_MODULE(CPU) {
-public:
+  public:
     // CPU -> Cache
     sc_core::sc_out<bool> weBus;
     sc_core::sc_out<bool> validDataRequestBus;
@@ -25,14 +25,18 @@ public:
 
     sc_core::sc_in<bool> clock;
 
-private:
+#ifdef CPU_DEBUG
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> results;
+#endif
+
+  private:
     std::uint64_t program_counter = 0;
     Request currInstruction;
     sc_core::sc_event instructionCycleDone;
 
     std::uint64_t lastCycleWhereWorkWasDone = 0;
 
-public:
+  public:
     SC_CTOR(CPU) {
         SC_THREAD(handleInstruction);
         sensitive << clock.pos();
@@ -41,7 +45,7 @@ public:
 
     constexpr std::uint64_t getElapsedCycleCount() const noexcept { return lastCycleWhereWorkWasDone; };
 
-private:
+  private:
     void handleInstruction() {
         while (true) {
             wait(clock.posedge_event());
@@ -67,7 +71,11 @@ private:
                 std::cout << "Successfully wrote " << currInstruction.data << " to location " << currInstruction.addr
                           << std::endl;
             } else {
-                std::cout << "Successfully read " << dataInBus.read() << " from address " << currInstruction.addr << std::endl;
+                std::cout << "Successfully read " << dataInBus.read() << " from address " << currInstruction.addr
+                          << std::endl;
+#ifdef CPU_DEBUG
+                results.push_back(std::make_pair(currentRequest.addr, currentRequest.data));
+#endif
             }
 
             lastCycleWhereWorkWasDone = sc_core::sc_time_stamp().value() / 1000;
