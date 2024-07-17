@@ -143,17 +143,15 @@ SC_MODULE(RAMMock) {
                 // std::cout << "Memory done writing" << std::endl;
 
                 // std::cout << "Total written ram now looks like: " << std::endl;
-                for (auto& pair : dataMemory) {
+              //  for (auto& pair : dataMemory) {
                     // std::cout << pair.first << ": " << pair.second << std::endl;
-                }
+                //}
                 wait(clock.posedge_event());
             } else {
                 // 128 / 8 -> 16
                 // std::cout << "Actually reading from RAM: " << addressBus.read() << " " << std::endl;
-                wait(clock.posedge_event());
-                wait(clock.posedge_event());
                 readyBus.write(true);
-                wait(clock.posedge_event());
+                //  wait(clock.posedge_event());
                 sc_dt::sc_bv<128> toWrite;
                 for (std::size_t i = 0; i < wordsPerRead; ++i) {
                     // std::cout << "Doing a part read " << i << std::endl;
@@ -164,8 +162,9 @@ SC_MODULE(RAMMock) {
                     }
                     // std::cout << "RAM sending: " << toWrite << std::endl;
                     dataOutBus.write(toWrite);
-
-                    wait(clock.posedge_event());
+                    if (i +1 != wordsPerRead) {
+                        wait(clock.posedge_event());
+                    }
                 }
                 // std::cout << "Memory done reading" << std::endl;
             }
@@ -538,8 +537,8 @@ TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
     cpu.instructions.push_back(writeRequest2);
     cpu.instructions.push_back(writeRequest3);
     cpu.instructions.push_back(readRequest);
-    
-    // 1000 for first read, then write to buffer (~instantly), then <100 for each next request to supply 
+
+    // 1000 for first read, then write to buffer (~instantly), then <100 for each next request to supply
     sc_start(2000, SC_NS);
     ASSERT_EQ(cpu.instructionsProvided.size(), 4);
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), 4);
