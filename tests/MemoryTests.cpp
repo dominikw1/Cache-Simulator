@@ -49,8 +49,37 @@ TEST_F(MemoryTests, MemoryWriteAndReadSameAddress) {
 
     sc_start(1, SC_MS);
 
-    ASSERT_EQ(dataOutSignal.read().get_word(0), valueInBytes[0]);
-    ASSERT_EQ(dataOutSignal.read().get_word(1), valueInBytes[1]);
-    ASSERT_EQ(dataOutSignal.read().get_word(2), valueInBytes[2]);
-    ASSERT_EQ(dataOutSignal.read().get_word(3), valueInBytes[3]);
+    ASSERT_EQ(dataOutSignal.read().range(7, 0), sc_dt::sc_bv<8>(valueInBytes[0]));
+    ASSERT_EQ(dataOutSignal.read().range(15, 8), sc_dt::sc_bv<8>(valueInBytes[1]));
+    ASSERT_EQ(dataOutSignal.read().range(23, 16), sc_dt::sc_bv<8>(valueInBytes[2]));
+    ASSERT_EQ(dataOutSignal.read().range(31, 24), sc_dt::sc_bv<8>(valueInBytes[3]));
+}
+
+TEST_F(MemoryTests, MemoryOverwriteAddressWithZeroAndRead) {
+    auto value = 1234;
+
+    addressSignal = 0;
+    dataInSignal = value;
+    weSignal = true;
+    validRequestSignal = true;
+
+    sc_start(1, SC_MS);
+
+    addressSignal = 1;
+    dataInSignal = 0;
+    weSignal = true;
+    validRequestSignal = true;
+
+    sc_start(1, SC_MS);
+
+    addressSignal = 0;
+    weSignal = false;
+    validRequestSignal = true;
+
+    sc_start(1, SC_MS);
+
+    ASSERT_EQ(dataOutSignal.read().range(7, 0), sc_dt::sc_bv<8>(static_cast<uint8_t>(value)));
+    ASSERT_EQ(dataOutSignal.read().range(15, 8), sc_dt::sc_bv<8>(0));
+    ASSERT_EQ(dataOutSignal.read().range(23, 16), sc_dt::sc_bv<8>(0));
+    ASSERT_EQ(dataOutSignal.read().range(31, 24), sc_dt::sc_bv<8>(0));
 }
