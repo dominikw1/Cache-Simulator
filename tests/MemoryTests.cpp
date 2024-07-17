@@ -83,3 +83,13 @@ TEST_F(MemoryTests, MemoryOverwriteAddressWithZeroAndRead) {
     ASSERT_EQ(dataOutSignal.read().range(23, 16), sc_dt::sc_bv<8>(0));
     ASSERT_EQ(dataOutSignal.read().range(31, 24), sc_dt::sc_bv<8>(0));
 }
+
+TEST_F(MemoryTests, ReadBlankAddress) {
+    addressSignal = 0;
+    weSignal = false;
+    validRequestSignal = true;
+
+    sc_start(1, SC_MS);
+
+    ASSERT_EQ(dataOutSignal.read(), sc_dt::sc_bv<128>(0));
+}
