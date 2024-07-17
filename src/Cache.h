@@ -185,9 +185,9 @@ inline void Cache<MappingType::Fully_Associative>::registerUsage(std::vector<Cac
 }
 
 template <MappingType mappingType> inline void Cache<mappingType>::waitForRAM() {
-    std::cout << "Now waiting for WriteBuffer" << std::endl;
+    //  std::cout << "Now waiting for WriteBuffer" << std::endl;
     waitUntilTrue([&writeBufferReady = writeBufferReady]() { return writeBufferReady.read(); }, true);
-    std::cout << " Done waiting for WriteBuffer" << std::endl;
+    // std::cout << " Done waiting for WriteBuffer" << std::endl;
 }
 
 template <> constexpr inline void Cache<MappingType::Fully_Associative>::precomputeAddressDecompositionBits() noexcept {
@@ -258,7 +258,7 @@ inline Cache<mappingType>::Cache(sc_core::sc_module_name name, unsigned int numC
 template <MappingType mappingType>
 inline std::vector<Cacheline>::iterator
 Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) {
-    std::cout << "Writing RAM Read into cacheline " << std::endl;
+    //  std::cout << "Writing RAM Read into cacheline " << std::endl;
     auto cachelineToWriteInto = chooseWhichCachelineToFillFromRAM(decomposedAddr);
 
     // we do not allow any inputs violating this rule
@@ -269,7 +269,7 @@ Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) 
     // dont need to wait before first one because we can only get here if RAM tells us it is ready
     for (std::size_t i = 0; i < numReadEvents; ++i) {
         dataRead = writeBufferDataOut.read();
-        std::cout << "Cache received: " << writeBufferDataOut.read() << std::endl;
+        //    std::cout << "Cache received: " << writeBufferDataOut.read() << std::endl;
 
         for (int byte = 0; byte < RAM_READ_BUS_SIZE_IN_BYTE; ++byte) {
             cachelineToWriteInto->data[RAM_READ_BUS_SIZE_IN_BYTE * i + byte] =
@@ -471,7 +471,7 @@ template <MappingType mappingType> inline void Cache<mappingType>::startReadFrom
     std::uint32_t alignedAddr = (addr / cacheLineSize) * cacheLineSize;
     writeBufferAddr.write(alignedAddr);
     writeBufferWE.write(false);
-    std::cout << "Setting WB valid req to true in read " << std::endl;
+  //  std::cout << "Setting WB valid req to true in read " << std::endl;
     // wait(clock.posedge_event()); // DEBUG
     writeBufferValidRequest.write(true);
 }
