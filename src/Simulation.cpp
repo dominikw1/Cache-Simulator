@@ -184,7 +184,11 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
     }
 
     return Result{
-        cpu.getElapsedCycleCount(), dataCache.missCount, dataCache.hitCount, 1 // TODO: primitiveGateCount
+            pcSignal >= numRequests ? cpu.getElapsedCycleCount()
+                                    : SIZE_MAX, // TODO: What if last request is not finished yet, but pc is already at numRequests
+            dataCache.missCount, // TODO: What if a reuqest is stopped in the middle of processing, should the MISS/HIT be counted?
+            dataCache.hitCount,
+            1 // TODO: primitiveGateCount
     };
 }
 
@@ -203,14 +207,14 @@ struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLin
 
 std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(int replacementPolicy, int cacheSize) {
     switch (replacementPolicy) {
-    case 0:
-        return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
-    case 1:
-        return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
-    case 2:
-        return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
-    default:
-        throw std::runtime_error("Encountered unknown policy type");
+        case 0:
+            return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
+        case 1:
+            return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
+        case 2:
+            return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
+        default:
+            throw std::runtime_error("Encountered unknown policy type");
     }
 }
 

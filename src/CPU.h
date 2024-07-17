@@ -30,7 +30,6 @@ private:
     Request currInstruction;
     sc_core::sc_event instructionCycleDone;
 
-    std::atomic<std::uint64_t> cycleNum{0ull};
     std::uint64_t lastCycleWhereWorkWasDone = 0;
 
 public:
@@ -71,7 +70,7 @@ private:
                 std::cout << "Successfully read " << dataInBus.read() << " from address " << currInstruction.addr << std::endl;
             }
 
-            lastCycleWhereWorkWasDone = cycleNum.load();
+            lastCycleWhereWorkWasDone = sc_core::sc_time_stamp().value() / 1000;
 
             validDataRequestBus.write(false);
             ++program_counter;
