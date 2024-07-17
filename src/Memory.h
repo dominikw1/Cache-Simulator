@@ -50,6 +50,8 @@ SC_MODULE(RAM) {
                 ++cyclesPassedInRequest;
             }
 
+            cyclesPassedInRequest = 0;
+
             if (weBus.read()) {
                 // Writing happens in one cycle -> one able to write 32 bits
                 dataMemory[addressBus.read()] = (dataInBus.read() & ((1 << 8) - 1));
