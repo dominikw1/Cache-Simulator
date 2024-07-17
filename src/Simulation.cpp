@@ -39,10 +39,10 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
 
     // Data Cache
     // CPU -> Cache
-    sc_core::sc_signal<bool> cpuWeSignal;
-    sc_core::sc_signal<std::uint32_t> cpuAddressSignal;
+    sc_core::sc_signal<bool> cpuWeSignal("cpuWeSignal");
+    sc_core::sc_signal<std::uint32_t> cpuAddressSignal("cpuAddressSignal");
     sc_core::sc_signal<std::uint32_t> cpuDataOutSignal;
-    sc_core::sc_signal<bool> cpuValidDataRequestSignal;
+    sc_core::sc_signal<bool> cpuValidDataRequestSignal("cpuValidDataRequestSignal");
 
     cpu.weBus(cpuWeSignal);
     cpu.addressBus(cpuAddressSignal);
@@ -51,34 +51,34 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
 
     dataCache.cpuWeBus(cpuWeSignal);
     dataCache.cpuAddrBus(cpuAddressSignal);
-    dataCache.cpuDataOutBus(cpuDataOutSignal);
+    dataCache.cpuDataInBus(cpuDataOutSignal);
     dataCache.cpuValidRequest(cpuValidDataRequestSignal);
 
     // Cache -> CPU
-    sc_core::sc_signal<std::uint32_t> cpuDataInSignal;
-    sc_core::sc_signal<bool> cpuDataReadySignal;
+    sc_core::sc_signal<std::uint32_t> cpuDataInSignal("cpuDataInSignal");
+    sc_core::sc_signal<bool> cpuDataReadySignal("cpuDataReadySignal");
 
     cpu.dataInBus(cpuDataInSignal);
     cpu.dataReadyBus(cpuDataReadySignal);
 
-    dataCache.cpuDataInBus(cpuDataInSignal);
+    dataCache.cpuDataOutBus(cpuDataInSignal);
     dataCache.ready(cpuDataReadySignal);
 
     // Cache -> RAM
-    sc_core::sc_signal<bool> ramWeSignal;
-    sc_core::sc_signal<std::uint32_t> ramAddressSignal;
-    sc_core::sc_signal<std::uint32_t> ramDataInSignal;
-    sc_core::sc_signal<bool> ramValidRequestSignal;
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> ramWeSignal("ramWeSignal");
+    sc_core::sc_signal<std::uint32_t, sc_core::SC_MANY_WRITERS> ramAddressSignal("ramAddressSignal");
+    sc_core::sc_signal<std::uint32_t> ramDataInSignal("ramDataInSignal");
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> ramValidRequestSignal;
 
     dataRam.weBus(ramWeSignal);
     dataRam.addressBus(ramAddressSignal);
     dataRam.validRequestBus(ramValidRequestSignal);
-    dataRam.dataInBus(ramAddressSignal);
+    dataRam.dataInBus(ramDataInSignal);
 
     dataCache.memoryWeBus(ramWeSignal);
     dataCache.memoryAddrBus(ramAddressSignal);
     dataCache.memoryValidRequestBus(ramValidRequestSignal);
-    dataCache.memoryDataOutBus(ramAddressSignal);
+    dataCache.memoryDataOutBus(ramDataInSignal);
 
     // RAM -> Cache
     sc_core::sc_signal<sc_dt::sc_bv<128>> ramDataOutSignal;
@@ -92,7 +92,7 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
 
     // Instruction Cache
     // CPU -> Cache
-    sc_core::sc_signal<bool> validInstrRequestSignal;
+    sc_core::sc_signal<bool> validInstrRequestSignal("validInstrRequestSignal");
     sc_core::sc_signal<std::uint32_t> pcSignal;
 
     cpu.validInstrRequestBus(validInstrRequestSignal);
@@ -119,12 +119,12 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
 
     instructionRam.addressBus(instrRamAddressSignal);
     instructionRam.weBus(instrRamWeBus);
-    instructionRam.validRequestBus(validInstrRequestSignal);
+    instructionRam.validRequestBus(instrRamValidRequestBus);
     instructionRam.dataInBus(instrRamDataInBus);
 
     instructionCache.memoryAddrBus(instrRamAddressSignal);
     instructionCache.memoryWeBus(instrRamWeBus);
-    instructionCache.memoryValidRequestBus(validInstrRequestSignal);
+    instructionCache.memoryValidRequestBus(instrRamValidRequestBus);
     instructionCache.memoryDataOutBus(instrRamDataInBus);
 
     // RAM -> Cache
@@ -139,7 +139,7 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
 
     cpu.clock(clk);
     dataCache.clock(clk);
-    // TODO: instructionCache.clock(clk);
+    instructionCache.clock(clk);
     dataRam.clock(clk);
     instructionRam.clock(clk);
 

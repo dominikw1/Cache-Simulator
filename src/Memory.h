@@ -38,10 +38,11 @@ SC_MODULE(RAM) {
 
     void provideData() {
         while (true) {
+            wait(clock.posedge_event());
+            readyBus.write(false);
+
             if (!validRequestBus.read())
                 continue;
-
-            readyBus.write(false);
 
             // Wait out latency
             while (cyclesPassedInRequest < latency) {

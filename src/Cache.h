@@ -383,12 +383,12 @@ inline std::uint32_t Cache<mappingType>::doRead(DecomposedAddress decomposedAddr
 template <MappingType mappingType> inline void Cache<mappingType>::handleRequest() {
     while (true) {
         wait();
+        ready.write(false);
+
         if (!cpuValidRequest.read())
             continue;
 
         cyclesPassedInRequest = 0;
-        // Tell CPU we are not ready yet (since he waits for us in the next cycle (not this) this is not a race)
-        ready.write(false);
 
         auto request = constructRequestFromBusses();
         std::cout << "Received request:\n" << request << "\n";

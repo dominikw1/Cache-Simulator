@@ -10,6 +10,16 @@
 // optimsiation: instruction buffer
 SC_MODULE(InstructionCache) {
 private:
+    // Cache -> Instruction Cache
+    sc_core::sc_signal<std::uint32_t> cpuDataOutBus;
+    sc_core::sc_signal<bool> ready;
+
+    // Instruction Cache -> Cache
+    sc_core::sc_signal<std::uint32_t> addrBus;
+    sc_core::sc_signal<std::uint32_t> dataInBus;
+    sc_core::sc_signal<bool> weBus;
+    sc_core::sc_signal<bool> validRequestBus;
+
     unsigned int cacheLineNum;
     unsigned int cacheLineSize;
     unsigned int cacheLatency;
@@ -24,11 +34,11 @@ private:
 public:
     sc_core::sc_in<bool> clock;
 
-    // -> CPU
+    // Instruction Cache -> CPU
     sc_core::sc_out<Request> instructionBus;
     sc_core::sc_out<bool> instrReadyBus;
 
-    // <- CPU
+    // CPU -> Instruction Cache
     sc_core::sc_in<bool> validInstrRequestBus;
     sc_core::sc_in<std::uint32_t> pcBus;
 
@@ -48,6 +58,25 @@ public:
                                                                                      cacheLineSize{cacheLineSize},
                                                                                      cacheLatency{cacheLatency},
                                                                                      instructions{instructions} {
+
+        cache.memoryAddrBus(memoryAddrBus);
+        cache.memoryDataOutBus(memoryDataOutBus);
+        cache.memoryWeBus(memoryWeBus);
+        cache.memoryValidRequestBus(memoryValidRequestBus);
+
+        cache.memoryReadyBus(memoryReadyBus);
+        cache.memoryDataInBus(memoryDataInBus);
+
+        cache.cpuDataOutBus(cpuDataOutBus);
+        cache.ready(ready);
+
+        cache.cpuAddrBus(addrBus);
+        cache.cpuDataInBus(dataInBus);
+        cache.cpuWeBus(weBus);
+        cache.cpuValidRequest(validRequestBus);
+
+        cache.clock(clock);
+
         SC_THREAD(provideInstruction);
         sensitive << clock.pos();
     }
@@ -68,14 +97,15 @@ public:
             }
 
             // Act like we are fetching data from Memory
-            cache.memoryAddrBus.write(pcBus.read());
-            cache.memoryWeBus.write(false);
-            cache.memoryValidRequestBus.write(true);
+            addrBus.write(pc);
+            weBus.write(false);
+            validRequestBus.write(true);
 
             do {
                 wait(clock.posedge_event());
-            } while (!cache.memoryReadyBus);
+            } while (!cache.ready);
 
+            validRequestBus.write(false);
             instructionBus.write(instructions[pc]);
             instrReadyBus.write(true);
         }
