@@ -45,4 +45,19 @@ template <typename T> class RingQueue {
         --currNumEl;
         return ret;
     }
+
+    template <typename PredicateType> bool any(PredicateType predicate) {
+        auto curr = begin;
+        std::size_t elChecked = 0;
+        while (elChecked < currNumEl) {
+            if (predicate(*curr)) {
+                return true;
+            }
+            ++elChecked;
+            ++curr;
+            if (curr == buffer.end())
+                curr = buffer.begin();
+        }
+        return false;
+    }
 };

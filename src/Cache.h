@@ -240,7 +240,7 @@ inline Cache<mappingType>::Cache(sc_core::sc_module_name name, unsigned int numC
                                  unsigned int cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy)
     : sc_module{name}, numCacheLines{numCacheLines}, cacheLineSize{cacheLineSize}, cacheLatency{cacheLatency},
       replacementPolicy{std::move(policy)}, cacheInternal{numCacheLines},
-      writeBuffer{"writeBuffer", cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE} {
+      writeBuffer{"writeBuffer", cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE, cacheLineSize} {
 
     using namespace sc_core; // in scope as to not pollute global namespace
     if (replacementPolicy != nullptr && mappingType == MappingType::Direct) {
@@ -274,22 +274,23 @@ Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) 
         for (int byte = 0; byte < RAM_READ_BUS_SIZE_IN_BYTE; ++byte) {
             cachelineToWriteInto->data[RAM_READ_BUS_SIZE_IN_BYTE * i + byte] =
                 dataRead.range(BITS_IN_BYTE * byte + (BITS_IN_BYTE - 1), BITS_IN_BYTE * byte).to_uint();
-            std::cout << dataRead.range(BITS_IN_BYTE * byte + (BITS_IN_BYTE - 1), BITS_IN_BYTE * byte).to_uint() << "/"
-                      << cachelineToWriteInto->data[RAM_READ_BUS_SIZE_IN_BYTE * i + byte] << " ";
+            //   std::cout << dataRead.range(BITS_IN_BYTE * byte + (BITS_IN_BYTE - 1), BITS_IN_BYTE * byte).to_uint() <<
+            //   "/"
+            //           << cachelineToWriteInto->data[RAM_READ_BUS_SIZE_IN_BYTE * i + byte] << " ";
         }
-        std::cout << std::endl;
-        // if this is the last one we don't need to wait anymore
+        // std::cout << std::endl;
+        //  if this is the last one we don't need to wait anymore
         if (i + 1 <= numReadEvents)
             wait(clock.posedge_event());
     }
     writeBufferValidRequest.write(false);
     // wait(clock.posedge_event()); // DEBUG
     // wait(clock.posedge_event()); // DEBUG
-    std::cout << "Unsetting valid request now" << std::endl;
+    // std::cout << "Unsetting valid request now" << std::endl;
     cachelineToWriteInto->isUsed = true;
     cachelineToWriteInto->tag = decomposedAddr.tag;
 
-    std::cout << "Done writing RAM Read into cacheline :" << *cachelineToWriteInto << std::endl;
+    // std::cout << "Done writing RAM Read into cacheline :" << *cachelineToWriteInto << std::endl;
 
     return cachelineToWriteInto;
 }
@@ -338,12 +339,12 @@ inline void Cache<mappingType>::handleSubRequest(SubRequest subRequest, std::uin
     auto decomposedAddr = decomposeAddress(addr);
     // check if in cache (waits for #cycles specified by cacheLatency) - if not read from RAM
 
-    std::cout << "Curr tag: " << decomposedAddr.tag << std::endl;
-    std::cout << "Curr index " << decomposedAddr.index << " offset " << decomposedAddr.offset << std::endl;
-    std::cout << "Tags in cache:" << std::endl;
-    for (auto& cachl : cacheInternal) {
-        std::cout << cachl.tag << "\n";
-    }
+    // std::cout << "Curr tag: " << decomposedAddr.tag << std::endl;
+    // std::cout << "Curr index " << decomposedAddr.index << " offset " << decomposedAddr.offset << std::endl;
+    //  std::cout << "Tags in cache:" << std::endl;
+    // for (auto& cachl : cacheInternal) {
+    //   std::cout << cachl.tag << "\n";
+    //}
 
     auto cacheline = fetchIfNotPresent(addr, decomposedAddr);
 
@@ -370,7 +371,7 @@ inline void Cache<mappingType>::handleSubRequest(SubRequest subRequest, std::uin
 template <MappingType mappingType>
 inline std::uint32_t Cache<mappingType>::doRead(DecomposedAddress decomposedAddr, Cacheline& cacheline,
                                                 std::uint8_t numBytes) {
-    std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
+    //  std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
     assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
 
     std::uint32_t retVal = 0;
@@ -391,7 +392,7 @@ template <MappingType mappingType> inline void Cache<mappingType>::handleRequest
         cyclesPassedInRequest = 0;
 
         auto request = constructRequestFromBusses();
-        std::cout << "Received request:\n" << request << "\n";
+        //   std::cout << "Received request:\n" << request << "\n";
         auto subRequests = splitRequestIntoSubRequests(request, cacheLineSize);
 
         // while this is also passed into write requests, it is only relevant for read request and will not be accessed
@@ -403,11 +404,11 @@ template <MappingType mappingType> inline void Cache<mappingType>::handleRequest
         }
 
         if (!request.we) {
-            std::cout << "Sending " << readData << " back to CPU" << std::endl;
+            //   std::cout << "Sending " << readData << " back to CPU" << std::endl;
             cpuDataOutBus.write(readData);
         }
 
-        std::cout << "Done with cycle" << std::endl;
+        //   std::cout << "Done with cycle" << std::endl;
 
         // it is the responsibility of the CPU to have stopped the valid request signal at the latest during the cycle
         // he gets this signal. To not still read the valid request signal from the previous cycle we sleep for one and
@@ -420,15 +421,15 @@ template <MappingType mappingType> inline void Cache<mappingType>::handleRequest
 template <MappingType mappingType>
 inline void Cache<mappingType>::doWrite(Cacheline& cacheline, DecomposedAddress decomposedAddr, std::uint32_t data,
                                         std::uint8_t numBytes) {
-    std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
+    //  std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
 
     assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
-    std::cout << "Attempting to write " << data << std::endl;
+    //   std::cout << "Attempting to write " << data << std::endl;
     for (std::size_t byteNr = 0; byteNr < numBytes; ++byteNr) {
         cacheline.data[(decomposedAddr.offset + byteNr)] =
             (data >> BITS_IN_BYTE * byteNr) & generateBitmaskForLowestNBits(BITS_IN_BYTE);
     }
-    std::cout << "Done writing into cacheline" << std::endl;
+    //  std::cout << "Done writing into cacheline" << std::endl;
 }
 
 template <MappingType mappingType>
@@ -444,7 +445,9 @@ inline void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, Decompose
     data |= (cacheline.data[startByte + 3]) << 3 * BITS_IN_BYTE;
 
     std::cout << "Passing to write buffer" << std::endl;
-    writeBufferAddr.write((startByte == static_cast<std::size_t>(decomposedAddr.offset) ? (addr) : ((addr/cacheLineSize)*cacheLineSize + cacheline.data.size() - 4)));
+    writeBufferAddr.write((startByte == static_cast<std::size_t>(decomposedAddr.offset)
+                               ? (addr)
+                               : ((addr / cacheLineSize) * cacheLineSize + cacheline.data.size() - 4)));
     writeBufferDataIn.write(data);
     writeBufferWE.write(true);
     // wait(clock.posedge_event()); // DEBUG
@@ -457,11 +460,11 @@ inline void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, Decompose
         wait(clock.posedge_event());
         cyclesPassedInRequest++;
     } while (!writeBufferReady);
-
+    std::cout << "Buffer said was ready" << std::endl;
     writeBufferValidRequest.write(false);
     // wait(clock.posedge_event()); // DEBUG
     // wait(clock.posedge_event()); // DEBUG
-    std::cout << "Passed to write buffer " << std::endl;
+    // std::cout << "Passed to write buffer " << std::endl;
 }
 
 template <MappingType mappingType> inline void Cache<mappingType>::startReadFromRAM(std::uint32_t addr) {

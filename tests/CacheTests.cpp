@@ -33,44 +33,46 @@ SC_MODULE(CPUMock) {
     void dispatchInstr() {
         while (true) {
             wait();
-            std::cout << " --------------------------- " << std::endl;
-            std::cout << "Providing instruction at " << currPC << std::endl;
+            // std::cout << " --------------------------- " << std::endl;
+            // std::cout << "Providing instruction at " << currPC << std::endl;
             if (instructions.size() <= currPC) {
-                std::cout << "Ending simulation" << std::endl;
+                // std::cout << "Ending simulation" << std::endl;
                 return;
             }
             Request requestToWrite = instructions.at(currPC);
-            std::cout << "Located request to write" << std::endl;
+            // std::cout << "Located request to write" << std::endl;
             weBus.write(requestToWrite.we);
             addrBus.write(requestToWrite.addr);
             dataOutBus.write(requestToWrite.data);
             validRequestBus.write(true);
-            std::cout << "Recording instruction..." << std::endl;
+            // std::cout << "Recording instruction..." << std::endl;
             instructionsProvided.push_back(requestToWrite);
-            std::cout << "Done providing instruction" << std::endl;
+            // std::cout << "Done providing instruction" << std::endl;
             wait();
             do {
                 wait();
             } while (!cacheReadyBus.read());
 
-            std::cout << "Cache request done " << std::endl;
-            std::cout << "Logging received data" << std::endl;
+            // std::cout << "Cache request done " << std::endl;
+            // std::cout << "Logging received data" << std::endl;
             if (instructions.at(currPC).we) {
                 dataReceivedForAddress.emplace_back(instructions.at(currPC).addr, instructions.at(currPC).data);
             } else {
-                std::cout << "Logging read at " << instructions.at(currPC).addr << " which resulted in "
-                          << dataInBus.read() << std::endl;
+                // std::cout << "Logging read at " << instructions.at(currPC).addr << " which resulted in "
+                //           << dataInBus.read() << std::endl;
                 dataReceivedForAddress.emplace_back(instructions.at(currPC).addr, dataInBus.read());
             }
 
-            std::cout << "Incrementing pc" << std::endl;
+            // std::cout << "Incrementing pc" << std::endl;
             ++currPC;
             validRequestBus.write(false);
-            std::cout << "Done with cycle" << std::endl;
+            // std::cout << "Done with cycle" << std::endl;
         }
     }
 
-    void deliminateCycle() { std::cout << "==== CYCLE END ====" << std::endl; }
+    void deliminateCycle() {
+        // std::cout << "==== CYCLE END ====" << std::endl; }
+    }
 
     std::vector<std::pair<std::uint32_t, std::uint32_t>> dataReceivedForAddress;
 
@@ -128,48 +130,49 @@ SC_MODULE(RAMMock) {
                 wait(clock.posedge_event());
             }
 
-            // std::cout << "RAM: dealing with new request" << std::endl;
+            // //std::cout << "RAM: dealing with new request" << std::endl;
             bool we = weBus.read();
             if (we) {
-                std::cout << "Actually writing to RAM: " << addressBus.read() << " " << dataInBus.read() << std::endl;
+                // std::cout << "Actually writing to RAM: " << addressBus.read() << " " << dataInBus.read() <<
+                // std::endl;
                 dataMemory[addressBus.read()] = (dataInBus.read() & ((1 << 8) - 1));
                 dataMemory[addressBus.read() + 1] = (dataInBus.read() >> 8) & ((1 << 8) - 1);
                 dataMemory[addressBus.read() + 2] = (dataInBus.read() >> 16) & ((1 << 8) - 1);
                 dataMemory[addressBus.read() + 3] = (dataInBus.read() >> 24) & ((1 << 8) - 1);
                 readyBus.write(true);
-                std::cout << "Memory done writing" << std::endl;
+                // std::cout << "Memory done writing" << std::endl;
 
-                std::cout << "Total written ram now looks like: " << std::endl;
+                // std::cout << "Total written ram now looks like: " << std::endl;
                 for (auto& pair : dataMemory) {
-                    std::cout << pair.first << ": " << pair.second << std::endl;
+                    // std::cout << pair.first << ": " << pair.second << std::endl;
                 }
                 wait(clock.posedge_event());
             } else {
                 // 128 / 8 -> 16
-                std::cout << "Actually reading from RAM: " << addressBus.read() << " " << std::endl;
+                // std::cout << "Actually reading from RAM: " << addressBus.read() << " " << std::endl;
                 wait(clock.posedge_event());
                 wait(clock.posedge_event());
                 readyBus.write(true);
                 wait(clock.posedge_event());
                 sc_dt::sc_bv<128> toWrite;
                 for (std::size_t i = 0; i < wordsPerRead; ++i) {
-                    std::cout << "Doing a part read " << i << std::endl;
+                    // std::cout << "Doing a part read " << i << std::endl;
                     for (int byte = 0; byte < 16; ++byte) {
-                        // std::cout << "Doing it for a byte " << std::endl;
-                        // std::cout << unsigned(readByteFromMem(addressBus.read() + i * 16 + byte)) << " ";
+                        // //std::cout << "Doing it for a byte " << std::endl;
+                        // //std::cout << unsigned(readByteFromMem(addressBus.read() + i * 16 + byte)) << " ";
                         toWrite.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() + i * 16 + byte);
                     }
-                    std::cout << "RAM sending: " << toWrite << std::endl;
+                    // std::cout << "RAM sending: " << toWrite << std::endl;
                     dataOutBus.write(toWrite);
 
                     wait(clock.posedge_event());
                 }
-                std::cout << "Memory done reading" << std::endl;
+                // std::cout << "Memory done reading" << std::endl;
             }
-            // std::cout << "recording data op" << std::endl;
+            // //std::cout << "recording data op" << std::endl;
 
             ++numRequestsPerformed;
-            // std::cout << "Done providing/writing data" << std::endl;
+            // //std::cout << "Done providing/writing data" << std::endl;
         }
     }
 };
@@ -177,7 +180,7 @@ SC_MODULE(RAMMock) {
 class CacheTests : public testing::Test {
   protected:
     CPUMock cpu{"CPU"};
-    Cache<MappingType::Fully_Associative> cache{"Cache", 10, 64, 10, std::make_unique<RandomPolicy<std::uint32_t>>(10)};
+    Cache<MappingType::Direct> cache{"Cache", 10, 64, 10, std::make_unique<RandomPolicy<std::uint32_t>>(10)};
     RAMMock ram{"RAM", 64 / 16};
 
     // CPU -> Cache
@@ -320,9 +323,9 @@ TEST_F(CacheTests, CacheReadReturnsSameValueAsWrittenBefore) {
 
     ASSERT_EQ(cpu.instructionsProvided.size(), 2 * numRequests);
     for (int i = 0; i < numRequests; ++i) {
-        std::cout << std::get<1>(cpu.dataReceivedForAddress.at(2 * i + 1)) << " "
-                  << std::get<1>(cpu.dataReceivedForAddress.at(2 * i)) << " "
-                  << std::get<0>(cpu.dataReceivedForAddress.at(2 * i)) << std::endl;
+        // std::cout << std::get<1>(cpu.dataReceivedForAddress.at(2 * i + 1)) << " "
+        //       << std::get<1>(cpu.dataReceivedForAddress.at(2 * i)) << " "
+        //     << std::get<0>(cpu.dataReceivedForAddress.at(2 * i)) << std::endl;
         ASSERT_EQ(std::get<0>(cpu.dataReceivedForAddress.at(2 * i)), addresses.at(i));
         ASSERT_EQ(std::get<1>(cpu.dataReceivedForAddress.at(2 * i)),
                   std::get<1>(cpu.dataReceivedForAddress.at(2 * i + 1)));
@@ -522,7 +525,6 @@ TEST_F(CacheTests, CacheSingleWriteUsesWriteBuffer) {
     ASSERT_EQ(cpu.instructionsProvided.size(), 2);
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), 2);
     ASSERT_EQ(ram.numRequestsPerformed, 1); // only the read
-    ram.latency = 20;
 }
 
 TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
@@ -536,12 +538,12 @@ TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
     cpu.instructions.push_back(writeRequest2);
     cpu.instructions.push_back(writeRequest3);
     cpu.instructions.push_back(readRequest);
-
-    sc_start(1000 + 400, SC_NS);
+    
+    // 1000 for first read, then write to buffer (~instantly), then <100 for each next request to supply 
+    sc_start(2000, SC_NS);
     ASSERT_EQ(cpu.instructionsProvided.size(), 4);
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), 4);
     ASSERT_EQ(ram.numRequestsPerformed, 1); // only the read
-    ram.latency = 20;
 }
 
 TEST_F(CacheTests, CacheWriteBufferHandlesMoreWritesThanCapacity) {
@@ -590,7 +592,7 @@ TEST_F(CacheTests, CacheReadsResultInSameValuesAsManuallyRecorded) {
     for (int i = 0; i < numRequests; ++i) {
         auto addrRead = std::get<0>(cpu.dataReceivedForAddress.at(numRequests + i));
         auto dataRead = std::get<1>(cpu.dataReceivedForAddress.at(numRequests + i));
-        std::cout << "Addr: " << addrRead << " " << "Data: " << dataRead << std::endl;
+        // std::cout << "Addr: " << addrRead << " " << "Data: " << dataRead << std::endl;
         ASSERT_EQ(addrRead, addresses.at(i));
         ASSERT_EQ(memRecord[addrRead], dataRead & ((1 << 8) - 1));
         ASSERT_EQ(memRecord[addrRead + 1], (dataRead >> 8) & ((1 << 8) - 1));
