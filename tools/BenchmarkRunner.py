@@ -1,23 +1,120 @@
 from pathlib import Path
 import subprocess
+from dataclasses import dataclass
+import re
 
 pathToCacheExe=  "../cache"
 
-def runBenchmark(input: Path, cacheSize: int, cacheLineNum: int, memLatency: int, cacheLatency: int) -> str:
-    proc = subprocess.Popen([pathToCacheExe, input,"lcycles", "-c", str(6553500), "--cache-latency" ,str(cacheLatency), "--memory-latency",str(memLatency) ,"--cachelines",str(cacheLineNum), "--cacheline-size", str(cacheSize) ], stdout=subprocess.PIPE)
-    return proc.communicate()[0]
 
-def runBenchmarkForAlg(alg: str, *, cacheSize: int, cacheLineNum: int, memLatency: int, cacheLatency: int)-> str:
-    #print(f"BenchmarkInputGenerator/Benchmarks/{alg}_sort_{10}.csv")
-    return (runBenchmark(f"BenchmarkInputGenerator/Benchmarks/{alg}_sort_{10}.csv", cacheSize, cacheLineNum, memLatency, cacheLatency).decode("utf-8") ,runBenchmark(f"BenchmarkInputGenerator/Benchmarks/{alg}_sort_{100}.csv", cacheSize, cacheLineNum, memLatency, cacheLatency).decode("utf-8") ,runBenchmark(f"BenchmarkInputGenerator/Benchmarks/{alg}_sort_{1000}.csv", cacheSize, cacheLineNum, memLatency, cacheLatency).decode("utf-8"))
+@dataclass
+class RawResult:
+    cyclesNeeded: int
+    hits: int
+    misses: int
+    gates: int
+    
+@dataclass
+class BenchmarkResult:
+    inputSize: int
+    alg: str
+    policy: str
+    direct_mapped: bool
+    cacheLineSize: int
+    cacheLineNum: int
+    cacheLatency: int
+    memLatency: int
+    result: RawResult
 
-mergeBenches = runBenchmarkForAlg("merge", cacheSize=64, cacheLineNum=16, memLatency=5, cacheLatency=1)
-radixBenches = runBenchmarkForAlg("radix", cacheSize=64, cacheLineNum=16, memLatency=5, cacheLatency=1)
 
-print("Merge sorts:")
-for b in mergeBenches:
-    print(b)
 
-print("Radix sorts:")
-for b in radixBenches:
-    print(b)
+def extractRawRes(res: str) -> RawResult:
+    lines = res.split('\n')
+    cycles  =int([line.strip() for line in lines if line.strip().startswith("Cycles:\t")][0].removeprefix("Cycles:\t"))
+    misses  =int([line.strip() for line in lines if line.strip().startswith("Misses:\t")][0].removeprefix("Misses:\t"))
+    
+    hits  =int([line.strip() for line in lines if line.strip().startswith("Hits:\t")][0].removeprefix("Hits:\t"))
+    gates = int([line.strip() for line in lines if line.strip().startswith("Primitive gate count:\t")][0].removeprefix("Primitive gate count:\t"))
+    return RawResult(cycles,hits, misses, gates)
+    
+def runBenchmark(input: Path, cacheSize: int, cacheLineNum: int, memLatency: int, cacheLatency: int, policy: str = "lru", direct_mapped: bool= False) -> str:
+    cmd = [pathToCacheExe, input, "--lcycles", "-c", str(4294967295), "--cache-latency" ,str(cacheLatency), "--memory-latency",str(memLatency) ,"--cachelines",str(cacheLineNum), "--cacheline-size", str(cacheSize) , f"--{policy}"]
+    if direct_mapped:
+        cmd += ["--directmapped"]
+    print(cmd)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    res = extractRawRes(proc.communicate()[0].decode("utf-8"))
+    
+    return res
+
+def runBenchmarkForAlg(alg: str, *, cacheLineSize: int, cacheLineNum: int, memLatency: int, cacheLatency: int)-> str:
+    bs = []
+    for len in {10, 100, 1000}:
+        r = runBenchmark(f"BenchmarkInputGenerator/Benchmarks/{alg}_sort_{len}.csv", cacheLineSize, cacheLineNum, memLatency, cacheLatency,direct_mapped=True) 
+        bs.append(BenchmarkResult(len, alg, cacheLatency=cacheLatency, memLatency=memLatency, result=r, cacheLineNum=cacheLineNum, cacheLineSize=cacheLineSize, direct_mapped=True, policy="lru"))             
+    return bs
+
+def runBenchmarkForCacheSize(*,  cacheLineNum: int, memLatency: int, cacheLatency: int)-> str:
+    bs = []
+    for cacheLineSize  in {16, 64, 128}:
+        r = runBenchmark(f"BenchmarkInputGenerator/Benchmarks/merge_sort_100.csv", cacheLineNum=cacheLineNum, memLatency=memLatency, cacheLatency=cacheLatency, cacheSize=cacheLineSize) 
+        bs.append(BenchmarkResult(100, "merge", cacheLatency=cacheLatency, memLatency=memLatency, result=r, cacheLineNum=cacheLineNum, cacheLineSize=cacheLineSize, direct_mapped=False, policy="lru"))             
+    return bs
+
+def runBenchmarkForPolicy(*, cacheLineNum: int, memLatency: int, cacheLatency: int, cacheLineSize: int):
+    bs = []
+    for policyI in {"lru", "fifo", "random"}:
+        r = runBenchmark(f"BenchmarkInputGenerator/Benchmarks/merge_sort_100.csv", cacheLineNum=cacheLineNum, memLatency=memLatency, cacheLatency=cacheLatency, cacheSize=cacheLineSize, policy=policyI, direct_mapped=False) 
+        bs.append(BenchmarkResult(100, "merge", policy=policyI, direct_mapped=False, cacheLatency=cacheLatency, memLatency=memLatency, result=r, cacheLineNum=cacheLineNum, cacheLineSize=cacheLineSize))             
+    return bs
+
+def runBenchmarkForMappingType(*, cacheLineNum: int, memLatency: int, cacheLatency: int, cacheLineSize: int):
+    bs = []
+    for directMapped in {True, False}:
+        r = runBenchmark(f"BenchmarkInputGenerator/Benchmarks/merge_sort_100.csv", cacheLineNum=cacheLineNum, memLatency=memLatency, cacheLatency=cacheLatency, cacheSize=cacheLineSize, policy="lru", direct_mapped=directMapped) 
+        bs.append(BenchmarkResult(100, "merge", policy="lru", direct_mapped=directMapped, cacheLatency=cacheLatency, memLatency=memLatency, result=r, cacheLineNum=cacheLineNum, cacheLineSize=cacheLineSize))             
+    return bs
+
+print("===== Merge Sort vs. Radix Sort =====")
+mergeBenches: list[BenchmarkResult] = runBenchmarkForAlg("merge", cacheLineSize=16, cacheLineNum=8, memLatency=100, cacheLatency=20)
+radixBenches: list[BenchmarkResult] = runBenchmarkForAlg("radix", cacheLineSize=16, cacheLineNum=8, memLatency=100, cacheLatency=20)
+
+benches = mergeBenches + radixBenches
+
+for b in benches:
+    print(f"Alg: {b.alg}, Size: {b.inputSize}:")
+    print(f"Cycles: {b.result.cyclesNeeded}, Total memory accesses: {b.result.misses + b.result.hits}")
+    print(f"Hit-%: {100*b.result.hits / (b.result.hits+b.result.misses)}%, Miss-%: {100*b.result.misses / (b.result.misses+b.result.hits)}%")
+    print(f"Cycles/Memory Access: {b.result.cyclesNeeded  / ((b.result.hits+b.result.misses))}")
+    
+print("===== Increasing Cache-Line size =====")
+benches: list[BenchmarkResult] = runBenchmarkForCacheSize(cacheLineNum=8, memLatency=100, cacheLatency=5)
+for b in benches:
+    print(f"Cache-Line size: {b.cacheLineSize}")
+    print(f"Cycles: {b.result.cyclesNeeded}, Total memory accesses: {b.result.misses + b.result.hits}")
+    print(f"Hit-%: {100*b.result.hits / (b.result.hits+b.result.misses)}%, Miss-%: {100*b.result.misses / (b.result.misses+b.result.hits)}%")
+    print(f"Cycles/Memory Access: {b.result.cyclesNeeded  / ((b.result.hits+b.result.misses))}")
+    print(f"Gates: {b.result.gates}\n")
+    
+
+print("===== Replacement Policy =====")
+benches: list[BenchmarkResult] = runBenchmarkForPolicy(cacheLineNum=8, cacheLineSize=16, memLatency=100, cacheLatency=5)
+for b in benches:
+    print(f"Policy: {b.policy}")
+    print(f"Cycles: {b.result.cyclesNeeded}, Total memory accesses: {b.result.misses + b.result.hits}")
+    print(f"Hit-%: {100*b.result.hits / (b.result.hits+b.result.misses)}%, Miss-%: {100*b.result.misses / (b.result.misses+b.result.hits)}%")
+    print(f"Cycles/Memory Access: {b.result.cyclesNeeded  / ((b.result.hits+b.result.misses))}")
+    print(f"Gates: {b.result.gates}\n")
+    
+    
+print("===== Mapping Type =====")
+benches: list[BenchmarkResult] = runBenchmarkForMappingType(cacheLineNum=8, cacheLineSize=16, memLatency=100, cacheLatency=5)
+for b in benches:
+    if(b.direct_mapped):
+        print("Direct-Mapped\n")
+    else:
+        print("Fully Associative\n")
+    print(f"Cycles: {b.result.cyclesNeeded}, Total memory accesses: {b.result.misses + b.result.hits}")
+    print(f"Hit-%: {100*b.result.hits / (b.result.hits+b.result.misses)}%, Miss-%: {100*b.result.misses / (b.result.misses+b.result.hits)}%")
+    print(f"Cycles/Memory Access: {b.result.cyclesNeeded  / ((b.result.hits+b.result.misses))}")
+    print(f"Gates: {b.result.gates}\n")
+    
