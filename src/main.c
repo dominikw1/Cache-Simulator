@@ -24,6 +24,7 @@
 #define USE_CACHE 137
 #define TRACEFILE 138
 #define LONG_CYCLES 139
+#define CALL_EXTENDED 140
 
 extern struct Result run_simulation(int cycles, int directMapped, unsigned cacheLines, unsigned cacheLineSize,
                                     unsigned cacheLatency, unsigned memoryLatency, size_t numRequests,
@@ -36,9 +37,9 @@ extern struct Result run_simulation_extended(uint32_t cycles, int directMapped, 
 
 // Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
 const char* usage_msg =
-    "usage: %s <filename> [-c/--cycles c] [--directmapped] [--fullassociative] "
-    "[--cacheline-size s] [--cachelines n] [--cache-latency l] "
-    "[--memorylatency m] [--tf=<filename>] [-h/--help]\n"
+    "usage: %s <filename> [-c c/--cycles c] [--lcycles] [--directmapped] [--fullassociative] "
+    "[--cacheline-size s] [--cachelines n] [--cache-latency l] [--memorylatency m] "
+    "[--lru] [--fifo] [--random] [--use-cache=<Y,n>] [--tf=<filename>] [--extended] [-h/--help]\n"
     "   -c c / --cycles c       Set the number of cycles to be simulated to c. Allows inputs in range [0,2^16-1]\n"
     "   --lcycles               Allow input of cycles of up to 2^32-1\n"
     "   --directmapped          Simulate a direct-mapped cache\n"
@@ -72,19 +73,17 @@ const char* help_msg = "Positional arguments:\n"
                        "   --use-cache=<Y,n>       Simulates a system with cache or no cache (default: Y)\n"
                        "   --tf=<filename>         The name for a trace file containing all signals. If not set, no "
                        "trace file will be created\n"
+                       "   --extended              Calls extended run_simulation-method with more parameters\n"
                        "   -h / --help             Show this help message and exit\n";
 
 void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, progname, progname); }
 
-void print_help(const char* progname) {
-    print_usage(progname);
-    fprintf(stderr, "\n%s", help_msg);
-}
+void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
 
 unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option,
                                struct Request* requests) {
     endptr = NULL;
-    long n = strtol(optarg, &endptr, 10); // Using datatype 'long' to check for negative input
+    long n = strtol(optarg, &endptr, 10);   // Using datatype 'long' to check for negative input
     if (*endptr != '\0' || endptr == optarg) {
         fprintf(stderr, "Invalid input: %s is not a number.\n", optarg);
         print_usage(progname);
@@ -96,7 +95,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
     if (n <= 0 || errno != 0) {
         if (errno == 0 && n <= 0) { // Negative input and 0 not useful for simulation
             if (n == 0 && strcmp(option, "--cachelines") == 0) {
-                fprintf(stderr, "Warning: --cachelines must be at least 1. Setting use-cache=no.\n");
+                fprintf(stderr, "Warning: --cachelines must be at least 1. Setting use-cache=n.\n");
                 return 0;
             }
             fprintf(stderr, "Invalid input: %s\n", message);
@@ -110,14 +109,14 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
         requests = NULL;
         exit(EXIT_FAILURE);
     }
-    return (unsigned)n;
+    return (unsigned) n;
 }
 
 FILE* check_file(const char* progname, const char* filename_1, const char* filename_2, struct Request* requests,
                  char* filetype) {
     const char* filename = filename_1;
     FILE* file = fopen(filename, "r");
-    if (file == NULL) {
+    if (file == NULL) { // Accept positional argument as first and last command line argument
         file = fopen(filename_2, "r");
         filename = filename_2;
     }
@@ -132,7 +131,7 @@ FILE* check_file(const char* progname, const char* filename_1, const char* filen
         exit(EXIT_FAILURE);
     }
 
-    // Lines 118-138 taken and adapted from GRA Week 3 "File IO" files.c
+    // Lines 138-158 taken and adapted from GRA Week 3 "File IO" files.c
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
         perror("Error determining file size");
@@ -248,7 +247,7 @@ void extract_file_data(const char* progname, FILE* file, struct Request* request
     fclose(file);
 }
 
-char* getOption(const char* progname, struct Request* requests) {
+char* get_option() {
     switch (optopt) {
     case 'c':
         return "-c/--cycles";
@@ -264,17 +263,15 @@ char* getOption(const char* progname, struct Request* requests) {
         return "--use-cache";
     case TRACEFILE:
         return "--tf=";
-    case LONG_CYCLES:
-        return "--lcycles";
     default:
-        return "not a valid option";
+        return "invalid";
     }
 }
 
 // Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
-int isPowerOfTwo(unsigned long n) { return n && !(n & (n - 1)); }
+int is_power_of_two(unsigned long n) { return n && !(n & (n - 1)); }
 
-int isPowerOfSixteen(unsigned long n) { return n && !(n & (n - 4)); }
+int is_power_of_sixteen(unsigned long n) { return n && !(n & (n - 4)); }
 
 void checkCycleSize(bool longCycles, uint32_t cycles, struct Request* requests, const char* progname) {
     if (!longCycles && cycles > INT32_MAX) {
@@ -297,15 +294,16 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+
     // Default values for fullassociative cache
-    uint32_t cycles = 1000;
     int directMapped = 0; // 0 => fullassociative, x => directmapped
+    unsigned int cycles = 1000;
     unsigned int cacheLines = 256;
     unsigned int cacheLineSize = 64;
     unsigned int cacheLatency = 2;
     unsigned int memoryLatency = 100;
     enum CacheReplacementPolicy policy = POLICY_LRU; // 0 => lru, 1 => fifo, 2 => random
-    int usingCache = 1;                              // 1 => true, x => false
+    int usingCache = 1; // 1 => true, x => false
     const char* tracefile = NULL;
 
     // Extract file data
@@ -336,21 +334,23 @@ int main(int argc, char** argv) {
     int option_index;
     char* endptr = NULL;
     const char* optstring = "c:h";
-    static struct option long_options[] = {{"cycles", required_argument, 0, 'c'},
-                                           {"lcycles", no_argument, 0, LONG_CYCLES},
-                                           {"directmapped", no_argument, 0, DIRECTMAPPED},
-                                           {"fullassociative", no_argument, 0, FULLASSOCIATIVE},
-                                           {"cacheline-size", required_argument, 0, CACHELINE_SIZE},
-                                           {"cachelines", required_argument, 0, CACHELINES},
-                                           {"cache-latency", required_argument, 0, CACHE_LATENCY},
-                                           {"memory-latency", required_argument, 0, MEMORY_LATENCY},
-                                           {"lru", no_argument, 0, LEAST_RECENTLY_USED},
-                                           {"fifo", no_argument, 0, FIRST_IN_FIRST_OUT},
-                                           {"random", no_argument, 0, RANDOM_CHOICE},
-                                           {"use-cache", required_argument, 0, USE_CACHE},
-                                           {"tf=", required_argument, 0, TRACEFILE},
-                                           {"help", no_argument, 0, 'h'},
-                                           {0, 0, 0, 0}};
+    static struct option long_options[] = {
+        {"cycles", required_argument, 0, 'c'},
+        {"lcycles", no_argument, 0, LONG_CYCLES},
+        {"directmapped", no_argument, 0, DIRECTMAPPED},
+        {"fullassociative", no_argument, 0, FULLASSOCIATIVE},
+        {"cacheline-size", required_argument, 0, CACHELINE_SIZE},
+        {"cachelines", required_argument, 0, CACHELINES},
+        {"cache-latency", required_argument, 0, CACHE_LATENCY},
+        {"memory-latency", required_argument, 0, MEMORY_LATENCY},
+        {"lru", no_argument, 0, LEAST_RECENTLY_USED},
+        {"fifo", no_argument, 0, FIRST_IN_FIRST_OUT},
+        {"random", no_argument, 0, RANDOM_CHOICE},
+        {"use-cache", required_argument, 0, USE_CACHE},
+        {"extended", no_argument, 0, CALL_EXTENDED},
+        {"tf=", required_argument, 0, TRACEFILE},
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}};
 
     FILE* t_file;
     char* error_msg;
@@ -401,7 +401,7 @@ int main(int argc, char** argv) {
             error_msg = "Cacheline size should be at least 1.";
             unsigned long s = check_user_input(endptr, error_msg, progname, "--cacheline-size", requests);
 
-            if (!isPowerOfSixteen(s)) {
+            if (!is_power_of_sixteen(s)) {
                 fprintf(stderr, "Invalid Input: Cacheline size should be a multiple of 16 bytes!\n");
                 print_usage(progname);
                 free(requests);
@@ -421,7 +421,7 @@ int main(int argc, char** argv) {
                 break;
             }
 
-            if (!isPowerOfTwo(n)) {
+            if (!is_power_of_two(n)) {
                 fprintf(stderr, "Warning: Number of cachelines are usually a power of two!\n");
             }
             cacheLines = n;
@@ -450,18 +450,32 @@ int main(int argc, char** argv) {
 
         case FIRST_IN_FIRST_OUT:
             if (isLruSet) {
-                fprintf(stderr, "Warning: More than one policy set. "
-                                "Simulating cache using default value LRU!\n");
+                fprintf(stderr,
+                        "Warning: More than one policy set. Simulating cache using default value LRU!\n");
                 break;
+            } else if (policy == POLICY_RANDOM) {
+                fprintf(stderr,
+                        "Error: --random and --fifo are both set. Please choose only one option!\n");
+                print_usage(progname);
+                free(requests);
+                requests = NULL;
+                return EXIT_FAILURE;
             }
             policy = POLICY_FIFO;
             break;
 
         case RANDOM_CHOICE:
             if (isLruSet) {
-                fprintf(stderr, "Warning: More than one policy set. "
-                                "Simulating cache using default value LRU!");
+                fprintf(stderr,
+                        "Warning: More than one policy set. Simulating cache using default value LRU!\n");
                 break;
+            } else if (policy == POLICY_FIFO) {
+                fprintf(stderr,
+                        "Error: --fifo and --random are both set. Please choose only one option!\n");
+                print_usage(progname);
+                free(requests);
+                requests = NULL;
+                return EXIT_FAILURE;
             }
 
             policy = POLICY_RANDOM;
@@ -490,8 +504,8 @@ int main(int argc, char** argv) {
             break;
 
         case '?':
-            option = getOption(progname, requests);
-            if (strcmp(option, "not a valid option") == 0) {
+            option = get_option();
+            if (strcmp(option, "invalid") == 0) {
                 fprintf(stderr, "Error: Not a valid argument '%s'!\n", argv[optind - 1]);
                 print_usage(progname);
                 free(requests);
