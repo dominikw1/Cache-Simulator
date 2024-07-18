@@ -100,7 +100,7 @@ private:
 
                 validDataRequestBus.write(false);
 
-                if (program_counter == numInstructions) {
+                if (program_counter == numInstructions + 1) {
                     sc_core::sc_stop();
                 }
             }
