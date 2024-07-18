@@ -4,7 +4,7 @@
 #include <vector>
 
 SC_MODULE(CPU) {
-  public:
+public:
     // CPU -> Cache
     sc_core::sc_out<bool> weBus;
     sc_core::sc_out<bool> validDataRequestBus;
@@ -29,19 +29,28 @@ SC_MODULE(CPU) {
     std::vector<std::pair<std::uint32_t, std::uint32_t>> results;
 #endif
 
-  private:
+private:
     std::uint64_t program_counter = 0;
     Request currInstruction;
 
     std::uint64_t lastCycleWhereWorkWasDone = 0;
     std::uint64_t currCycle = 0;
+
+    bool instructionReady = false;
+    sc_core::sc_event triggerNextInstructionRead;
+
     const std::uint64_t numInstructions;
-    std::uint64_t currInstructionNum = 0;
+
     SC_CTOR(CPU);
-  public:
-    
-    CPU(sc_core::sc_module_name name, std::uint64_t numInstructions) : sc_module{name}, numInstructions{numInstructions} {
+
+public:
+
+    CPU(sc_core::sc_module_name name, std::uint64_t numInstructions) : sc_module{name},
+                                                                       numInstructions{numInstructions} {
         SC_THREAD(handleInstruction);
+        sensitive << clock.pos();
+
+        SC_THREAD(readInstruction);
         sensitive << clock.pos();
 
         SC_THREAD(countCycles);
@@ -50,47 +59,66 @@ SC_MODULE(CPU) {
 
     constexpr std::uint64_t getElapsedCycleCount() const noexcept { return lastCycleWhereWorkWasDone; };
 
-  private:
+private:
     void handleInstruction() {
         while (true) {
-            wait(clock.posedge_event());
-            // std::cout << "Requesting instruction " << program_counter << " at cycle " << currCycle << std::endl;
-            pcBus.write(program_counter);
-            validInstrRequestBus.write(true);
+            wait();
 
-            ++currInstructionNum;
-            if(currInstructionNum == numInstructions) {
-                sc_core::sc_stop();
-            }
-            waitForInstruction();
-            // std::cout << "Got instruciton at " << currCycle << std::endl;
+            std::cout << "Cycle:" << currCycle << std::endl;
+            if (instructionReady) {
+                instructionReady = false;
 
-            validInstrRequestBus.write(false);
-            Request currentRequest = instrBus.read();
-            addressBus.write(currentRequest.addr);
-            dataOutBus.write(currentRequest.data);
-            weBus.write(currentRequest.we);
-            validDataRequestBus.write(true);
+                std::cout << "Got instruciton at " << currCycle << std::endl;
 
-            waitForInstructionProcessing();
-            //     std::cout << "Got result at " << currCycle << std::endl;
+                Request currentRequest = instrBus.read();
+                addressBus.write(currentRequest.addr);
+                dataOutBus.write(currentRequest.data);
+                weBus.write(currentRequest.we);
 
-            //            std::cout << "Receiving data" << std::endl;
-            if (currInstruction.we) {
-                // std::cout << "Successfully wrote " << currInstruction.data << " to location " << currInstruction.addr
-                //         << std::endl;
-            } else {
-                // std::cout << "Successfully read " << dataInBus.read() << " from address " << currInstruction.addr
-                //         << std::endl;
+                validDataRequestBus.write(true);
+
+                triggerNextInstructionRead.notify();
+
 #ifdef CPU_DEBUG
                 results.push_back(std::make_pair(currentRequest.addr, currentRequest.data));
 #endif
+
+                waitForInstructionProcessing();
+                //ok     std::cout << "Got result at " << currCycle << std::endl;
+
+                //            std::cout << "Receiving data" << std::endl;
+                if (currInstruction.we) {
+                    // std::cout << "Successfully wrote " << currInstruction.data << " to location " << currInstruction.addr
+                    //         << std::endl;
+                } else {
+                    // std::cout << "Successfully read " << dataInBus.read() << " from address " << currInstruction.addr
+                    //         << std::endl;
+
+                }
+
+                lastCycleWhereWorkWasDone = currCycle;
+
+                validDataRequestBus.write(false);
+
+                ++program_counter;
+                if (program_counter == numInstructions) {
+                    sc_core::sc_stop();
+                }
             }
+        }
+    }
 
-            lastCycleWhereWorkWasDone = currCycle;
+    void readInstruction() {
+        while (true) {
+            wait(triggerNextInstructionRead);
 
-            validDataRequestBus.write(false);
-            ++program_counter;
+            std::cout << "Requesting instruction " << program_counter << " at cycle " << currCycle << std::endl;
+
+            pcBus.write(program_counter);
+
+            validInstrRequestBus.write(true);
+            waitForInstruction();
+            validInstrRequestBus.write(false);
         }
     }
 
@@ -103,13 +131,13 @@ SC_MODULE(CPU) {
 
     void waitForInstruction() {
         do {
-            wait(clock.posedge_event());
+            wait();
         } while (!instrReadyBus);
     }
 
     void waitForInstructionProcessing() {
         do {
-            wait(clock.posedge_event());
+            wait();
         } while (!dataReadyBus);
     }
 };
