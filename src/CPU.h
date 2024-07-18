@@ -100,7 +100,6 @@ private:
 
                 validDataRequestBus.write(false);
 
-                ++program_counter;
                 if (program_counter == numInstructions) {
                     sc_core::sc_stop();
                 }
@@ -119,6 +118,7 @@ private:
             validInstrRequestBus.write(false);
 
             instructionReady = true;
+            ++program_counter;
 
             wait(triggerNextInstructionRead);
         }
