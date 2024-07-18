@@ -7,25 +7,13 @@
 #include <memory>
 #include <systemc>
 
-// optimsiation: instruction buffer
 SC_MODULE(InstructionCache) {
   private:
-    // Cache -> Instruction Cache
-    sc_core::sc_signal<std::uint32_t> SC_NAMED(cpuDataOutBus);
-    sc_core::sc_signal<bool> SC_NAMED(ready);
-
-    // Instruction Cache -> Cache
-    sc_core::sc_signal<std::uint32_t> SC_NAMED(addrBus);
-    sc_core::sc_signal<std::uint32_t> SC_NAMED(dataInBus);
-    sc_core::sc_signal<bool> SC_NAMED(weBus);
-    sc_core::sc_signal<bool> SC_NAMED(validRequestBus);
-
-    unsigned int cacheLineNum;
-    unsigned int cacheLineSize;
-    unsigned int cacheLatency;
+    const std::uint32_t cacheLineNum;
+    const std::uint32_t cacheLineSize;
+    const std::uint32_t cacheLatency;
 
     Cache<MappingType::Direct> cache{"Cache", cacheLineNum, cacheLineSize, cacheLatency, nullptr};
-
     std::vector<Request> instructions;
 
     SC_CTOR(InstructionCache);
@@ -42,19 +30,32 @@ SC_MODULE(InstructionCache) {
     sc_core::sc_in<std::uint32_t> SC_NAMED(pcBus);
 
     // Cache -> RAM
-    sc_core::sc_out<std::uint32_t> memoryAddrBus{"memoryAddrBus"};
-    sc_core::sc_out<std::uint32_t> memoryDataOutBus{"memoryDataOutBus"};
-    sc_core::sc_out<bool> memoryWeBus{"memoryWeBus"};
-    sc_core::sc_out<bool> memoryValidRequestBus{"memoryValidRequestBus"};
+    sc_core::sc_out<std::uint32_t> SC_NAMED(memoryAddrBus);
+    sc_core::sc_out<std::uint32_t> SC_NAMED(memoryDataOutBus);
+    sc_core::sc_out<bool> SC_NAMED(memoryWeBus);
+    sc_core::sc_out<bool> SC_NAMED(memoryValidRequestBus);
 
     // RAM -> Cache
     sc_core::sc_in<sc_dt::sc_bv<128>> SC_NAMED(memoryDataInBus);
-    sc_core::sc_in<bool> memoryReadyBus{"memoryReadyBus"};
+    sc_core::sc_in<bool> SC_NAMED(memoryReadyBus);
 
-    InstructionCache(sc_core::sc_module_name name, unsigned int cacheLines, unsigned int cacheLineSize,
-                     unsigned int cacheLatency, std::vector<Request> instructions)
+  private:
+    sc_core::sc_signal<bool> SC_NAMED(instrWeSignal, false);        // always false
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(instrDataInSignal); // never read
+
+    // All other ports can be directly connected to internal cache
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(cacheDataOutSignal);
+    sc_core::sc_signal<bool> SC_NAMED(validInstrRequestSignal);
+
+  public:
+    InstructionCache(sc_core::sc_module_name name, std::uint32_t cacheLines, std::uint32_t cacheLineSize,
+                     std::uint32_t cacheLatency, std::vector<Request> instructions)
         : sc_module{name}, cacheLineNum{cacheLines}, cacheLineSize{cacheLineSize}, cacheLatency{cacheLatency},
           instructions{instructions} {
+
+        using namespace sc_core;
+
+        cache.clock(clock);
 
         cache.memoryAddrBus(memoryAddrBus);
         cache.memoryDataOutBus(memoryDataOutBus);
@@ -64,47 +65,29 @@ SC_MODULE(InstructionCache) {
         cache.memoryReadyBus(memoryReadyBus);
         cache.memoryDataInBus(memoryDataInBus);
 
-        cache.cpuDataOutBus(cpuDataOutBus);
-        cache.ready(ready);
+        cache.cpuDataOutBus(cacheDataOutSignal); // dummy - gets discarded
+        cache.ready(instrReadyBus);
 
-        cache.cpuAddrBus(addrBus);
-        cache.cpuDataInBus(dataInBus);
-        cache.cpuWeBus(weBus);
-        cache.cpuValidRequest(validRequestBus);
+        cache.cpuAddrBus(pcBus);
+        cache.cpuDataInBus(instrDataInSignal);
+        cache.cpuWeBus(instrWeSignal);
+        cache.cpuValidRequest(validInstrRequestSignal);
 
-        cache.clock(clock);
+        SC_METHOD(provideInstruction);
+        sensitive << cache.ready;
 
-        SC_THREAD(provideInstruction);
-        sensitive << clock.pos();
+        SC_METHOD(interceptTooHighPCVal);
+        sensitive << pcBus << validInstrRequestBus;
+    }
+
+  private:
+    void interceptTooHighPCVal() {
+        validInstrRequestSignal.write(validInstrRequestBus.read() && pcBus.read() < instructions.size());
     }
 
     void provideInstruction() {
-        while (true) {
-            wait(clock.posedge_event());
-            instrReadyBus.write(false);
-
-            do {
-                wait(clock.posedge_event());
-            } while (!validInstrRequestBus);
-
-            auto pc = pcBus.read();
-            if (pc >= instructions.size()) {
-                sc_core::sc_stop();
-                return;
-            }
-
-            // Act like we are fetching data from Memory
-            addrBus.write(pc);
-            weBus.write(false);
-            validRequestBus.write(true);
-
-            do {
-                wait(clock.posedge_event());
-            } while (!cache.ready);
-
-            validRequestBus.write(false);
-            instructionBus.write(instructions[pc]);
-            instrReadyBus.write(true);
+        if (cache.ready.read()) {
+            instructionBus.write(instructions[pcBus.read()]);
         }
     }
 };
