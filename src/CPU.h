@@ -51,12 +51,12 @@ SC_MODULE(CPU) {
     void handleInstruction() {
         while (true) {
             wait(clock.posedge_event());
-            std::cout << "Requesting instruction " << program_counter << " at cycle " << currCycle << std::endl;
+            //std::cout << "Requesting instruction " << program_counter << " at cycle " << currCycle << std::endl;
             pcBus.write(program_counter);
             validInstrRequestBus.write(true);
 
             waitForInstruction();
-            std::cout << "Got instruciton at " << currCycle << std::endl;
+           // std::cout << "Got instruciton at " << currCycle << std::endl;
 
             validInstrRequestBus.write(false);
             Request currentRequest = instrBus.read();
@@ -66,7 +66,7 @@ SC_MODULE(CPU) {
             validDataRequestBus.write(true);
 
             waitForInstructionProcessing();
-            std::cout << "Got result at " << currCycle << std::endl;
+       //     std::cout << "Got result at " << currCycle << std::endl;
 
             //            std::cout << "Receiving data" << std::endl;
             if (currInstruction.we) {

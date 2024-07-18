@@ -182,7 +182,8 @@ Result run_simulation_extended(uint32_t cycles, unsigned int cacheLines, unsigne
         sc_trace(trace, instrRamReadySignal, "instrRamReadySignal");
     }
 
-    sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
+   // sc_set_time_resolution(1, SC_NS);
+    sc_start(sc_time::from_value(cycles*1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
 
     if (tracefile != NULL) {
         sc_close_vcd_trace_file(trace);
