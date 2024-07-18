@@ -28,5 +28,3 @@ static inline void sc_trace(sc_core::sc_trace_file* tf, const Request& request, 
     sc_core::sc_trace(tf, request.we, pre + "_we");
 }
 #endif
-
-#endif
