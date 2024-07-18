@@ -191,11 +191,11 @@ inline std::vector<Cacheline>::iterator Cache<mappingType>::fetchIfNotPresent(st
 
     auto cacheline = getCachelineOwnedByAddr(decomposedAddr);
     if (cacheline != cacheInternal.end()) {
-       // std::cout << "HIT" << std::endl;
+        // std::cout << "HIT" << std::endl;
         ++hitCount;
         return cacheline;
     }
-    //std::cout << "MISS" << std::endl;
+    // std::cout << "MISS" << std::endl;
     ++missCount;
 
     startReadFromRAM(addr);
@@ -265,6 +265,7 @@ template <MappingType mappingType> inline void Cache<mappingType>::handleRequest
 
         if (!cpuValidRequest.read())
             continue;
+        std::cout << "Cache: Got request at " << sc_core::sc_time_stamp() << "\n";
 
         cyclesPassedInRequest = 0;
 
@@ -291,7 +292,10 @@ template <MappingType mappingType> inline void Cache<mappingType>::handleRequest
         // he gets this signal. To not still read the valid request signal from the previous cycle we sleep for one and
         // only then start checking again
         ready.write(true);
-        wait();
+        std::cout << sc_core::sc_get_current_process_b()->get_parent()->basename() << ": Done with request at "
+                  << sc_core::sc_time_stamp() << "\n";
+
+        wait(); // can we get rid of this somehow??s
     }
 }
 
@@ -321,7 +325,7 @@ inline void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, Decompose
     data |= (cacheline.data[startByte + 2]) << 2 * BITS_IN_BYTE;
     data |= (cacheline.data[startByte + 3]) << 3 * BITS_IN_BYTE;
 
-   // std::cout << "Passing to write buffer" << std::endl;
+    // std::cout << "Passing to write buffer" << std::endl;
     writeBufferAddr.write((startByte == static_cast<std::size_t>(decomposedAddr.offset)
                                ? (addr)
                                : ((addr / cacheLineSize) * cacheLineSize + cacheline.data.size() - 4)));
@@ -337,7 +341,7 @@ inline void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, Decompose
         wait(clock.posedge_event());
         cyclesPassedInRequest++;
     } while (!writeBufferReady);
-    //std::cout << "Buffer said was ready" << std::endl;
+    // std::cout << "Buffer said was ready" << std::endl;
     writeBufferValidRequest.write(false);
     // wait(clock.posedge_event()); // DEBUG
     // wait(clock.posedge_event()); // DEBUG

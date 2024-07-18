@@ -171,11 +171,14 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
     }
 
     constexpr void handleRead() noexcept {
+
         while (true) {
             wait();
             if (state == State::Read) {
+                std::cout << "WB: Got request at " << sc_core::sc_time_stamp() << "\n";
                 passReadAlong();
                 state = State::Idle;
+                std::cout << "WB: Done with request at " << sc_core::sc_time_stamp() << "\n";
             }
         }
     }
@@ -184,8 +187,10 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         while (true) {
             wait();
             if (state == State::Write) {
+                std::cout << "WB: Got write request at " << sc_core::sc_time_stamp() << "\n";
                 writeToRAM();
                 state = State::Idle;
+                std::cout << "WB: Done with write request at " << sc_core::sc_time_stamp() << "\n";
             }
         }
     }

@@ -40,7 +40,9 @@ SC_MODULE(CPU) {
     SC_CTOR(CPU) {
         SC_THREAD(handleInstruction);
         sensitive << clock.pos();
-        dont_initialize();
+
+        SC_THREAD(countCycles);
+        sensitive << clock.neg();
     }
 
     constexpr std::uint64_t getElapsedCycleCount() const noexcept { return lastCycleWhereWorkWasDone; };
@@ -49,15 +51,14 @@ SC_MODULE(CPU) {
     void handleInstruction() {
         while (true) {
             wait(clock.posedge_event());
-            currCycle++;
-            //  std::cout << "Requesting instruction " << program_counter << std::endl;
+            std::cout << "Requesting instruction " << program_counter <<" at cycle " << currCycle<< std::endl;
             pcBus.write(program_counter);
             validInstrRequestBus.write(true);
 
             waitForInstruction();
+            std::cout<<"Got instruciton at "<<currCycle<<std::endl;
 
             validInstrRequestBus.write(false);
-
             Request currentRequest = instrBus.read();
             addressBus.write(currentRequest.addr);
             dataOutBus.write(currentRequest.data);
@@ -65,6 +66,8 @@ SC_MODULE(CPU) {
             validDataRequestBus.write(true);
 
             waitForInstructionProcessing();
+            std::cout<<"Got result at "<<currCycle<<std::endl;
+
 
             //            std::cout << "Receiving data" << std::endl;
             if (currInstruction.we) {
@@ -82,6 +85,15 @@ SC_MODULE(CPU) {
 
             validDataRequestBus.write(false);
             ++program_counter;
+            std::cout<<"==================="<<std::endl;
+        }
+    }
+
+    void countCycles() {
+        while (true) {
+            wait();
+            ++currCycle;
+            std::cout<<"--------"<<std::endl;
         }
     }
 

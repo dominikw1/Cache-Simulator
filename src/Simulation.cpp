@@ -27,11 +27,11 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
                       int policy, int usingCache) {
     std::cout << "Starting Simulation...\n";
 
-    std::cout<<cacheLatency<<" "<<memoryLatency<<std::endl;
+    std::cout << cacheLatency << " " << memoryLatency << std::endl;
 
     CPU cpu{"CPU"};
-    RAM dataRam{"Data_RAM", cacheLineSize, memoryLatency};
-    RAM instructionRam{"Instruction_RAM", instructionCacheLineSize, memoryLatency};
+    RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize};
+    RAM instructionRam{"Instruction_RAM", memoryLatency, instructionCacheLineSize};
     Cache<mappingType> dataCache{"Data_cache", cacheLines, cacheLineSize, cacheLatency,
                                  (mappingType == MappingType::Direct) ? nullptr
                                                                       : getReplacementPolity(policy, cacheLines)};
