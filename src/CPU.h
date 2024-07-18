@@ -32,9 +32,9 @@ SC_MODULE(CPU) {
   private:
     std::uint64_t program_counter = 0;
     Request currInstruction;
-    sc_core::sc_event instructionCycleDone;
 
     std::uint64_t lastCycleWhereWorkWasDone = 0;
+    std::uint64_t currCycle = 0;
 
   public:
     SC_CTOR(CPU) {
@@ -49,8 +49,8 @@ SC_MODULE(CPU) {
     void handleInstruction() {
         while (true) {
             wait(clock.posedge_event());
-
-          //  std::cout << "Requesting instruction " << program_counter << std::endl;
+            currCycle++;
+            //  std::cout << "Requesting instruction " << program_counter << std::endl;
             pcBus.write(program_counter);
             validInstrRequestBus.write(true);
 
@@ -78,7 +78,7 @@ SC_MODULE(CPU) {
 #endif
             }
 
-            lastCycleWhereWorkWasDone = sc_core::sc_time_stamp().value() / 1000;
+            lastCycleWhereWorkWasDone = currCycle;
 
             validDataRequestBus.write(false);
             ++program_counter;
