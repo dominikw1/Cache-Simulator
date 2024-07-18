@@ -1,15 +1,15 @@
-#include <errno.h>
-#include <getopt.h>
 #include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
+#include <getopt.h>
 #include <sys/stat.h>
+#include <errno.h>
 
-#include "Policy/Policy.h"
 #include "Request.h"
 #include "Result.h"
+#include "Policy/Policy.h"
 
 #define DIRECTMAPPED 128
 #define FULLASSOCIATIVE 129
@@ -26,6 +26,7 @@
 extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
                                     unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
                                     struct Request requests[], const char* tracefile, int policy, int usingCache);
+
 
 // Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
 const char* usage_msg = "usage: %s <filename> [-c/--cycles c] [--directmapped] [--fullassociative] "
@@ -67,15 +68,12 @@ const char* help_msg = "Positional arguments:\n"
 
 void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, progname, progname); }
 
-void print_help(const char* progname) {
-    print_usage(progname);
-    fprintf(stderr, "\n%s", help_msg);
-}
+void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
 
 unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option,
                                struct Request* requests) {
     endptr = NULL;
-    long n = strtol(optarg, &endptr, 10); // Using datatype 'long' to check for negative input
+    long n = strtol(optarg, &endptr, 10);   // Using datatype 'long' to check for negative input
     if (*endptr != '\0' || endptr == optarg) {
         fprintf(stderr, "Invalid input: %s is not a number.\n", optarg);
         print_usage(progname);
@@ -101,10 +99,10 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
         requests = NULL;
         exit(EXIT_FAILURE);
     }
-    return (unsigned)n;
+    return (unsigned) n;
 }
 
-FILE* check_file(const char* progname, const char* filename_1, const char* filename_2, struct Request* requests,
+FILE* check_file (const char* progname, const char* filename_1, const char* filename_2, struct Request* requests,
                  char* filetype) {
     const char* filename = filename_1;
     FILE* file = fopen(filename, "r");
@@ -159,7 +157,7 @@ FILE* check_file(const char* progname, const char* filename_1, const char* filen
     return file;
 }
 
-void extract_file_data(const char* progname, FILE* file, struct Request* requests, size_t* numRequests) {
+void extract_file_data (const char* progname, FILE* file, struct Request* requests, size_t* numRequests) {
     // Check for invalid file format and save file content to requests
     // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
     int read_line;
@@ -190,7 +188,7 @@ void extract_file_data(const char* progname, FILE* file, struct Request* request
             }
         }
 
-        if ((we == 'W' || we == 'w') && read_line < 3) { // Write should have data written in the file
+        if ((we == 'W' || we == 'w') && read_line < 3) {   // Write should have data written in the file
             fprintf(stderr, "Wrong file format! No data saved.\n");
             fclose(file);
             print_usage(progname);
@@ -198,7 +196,7 @@ void extract_file_data(const char* progname, FILE* file, struct Request* request
             requests = NULL;
             exit(EXIT_FAILURE);
         }
-        if ((we == 'R' || we == 'r') && read_line == 3) { // Read should not have data written in the file
+        if ((we == 'R' || we == 'r') && read_line == 3) {  // Read should not have data written in the file
             fprintf(stderr, "Wrong file format! When reading from a file, data should be empty.\n");
             fclose(file);
             print_usage(progname);
@@ -210,9 +208,9 @@ void extract_file_data(const char* progname, FILE* file, struct Request* request
         requests[*numRequests].addr = addr;
         requests[*numRequests].data = data;
 
-        if (we == 'R' || we == 'r') {
+        if (we == 'R'|| we == 'r') {
             requests[*numRequests].we = 0;
-        } else if (we == 'W' || we == 'w') {
+        } else if (we == 'W'|| we == 'w') {
             requests[*numRequests].we = 1;
         } else {
             fprintf(stderr, "'%c' is not a valid operation\n", we);
@@ -241,26 +239,22 @@ void extract_file_data(const char* progname, FILE* file, struct Request* request
 
 char* getOption(const char* progname, struct Request* requests) {
     switch (optopt) {
-    case 'c':
-        return "-c/--cycles";
-    case CACHELINE_SIZE:
-        return "--cacheline-size";
-    case CACHELINES:
-        return "--cachelines";
-    case CACHE_LATENCY:
-        return "--cache-latency";
-    case MEMORY_LATENCY:
-        return "--memory-latency";
-    case USE_CACHE:
-        return "--use-cache";
-    case TRACEFILE:
-        return "--tf=";
-    default:
-        fprintf(stderr, "Error: Not a valid operation!\n");
-        print_usage(progname);
-        free(requests);
-        requests = NULL;
-        exit(EXIT_FAILURE);
+        case 'c':
+            return "-c/--cycles";
+        case CACHELINE_SIZE:
+            return "--cacheline-size";
+        case CACHELINES:
+            return "--cachelines";
+        case CACHE_LATENCY:
+            return "--cache-latency";
+        case MEMORY_LATENCY:
+            return "--memory-latency";
+        case USE_CACHE:
+            return "--use-cache";
+        case TRACEFILE:
+            return "--tf=";
+        default:
+            return "not a valid option";
     }
 }
 
@@ -286,12 +280,12 @@ int main(int argc, char** argv) {
     unsigned int cacheLineSize = 64;
     unsigned int cacheLatency = 2;
     unsigned int memoryLatency = 100;
-    enum CacheReplacementPolicy policy = POLICY_LRU; // 0 => lru, 1 => fifo, 2 => random
-    int usingCache = 1;                         // 1 => true, x => false
+    enum Policy policy = LRU;    // 0 => lru, 1 => fifo, 2 => random
+    int usingCache = 1; // 1 => true, x => false
     const char* tracefile = NULL;
 
     // Extract file data
-    FILE* file = check_file(progname, argv[argc - 1], argv[1], NULL, "input file");
+    FILE* file = check_file(progname, argv[argc-1], argv[1], NULL, "input file");
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
         perror("Error determining file size");
@@ -301,7 +295,7 @@ int main(int argc, char** argv) {
     }
 
     size_t numRequests = 0;
-    struct Request* requests = (struct Request*)malloc(sizeof(struct Request) * file_info.st_size);
+    struct Request *requests = (struct Request *) malloc(sizeof(struct Request) * file_info.st_size);
     if (requests == NULL) {
         perror("Error allocating memory buffer for file");
         fclose(file);
@@ -318,20 +312,21 @@ int main(int argc, char** argv) {
     int option_index;
     char* endptr = NULL;
     const char* optstring = "c:h";
-    static struct option long_options[] = {{"cycles", required_argument, 0, 'c'},
-                                           {"directmapped", no_argument, 0, DIRECTMAPPED},
-                                           {"fullassociative", no_argument, 0, FULLASSOCIATIVE},
-                                           {"cacheline-size", required_argument, 0, CACHELINE_SIZE},
-                                           {"cachelines", required_argument, 0, CACHELINES},
-                                           {"cache-latency", required_argument, 0, CACHE_LATENCY},
-                                           {"memory-latency", required_argument, 0, MEMORY_LATENCY},
-                                           {"lru", no_argument, 0, LEAST_RECENTLY_USED},
-                                           {"fifo", no_argument, 0, FIRST_IN_FIRST_OUT},
-                                           {"random", no_argument, 0, RANDOM_CHOICE},
-                                           {"use-cache", required_argument, 0, USE_CACHE},
-                                           {"tf=", required_argument, 0, TRACEFILE},
-                                           {"help", no_argument, 0, 'h'},
-                                           {0, 0, 0, 0}};
+    static struct option long_options[] = {
+        {"cycles", required_argument, 0, 'c'},
+        {"directmapped", no_argument, 0, DIRECTMAPPED},
+        {"fullassociative", no_argument, 0, FULLASSOCIATIVE},
+        {"cacheline-size", required_argument, 0, CACHELINE_SIZE},
+        {"cachelines", required_argument, 0, CACHELINES},
+        {"cache-latency", required_argument, 0, CACHE_LATENCY},
+        {"memory-latency", required_argument, 0, MEMORY_LATENCY},
+        {"lru", no_argument, 0, LEAST_RECENTLY_USED},
+        {"fifo", no_argument, 0, FIRST_IN_FIRST_OUT},
+        {"random", no_argument, 0, RANDOM_CHOICE},
+        {"use-cache", required_argument, 0, USE_CACHE},
+        {"tf=", required_argument, 0, TRACEFILE},
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}};
 
     FILE* t_file;
     char* error_msg;
@@ -347,14 +342,14 @@ int main(int argc, char** argv) {
         case 'c':
             error_msg = "Cycles cannot be smaller than 1.";
             unsigned long c = check_user_input(endptr, error_msg, progname, "-c/--cycles", requests);
-            if (c > INT32_MAX) { // Check c before converting it to int
+            if (c > INT32_MAX) {    // Check c before converting it to int
                 fprintf(stderr, "Error: %ld is too big to be converted to an int.\n", c);
                 print_usage(progname);
                 free(requests);
                 requests = NULL;
                 return EXIT_FAILURE;
             }
-            cycles = (int)c;
+            cycles = (int) c;
             break;
 
         case 'h':
@@ -382,7 +377,7 @@ int main(int argc, char** argv) {
 
         case CACHELINE_SIZE:
             error_msg = "Cacheline size should be at least 1.";
-            unsigned long s = check_user_input(endptr, error_msg, progname, "--cacheline-size", requests);
+            unsigned long s = check_user_input(endptr, error_msg, progname,"--cacheline-size", requests);
 
             if (!isPowerOfSixteen(s)) {
                 fprintf(stderr, "Invalid Input: Cacheline size should be a multiple of 16 bytes!\n");
@@ -398,7 +393,7 @@ int main(int argc, char** argv) {
         case CACHELINES:
             error_msg = "Number of cache-lines must be at least 1.";
             unsigned long n = check_user_input(endptr, error_msg, progname, "--cachelines", requests);
-            if (n == 0) { // Use no cache for simulation due to user input --cachelines 0
+            if (n == 0) {   // Use no cache for simulation due to user input --cachelines 0
                 usingCache = 0;
                 cacheLines = 0;
                 break;
@@ -423,11 +418,11 @@ int main(int argc, char** argv) {
             break;
 
         case LEAST_RECENTLY_USED:
-            if (policy == POLICY_FIFO || policy == POLICY_RANDOM) {
+            if (policy == FIFO || policy == RANDOM) {
                 fprintf(stderr, "Warning: More than one policy set. "
                                 "Simulating cache using default value LRU!\n");
             }
-            policy = POLICY_LRU;
+            policy = LRU;
             isLruSet = 1;
             break;
 
@@ -437,7 +432,7 @@ int main(int argc, char** argv) {
                                 "Simulating cache using default value LRU!\n");
                 break;
             }
-            policy = POLICY_FIFO;
+            policy = FIFO;
             break;
 
         case RANDOM_CHOICE:
@@ -447,7 +442,7 @@ int main(int argc, char** argv) {
                 break;
             }
 
-            policy = POLICY_RANDOM;
+            policy = RANDOM;
             break;
 
         case USE_CACHE:
@@ -474,6 +469,13 @@ int main(int argc, char** argv) {
 
         case '?':
             option = getOption(progname, requests);
+            if (strcmp(option, "not a valid option") == 0) {
+                fprintf(stderr, "Error: Not a valid argument '%s'!\n", argv[optind - 1]);
+                print_usage(progname);
+                free(requests);
+                requests = NULL;
+                exit(EXIT_FAILURE);
+            }
             fprintf(stderr, "Error: Option '%s' requires an argument.\n", option);
 
         default:
@@ -502,11 +504,14 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    // TODO: results zu stdout printen?
-    fprintf(stderr, "Results:\n- Cycles: %zu\n- Misses: %zu\n- Hits: %zu\n- Primitive gate count: %zu\n", result.cycles,
-            result.misses, result.hits, result.primitiveGateCount);
+    // https://gist.github.com/ConnerWill/d4b6c776b509add763e17f9f113fd25b
+    fprintf(stdout, "--------------------------------------------------\n"
+            "\x1b[1m\t\tSimulation Results\x1b[0m\n"
+                    "--------------------------------------------------\n"
+                    "\tCycles:\t%zu\n\tMisses:\t%zu\n\tHits:\t%zu\n\tPrimitive gate count:\t%zu\n",
+            result.cycles, result.misses, result.hits, result.primitiveGateCount);
 
-    fprintf(stderr, "End of Simulation\n");
+    fprintf(stdout, "End of Simulation\n");
 
     return EXIT_SUCCESS;
 }
