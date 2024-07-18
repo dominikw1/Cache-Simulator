@@ -166,6 +166,8 @@ Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) 
         if (i + 1 <= numReadEvents)
             wait(clock.posedge_event());
     }
+//    std::cout << "Cache: Done reading into cacheline at " << sc_core::sc_time_stamp() << "\n";
+
     writeBufferValidRequest.write(false);
     // wait(clock.posedge_event()); // DEBUG
     // wait(clock.posedge_event()); // DEBUG
@@ -265,7 +267,7 @@ template <MappingType mappingType> inline void Cache<mappingType>::handleRequest
 
         if (!cpuValidRequest.read())
             continue;
-        std::cout << "Cache: Got request at " << sc_core::sc_time_stamp() << "\n";
+        //std::cout << "Cache: Got request at " << sc_core::sc_time_stamp() << "\n";
 
         cyclesPassedInRequest = 0;
 
@@ -292,8 +294,8 @@ template <MappingType mappingType> inline void Cache<mappingType>::handleRequest
         // he gets this signal. To not still read the valid request signal from the previous cycle we sleep for one and
         // only then start checking again
         ready.write(true);
-        std::cout << sc_core::sc_get_current_process_b()->get_parent()->basename() << ": Done with request at "
-                  << sc_core::sc_time_stamp() << "\n";
+       // std::cout << sc_core::sc_get_current_process_b()->get_parent()->basename() << ": Done with request at "
+         //         << sc_core::sc_time_stamp() << "\n";
 
         wait(); // can we get rid of this somehow??s
     }

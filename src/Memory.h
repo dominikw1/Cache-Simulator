@@ -42,14 +42,14 @@ SC_MODULE(RAM) {
 
             if (!validRequestBus.read())
                 continue;
-            std::cout << "RAM: Got request at " << sc_core::sc_time_stamp() << "\n";
+           // std::cout << "RAM: Got request at " << sc_core::sc_time_stamp() << "\n";
 
             // Wait out latency
-            std::cout<<latency<<std::endl;
+            //std::cout<<latency<<std::endl;
             for (std::size_t cycles = 0; cycles < latency; ++cycles) {
                 wait(clock.posedge_event());
             }
-            std::cout << "RAM: done with latency at " << sc_core::sc_time_stamp() << "\n";
+           // std::cout << "RAM: done with latency at " << sc_core::sc_time_stamp() << "\n";
 
             if (weBus.read()) {
                 // Writing happens in one cycle -> one able to write 32 bits
@@ -74,7 +74,7 @@ SC_MODULE(RAM) {
                     wait(clock.posedge_event());
                 }
             }
-            std::cout << "RAM done with request at " << sc_core::sc_time_stamp() << "\n";
+          //  std::cout << "RAM done with request at " << sc_core::sc_time_stamp() << "\n";
 
             ++numRequestsPerformed;
         }

@@ -27,7 +27,7 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
                       int policy, int usingCache) {
     std::cout << "Starting Simulation...\n";
 
-    std::cout << cacheLatency << " " << memoryLatency << std::endl;
+   // std::cout << cacheLatency << " " << memoryLatency << std::endl;
 
     CPU cpu{"CPU"};
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize};
