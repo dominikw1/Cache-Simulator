@@ -110,8 +110,6 @@ private:
 
     void readInstruction() {
         while (true) {
-            wait(triggerNextInstructionRead);
-
             std::cout << "Requesting instruction " << program_counter << " at cycle " << currCycle << std::endl;
 
             pcBus.write(program_counter);
@@ -119,6 +117,8 @@ private:
             validInstrRequestBus.write(true);
             waitForInstruction();
             validInstrRequestBus.write(false);
+
+            wait(triggerNextInstructionRead);
         }
     }
 
