@@ -52,6 +52,7 @@ const char* usage_msg =
     "   --fifo                  Use FIFO as cache-replacement policy\n"
     "   --random                Use random cache-replacement policy\n"
     "   --use-cache=<Y,n>       Simulates a system with cache or no cache\n"
+    "   --extended              Call extended run_simulation-method\n"
     "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
     "trace file will be created\n"
     "   -h / --help             Show help message and exit\n";
@@ -73,7 +74,7 @@ const char* help_msg = "Positional arguments:\n"
                        "   --use-cache=<Y,n>       Simulates a system with cache or no cache (default: Y)\n"
                        "   --tf=<filename>         The name for a trace file containing all signals. If not set, no "
                        "trace file will be created\n"
-                       "   --extended              Calls extended run_simulation-method with more parameters\n"
+                       "   --extended              Calls extended run_simulation-method with additional parameters\n"
                        "   -h / --help             Show this help message and exit\n";
 
 void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, progname, progname); }
@@ -358,6 +359,7 @@ int main(int argc, char** argv) {
     int isFullassociativeSet = 0;
     int isLruSet = 0;
     bool longCycles = false;
+    int callExtended = 0;
     opterr = 0; // Use own error messages
 
     while ((opt = getopt_long(argc, argv, optstring, long_options, &option_index)) != -1) {
@@ -503,6 +505,10 @@ int main(int argc, char** argv) {
             fclose(t_file);
             break;
 
+        case CALL_EXTENDED:
+            callExtended = 1;
+            break;
+
         case '?':
             option = get_option();
             if (strcmp(option, "invalid") == 0) {
@@ -529,8 +535,14 @@ int main(int argc, char** argv) {
 
     checkCycleSize(longCycles, cycles, requests, progname);
 
-    struct Result result = run_simulation_extended(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency,
-                                                   memoryLatency, numRequests, requests, tracefile, policy, usingCache);
+    struct Result result;
+    if (callExtended) {
+        result = run_simulation_extended(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
+                                         numRequests, requests, tracefile, policy, usingCache);
+    } else {
+        result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLines, memoryLatency,
+                                numRequests, requests, tracefile);
+    }
 
     free(requests);
     requests = NULL;
