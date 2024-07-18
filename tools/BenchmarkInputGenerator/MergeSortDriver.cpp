@@ -1,5 +1,6 @@
 #include "../MemoryAnalyser/include/MemoryAnalyserSupport.h"
 #include "Sort.h"
+#include <algorithm>
 #include "FileReader.h"
 
 int main(int argc, char* argv[]) {

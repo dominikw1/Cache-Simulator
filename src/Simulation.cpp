@@ -31,7 +31,7 @@ Result run_simulation_extended(uint32_t cycles, unsigned int cacheLines, unsigne
 
     // std::cout << cacheLatency << " " << memoryLatency << std::endl;
 
-    CPU cpu{"CPU"};
+    CPU cpu{"CPU", numRequests};
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize};
     RAM instructionRam{"Instruction_RAM", memoryLatency, instructionCacheLineSize};
     Cache<mappingType> dataCache{"Data_cache", cacheLines, cacheLineSize, cacheLatency,
@@ -182,14 +182,16 @@ Result run_simulation_extended(uint32_t cycles, unsigned int cacheLines, unsigne
         sc_trace(trace, instrRamReadySignal, "instrRamReadySignal");
     }
 
+    // sc_set_time_resolution(1, SC_NS);
     sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
 
     if (tracefile != NULL) {
         sc_close_vcd_trace_file(trace);
     }
 
+    std::cout << pcSignal << " " << numRequests << std::endl;
     return Result{
-        pcSignal >= numRequests
+        pcSignal >= numRequests - 1
             ? cpu.getElapsedCycleCount()
             : SIZE_MAX,      // TODO: What if last request is not finished yet, but pc is already at numRequests
         dataCache.missCount, // TODO: What if a reuqest is stopped in the middle of processing, should the MISS/HIT be
@@ -203,6 +205,7 @@ struct Result run_simulation_extended(uint32_t cycles, int directMapped, unsigne
                                       unsigned int cacheLineSize, unsigned int cacheLatency, unsigned int memoryLatency,
                                       size_t numRequests, struct Request requests[], const char* tracefile,
                                       CacheReplacementPolicy policy, int usingCache) {
+    std::cout<<policy<<std::endl;
     if (directMapped == 0) {
         return run_simulation_extended<MappingType::Fully_Associative>(cycles, cacheLines, cacheLineSize, cacheLatency,
                                                                        memoryLatency, numRequests, requests, tracefile,

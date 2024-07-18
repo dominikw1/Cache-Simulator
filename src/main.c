@@ -26,12 +26,11 @@
 #define LONG_CYCLES 139
 #define CALL_EXTENDED 140
 
-extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
-                                    unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
+extern struct Result run_simulation(int cycles, int directMapped, unsigned cacheLines, unsigned cacheLineSize,
+                                    unsigned cacheLatency, unsigned memoryLatency, size_t numRequests,
                                     struct Request requests[], const char* tracefile);
 
-// TODO: alle Parameter nochmal übergeben?
-extern struct Result run_simulation_extended(u_int32_t cycles, int directMapped, unsigned int cacheLines,
+extern struct Result run_simulation_extended(uint32_t cycles, int directMapped, unsigned int cacheLines,
                                              unsigned int cacheLineSize, unsigned int cacheLatency,
                                              unsigned int memoryLatency, size_t numRequests, struct Request requests[],
                                              const char* tracefile, enum CacheReplacementPolicy policy, int usingCache);
@@ -55,7 +54,6 @@ const char* usage_msg =
     "   --use-cache=<Y,n>       Simulates a system with cache or no cache\n"
     "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
     "trace file will be created\n"
-    "   --extended              Call extended run_simulation-method\n"
     "   -h / --help             Show help message and exit\n";
 
 const char* help_msg = "Positional arguments:\n"
@@ -63,7 +61,6 @@ const char* help_msg = "Positional arguments:\n"
                        "\n"
                        "Optional arguments:\n"
                        "   -c c / --cycles c       The number of cycles used for the simulation (default: c = 1000)\n"
-                       "   --lcycles               Allow input of cycles of up to 2^32-1\n"
                        "   --directmapped          Simulates a direct-mapped cache\n"
                        "   --fullassociative       Simulates a fully associative cache (Set as default)\n"
                        "   --cacheline-size s      The size of a cache line in bytes (default: 64)\n"
@@ -278,8 +275,8 @@ int is_power_of_sixteen(unsigned long n) { return n && !(n & (n - 4)); }
 
 void checkCycleSize(bool longCycles, uint32_t cycles, struct Request* requests, const char* progname) {
     if (!longCycles && cycles > INT32_MAX) {
-        fprintf(stderr,"Error: %d is too big to be converted to an int. "
-                        "Set option --lcycles to increase range.\n", cycles);
+        fprintf(stderr, "Error: %d is too big to be converted to an int. Set option --lcycles to increase range.\n",
+                cycles);
         print_usage(progname);
         free(requests);
         requests = NULL;
@@ -530,10 +527,9 @@ int main(int argc, char** argv) {
     } // TODO: Cycles macht keinen Sinn
 
     checkCycleSize(longCycles, cycles, requests, progname);
-    fprintf(stderr, "%d\n\n",policy);
 
-    struct Result result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
-                                          numRequests, requests, tracefile);
+    struct Result result = run_simulation_extended(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency,
+                                                   memoryLatency, numRequests, requests, tracefile, policy, usingCache);
 
     free(requests);
     requests = NULL;
