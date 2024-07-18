@@ -102,8 +102,14 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
     return (unsigned) n;
 }
 
-FILE* check_file (const char* progname, const char* filename, struct Request* requests, char* filetype) {
+FILE* check_file (const char* progname, const char* filename_1, const char* filename_2, struct Request* requests,
+                 char* filetype) {
+    const char* filename = filename_1;
     FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        file = fopen(filename_2, "r");
+        filename = filename_2;
+    }
 
     if (file == NULL) {
         fprintf(stderr, "Error opening %s: %s\n", filetype, strerror(errno));
@@ -283,7 +289,7 @@ int main(int argc, char** argv) {
     const char* tracefile = NULL;
 
     // Extract file data
-    FILE* file = check_file(progname, argv[1], NULL, "input file");
+    FILE* file = check_file(progname, argv[argc-1], argv[1], NULL, "input file");
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
         perror("Error determining file size");
@@ -460,7 +466,7 @@ int main(int argc, char** argv) {
             break;
 
         case TRACEFILE:
-            t_file = check_file(progname, optarg, requests, "tracefile");
+            t_file = check_file(progname, optarg, NULL, requests, "tracefile");
             tracefile = optarg;
             fclose(t_file);
             break;
@@ -496,10 +502,10 @@ int main(int argc, char** argv) {
     }
 
     // TODO: results zu stdout printen?
-    fprintf(stderr, "Results:\n\tCycles: %zu\n\tMisses: %zu\n\tHits: %zu\n\tPrimitive gate count: %zu\n",
+    fprintf(stderr, "Results:\n- Cycles: %zu\n- Misses: %zu\n- Hits: %zu\n- Primitive gate count: %zu\n",
             result.cycles, result.misses, result.hits, result.primitiveGateCount);
 
-    //fprintf(stderr, "End of Simulation\n");
+    fprintf(stderr, "End of Simulation\n");
 
     return EXIT_SUCCESS;
 }
