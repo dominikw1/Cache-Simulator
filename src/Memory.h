@@ -18,12 +18,17 @@ SC_MODULE(RAM) {
     sc_core::sc_out<bool> readyBus{"readyBus"};
 
   private:
-    std::unordered_map<std::uint32_t, std::uint8_t> dataMemory{};
     std::uint32_t numRequestsPerformed;
     std::uint32_t latency;
     std::uint32_t wordsPerRead;
 
     SC_CTOR(RAM) {}
+
+#ifdef RAM_DEBUG
+public:
+#endif
+    std::unordered_map<std::uint32_t, std::uint8_t> dataMemory{};
+
 
   public:
     RAM(sc_core::sc_module_name name, std::uint32_t latency, std::uint32_t wordsPerRead)
