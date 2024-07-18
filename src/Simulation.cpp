@@ -205,6 +205,7 @@ struct Result run_simulation_extended(uint32_t cycles, int directMapped, unsigne
                                       unsigned int cacheLineSize, unsigned int cacheLatency, unsigned int memoryLatency,
                                       size_t numRequests, struct Request requests[], const char* tracefile,
                                       CacheReplacementPolicy policy, int usingCache) {
+    std::cout<<policy<<std::endl;
     if (directMapped == 0) {
         return run_simulation_extended<MappingType::Fully_Associative>(cycles, cacheLines, cacheLineSize, cacheLatency,
                                                                        memoryLatency, numRequests, requests, tracefile,
