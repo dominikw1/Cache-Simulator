@@ -1,6 +1,6 @@
 #pragma once
-#include "ReplacementPolicy.h"
 #include "../RingQueue.h"
+#include "ReplacementPolicy.h"
 #include <unordered_set>
 
 template <typename T> class FIFOPolicy : public ReplacementPolicy<T> {
@@ -9,6 +9,7 @@ template <typename T> class FIFOPolicy : public ReplacementPolicy<T> {
     T pop() override;
     std::size_t getSize() { return contents.getSize(); }
     FIFOPolicy(std::size_t size) : contents{size} {}
+    constexpr std::size_t calcBasicGates() noexcept override;
 
   private:
     RingQueue<T> contents;
@@ -26,4 +27,11 @@ template <typename T> inline T FIFOPolicy<T>::pop() {
     T popped = contents.pop();
     itemsInCache.erase(popped);
     return popped;
+}
+
+template <typename T> inline constexpr std::size_t FIFOPolicy<T>::calcBasicGates() noexcept {
+    // per register 10 gates and we have about 8* SIZE registers
+    // for comparison whether already in we need SIZE comparators and then an or chain
+    // an adder for incrementing
+    return 10 * getSize() + 1;
 }
