@@ -17,7 +17,7 @@ struct Result run_simulation_extended(uint32_t cycles, int directMapped, unsigne
 struct Result run_simulation(int cycles, int directMapped, unsigned cacheLines, unsigned cacheLineSize,
                              unsigned cacheLatency, unsigned memoryLatency, size_t numRequests,
                              struct Request requests[], const char* tracefile);
-;
+
 #ifdef __cplusplus
 }
 #endif
