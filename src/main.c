@@ -86,7 +86,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
     endptr = NULL;
     long n = strtol(optarg, &endptr, 10);   // Using datatype 'long' to check for negative input
     if (*endptr != '\0' || endptr == optarg) {
-        fprintf(stderr, "Invalid input: %s is not a number.\n", optarg);
+        fprintf(stderr, "Invalid input: '%s' is not a number.\n", optarg);
         print_usage(progname);
         free(requests);
         requests = NULL;
@@ -528,14 +528,16 @@ int main(int argc, char** argv) {
 
     checkCycleSize(longCycles, cycles, requests, progname);
 
-    struct Result result;
-    if (callExtended) {
+    struct Result result = run_simulation_extended(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
+                                                   numRequests, requests, tracefile, policy, usingCache);
+ /*   if (callExtended) {
         result = run_simulation_extended(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
                                          numRequests, requests, tracefile, policy, usingCache);
     } else {
         result = run_simulation((int) cycles, directMapped, cacheLines, cacheLineSize, cacheLines,
                                 memoryLatency, numRequests, requests, tracefile);
     }
+    */
 
     free(requests);
     requests = NULL;
