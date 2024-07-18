@@ -1,6 +1,4 @@
-#ifndef RESULT_H
-#define RESULT_H
-
+#pragma once
 #include "stddef.h"
 
 struct Result {
@@ -9,5 +7,3 @@ struct Result {
     size_t hits;
     size_t primitiveGateCount;
 };
-
-#endif

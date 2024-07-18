@@ -1,6 +1,4 @@
-#ifndef REQUEST_H
-#define REQUEST_H
-
+#pragma once
 #include "stdint.h"
 
 struct Request {
@@ -29,6 +27,4 @@ static inline void sc_trace(sc_core::sc_trace_file* tf, const Request& request, 
     sc_core::sc_trace(tf, request.data, pre + "_data");
     sc_core::sc_trace(tf, request.we, pre + "_we");
 }
-#endif
-
 #endif

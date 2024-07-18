@@ -1,8 +1,3 @@
-#ifndef POLICY_H
-#define POLICY_H
-
-#include <stdio.h>
+#pragma once
 
 enum CacheReplacementPolicy { POLICY_LRU, POLICY_FIFO, POLICY_RANDOM };
-
-#endif
