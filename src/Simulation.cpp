@@ -31,7 +31,7 @@ Result run_simulation_extended(uint32_t cycles, unsigned int cacheLines, unsigne
 
     // std::cout << cacheLatency << " " << memoryLatency << std::endl;
 
-    CPU cpu{"CPU"};
+    CPU cpu{"CPU", numRequests};
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize};
     RAM instructionRam{"Instruction_RAM", memoryLatency, instructionCacheLineSize};
     Cache<mappingType> dataCache{"Data_cache", cacheLines, cacheLineSize, cacheLatency,

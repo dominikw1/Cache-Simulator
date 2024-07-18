@@ -35,9 +35,12 @@ SC_MODULE(CPU) {
 
     std::uint64_t lastCycleWhereWorkWasDone = 0;
     std::uint64_t currCycle = 0;
-
+    const std::uint64_t numInstructions;
+    std::uint64_t currInstructionNum = 0;
+    SC_CTOR(CPU);
   public:
-    SC_CTOR(CPU) {
+    
+    CPU(sc_core::sc_module_name name, std::uint64_t numInstructions) : sc_module{name}, numInstructions{numInstructions} {
         SC_THREAD(handleInstruction);
         sensitive << clock.pos();
 
@@ -51,12 +54,16 @@ SC_MODULE(CPU) {
     void handleInstruction() {
         while (true) {
             wait(clock.posedge_event());
-            //std::cout << "Requesting instruction " << program_counter << " at cycle " << currCycle << std::endl;
+            // std::cout << "Requesting instruction " << program_counter << " at cycle " << currCycle << std::endl;
             pcBus.write(program_counter);
             validInstrRequestBus.write(true);
 
+            ++currInstructionNum;
+            if(currInstructionNum == numInstructions) {
+                sc_core::sc_stop();
+            }
             waitForInstruction();
-           // std::cout << "Got instruciton at " << currCycle << std::endl;
+            // std::cout << "Got instruciton at " << currCycle << std::endl;
 
             validInstrRequestBus.write(false);
             Request currentRequest = instrBus.read();
@@ -66,7 +73,7 @@ SC_MODULE(CPU) {
             validDataRequestBus.write(true);
 
             waitForInstructionProcessing();
-       //     std::cout << "Got result at " << currCycle << std::endl;
+            //     std::cout << "Got result at " << currCycle << std::endl;
 
             //            std::cout << "Receiving data" << std::endl;
             if (currInstruction.we) {
