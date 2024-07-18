@@ -499,7 +499,7 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Results:\n\tCycles: %zu\n\tMisses: %zu\n\tHits: %zu\n\tPrimitive gate count: %zu\n",
             result.cycles, result.misses, result.hits, result.primitiveGateCount);
 
-    fprintf(stderr, "End of Simulation");
+    //fprintf(stderr, "End of Simulation\n");
 
     return EXIT_SUCCESS;
 }

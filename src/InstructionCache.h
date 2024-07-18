@@ -9,38 +9,37 @@
 
 // optimsiation: instruction buffer
 SC_MODULE(InstructionCache) {
-private:
+  private:
     // Cache -> Instruction Cache
-    sc_core::sc_signal<std::uint32_t> cpuDataOutBus;
-    sc_core::sc_signal<bool> ready;
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(cpuDataOutBus);
+    sc_core::sc_signal<bool> SC_NAMED(ready);
 
     // Instruction Cache -> Cache
-    sc_core::sc_signal<std::uint32_t> addrBus;
-    sc_core::sc_signal<std::uint32_t> dataInBus;
-    sc_core::sc_signal<bool> weBus;
-    sc_core::sc_signal<bool> validRequestBus;
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(addrBus);
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(dataInBus);
+    sc_core::sc_signal<bool> SC_NAMED(weBus);
+    sc_core::sc_signal<bool> SC_NAMED(validRequestBus);
 
     unsigned int cacheLineNum;
     unsigned int cacheLineSize;
     unsigned int cacheLatency;
 
-    Cache<MappingType::Direct> cache{"Cache", cacheLineNum, cacheLineSize, cacheLatency,
-                                     std::make_unique<FIFOPolicy<std::uint32_t>>(cacheLineNum)};
+    Cache<MappingType::Direct> cache{"Cache", cacheLineNum, cacheLineSize, cacheLatency, nullptr};
 
     std::vector<Request> instructions;
 
     SC_CTOR(InstructionCache);
 
-public:
-    sc_core::sc_in<bool> clock;
+  public:
+    sc_core::sc_in<bool> SC_NAMED(clock);
 
     // Instruction Cache -> CPU
-    sc_core::sc_out<Request> instructionBus;
-    sc_core::sc_out<bool> instrReadyBus;
+    sc_core::sc_out<Request> SC_NAMED(instructionBus);
+    sc_core::sc_out<bool> SC_NAMED(instrReadyBus);
 
     // CPU -> Instruction Cache
-    sc_core::sc_in<bool> validInstrRequestBus;
-    sc_core::sc_in<std::uint32_t> pcBus;
+    sc_core::sc_in<bool> SC_NAMED(validInstrRequestBus);
+    sc_core::sc_in<std::uint32_t> SC_NAMED(pcBus);
 
     // Cache -> RAM
     sc_core::sc_out<std::uint32_t> memoryAddrBus{"memoryAddrBus"};
@@ -49,15 +48,13 @@ public:
     sc_core::sc_out<bool> memoryValidRequestBus{"memoryValidRequestBus"};
 
     // RAM -> Cache
-    sc_core::sc_in<sc_dt::sc_bv<128>> memoryDataInBus;
+    sc_core::sc_in<sc_dt::sc_bv<128>> SC_NAMED(memoryDataInBus);
     sc_core::sc_in<bool> memoryReadyBus{"memoryReadyBus"};
 
     InstructionCache(sc_core::sc_module_name name, unsigned int cacheLines, unsigned int cacheLineSize,
-                     unsigned int cacheLatency, std::vector<Request> instructions) : sc_module{name},
-                                                                                     cacheLineNum{cacheLines},
-                                                                                     cacheLineSize{cacheLineSize},
-                                                                                     cacheLatency{cacheLatency},
-                                                                                     instructions{instructions} {
+                     unsigned int cacheLatency, std::vector<Request> instructions)
+        : sc_module{name}, cacheLineNum{cacheLines}, cacheLineSize{cacheLineSize}, cacheLatency{cacheLatency},
+          instructions{instructions} {
 
         cache.memoryAddrBus(memoryAddrBus);
         cache.memoryDataOutBus(memoryDataOutBus);

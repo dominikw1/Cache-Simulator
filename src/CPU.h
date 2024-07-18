@@ -50,7 +50,7 @@ SC_MODULE(CPU) {
         while (true) {
             wait(clock.posedge_event());
 
-            std::cout << "Requesting instruction " << program_counter << std::endl;
+          //  std::cout << "Requesting instruction " << program_counter << std::endl;
             pcBus.write(program_counter);
             validInstrRequestBus.write(true);
 
@@ -66,13 +66,13 @@ SC_MODULE(CPU) {
 
             waitForInstructionProcessing();
 
-            std::cout << "Receiving data" << std::endl;
+            //            std::cout << "Receiving data" << std::endl;
             if (currInstruction.we) {
-                std::cout << "Successfully wrote " << currInstruction.data << " to location " << currInstruction.addr
-                          << std::endl;
+                // std::cout << "Successfully wrote " << currInstruction.data << " to location " << currInstruction.addr
+                //         << std::endl;
             } else {
-                std::cout << "Successfully read " << dataInBus.read() << " from address " << currInstruction.addr
-                          << std::endl;
+                // std::cout << "Successfully read " << dataInBus.read() << " from address " << currInstruction.addr
+                //         << std::endl;
 #ifdef CPU_DEBUG
                 results.push_back(std::make_pair(currentRequest.addr, currentRequest.data));
 #endif

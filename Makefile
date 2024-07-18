@@ -4,7 +4,7 @@
 
 # entry point for the program and target name
 C_SRCS = src/main.c 
-CPP_SRCS = src/SubRequest.cpp src/Simulation.cpp
+CPP_SRCS = src/SubRequest.cpp src/Simulation.cpp src/Cache.cpp
 
 # Object files
 C_OBJS = $(C_SRCS:.c=.o)
