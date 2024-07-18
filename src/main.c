@@ -294,6 +294,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+
     // Default values for fullassociative cache
     int directMapped = 0; // 0 => fullassociative, x => directmapped
     unsigned int cycles = 1000;
