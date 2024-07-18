@@ -143,8 +143,8 @@ SC_MODULE(RAMMock) {
                 // std::cout << "Memory done writing" << std::endl;
 
                 // std::cout << "Total written ram now looks like: " << std::endl;
-              //  for (auto& pair : dataMemory) {
-                    // std::cout << pair.first << ": " << pair.second << std::endl;
+                //  for (auto& pair : dataMemory) {
+                // std::cout << pair.first << ": " << pair.second << std::endl;
                 //}
                 wait(clock.posedge_event());
             } else {
@@ -162,7 +162,7 @@ SC_MODULE(RAMMock) {
                     }
                     // std::cout << "RAM sending: " << toWrite << std::endl;
                     dataOutBus.write(toWrite);
-                    if (i +1 != wordsPerRead) {
+                    if (i + 1 != wordsPerRead) {
                         wait(clock.posedge_event());
                     }
                 }
@@ -526,6 +526,19 @@ TEST_F(CacheTests, CacheSingleWriteUsesWriteBuffer) {
     ASSERT_EQ(ram.numRequestsPerformed, 1); // only the read
 }
 
+// Works, but takes a long time
+// TEST(AddrDecompTests, ceilLog2Works) {
+//    for (std::uint32_t i = 0; i < 32; ++i) {
+//        auto log2V = safeCeilLog2(1ull << i);
+//        ASSERT_EQ((1ull << log2V), 1ull << i);
+//    }
+//    for (std::uint32_t i = 1; i < UINT32_MAX; ++i) {
+//        auto log2V = safeCeilLog2(i);
+//        ASSERT_GE((1ull << log2V), i);
+//        ASSERT_LT((1ull << log2V), (std::uint64_t)2ull * i);
+//    }
+//}
+
 TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
     ram.latency = 1000;
     Request writeRequest1{10, 100, 1};
@@ -543,6 +556,24 @@ TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
     ASSERT_EQ(cpu.instructionsProvided.size(), 4);
     ASSERT_EQ(cpu.dataReceivedForAddress.size(), 4);
     ASSERT_EQ(ram.numRequestsPerformed, 1); // only the read
+}
+
+TEST_F(CacheTests, CacheWriteBufferReadDoesNotWaitForWrites) {
+    ram.latency = 1000;
+    Request writeRequest1{10, 100, 1};
+    Request writeRequest2{20, 100, 1};
+    Request readRequest{51591, 100, 0};
+    Request writeRequest3{1, 914919, 1};
+
+    cpu.instructions.push_back(writeRequest1);
+    cpu.instructions.push_back(writeRequest2);
+    cpu.instructions.push_back(readRequest); // will really be executed after first write
+    cpu.instructions.push_back(writeRequest3);
+
+    sc_start(3200, SC_NS);
+    ASSERT_EQ(cpu.instructionsProvided.size(), 4);
+    ASSERT_EQ(cpu.dataReceivedForAddress.size(), 4);
+    ASSERT_EQ(ram.numRequestsPerformed, 3); // first read, first write, second read
 }
 
 TEST_F(CacheTests, CacheWriteBufferHandlesMoreWritesThanCapacity) {

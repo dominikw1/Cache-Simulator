@@ -64,6 +64,6 @@ clean:
 	rm -rf src/*.o
 
 test:
-	cmake -S . -B build && cmake --build build  && cd build && ctest --output-on-failure
+	cmake -S . -B build  && cmake --build build  -j16 && cd build && ctest --output-on-failure --parallel 16
 
 .PHONY: all debug release clean test

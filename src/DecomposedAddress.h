@@ -9,8 +9,11 @@ struct DecomposedAddress {
 };
 
 constexpr inline std::uint32_t safeCeilLog2(std::uint32_t val) noexcept {
-    // taken from: https://stackoverflow.com/a/35758355
-    return (val > 1) ? 1 + std::log2l(val >> 1) : 0;
+    assert(val != 0);
+    auto highestSetBit = 32 - __builtin_clz(val) - 1;
+    if (1ull << highestSetBit == val)
+        return highestSetBit;
+    return highestSetBit + 1;
 }
 
 constexpr inline std::uint32_t generateBitmaskForLowestNBits(std::uint8_t bits) noexcept { return (1ull << bits) - 1; }
