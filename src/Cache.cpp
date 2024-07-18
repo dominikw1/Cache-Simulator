@@ -41,7 +41,8 @@ std::vector<Cacheline>::iterator Cache<MappingType::Fully_Associative>::chooseWh
 template <> constexpr DecomposedAddress Cache<MappingType::Direct>::decomposeAddress(std::uint32_t address) noexcept {
     assert(addressOffsetBitMask > 0 && addressIndexBitMask > 0 && addressTagBitMask > 0);
     return DecomposedAddress{((address >> addressOffsetBits) >> addressIndexBits) & addressTagBitMask,
-                            ( (address >> addressOffsetBits) & addressIndexBitMask) % numCacheLines, address & addressOffsetBitMask};
+                             ((address >> addressOffsetBits) & addressIndexBitMask) % numCacheLines,
+                             address & addressOffsetBitMask};
 }
 
 template <>
@@ -355,6 +356,31 @@ template <MappingType mappingType> void Cache<mappingType>::startReadFromRAM(std
 template <MappingType mappingType> Request Cache<mappingType>::constructRequestFromBusses() {
     return Request{cpuAddrBus.read(), cpuDataInBus.read(), cpuWeBus.read()};
 }
+
+static constexpr std::size_t calcGateCountForInternalTable(std::uint32_t numCachelines, std::uint32_t cachelineSize,
+                                                           std::uint8_t tagBits) noexcept {
+    // each bit is an edge triggered D Flipflop á la ~10 gates.
+    // we have 8 bits in a byte and numCachelines * cachelinesize bytes + tag bits
+    return 10ull * numCachelines * (8ull * cachelineSize + tagBits);
+}
+
+static constexpr std::size_t calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint8_t tagBits,
+                                                                MappingType type,
+                                                                ReplacementPolicy<std::uint32_t>* policy) noexcept {
+    if (type == MappingType::Fully_Associative) {
+        // for performacne reasons we would have a binary tree of ors atop of comparators, but to prevent overflow let's
+        // say we have #cachelines ones comparing in sequence where Comparator := 1 basic gate, a selector as wide as
+        // #cachelines := 1 basic gate
+        auto comparator = tagBits * numCachelines;
+        auto propagation = numCachelines;
+        return comparator + propagation + 1 + policy->calcBasicGates(); // i don't think this can overflow
+    } else {
+        // just a simple selector
+        return 1;
+    }
+}
+
+template <MappingType mappingType> std::size_t Cache<mappingType>::calculateGateCount() {}
 
 template class Cache<MappingType::Direct>;
 template class Cache<MappingType::Fully_Associative>;

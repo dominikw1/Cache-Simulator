@@ -86,6 +86,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     Cache(sc_core::sc_module_name name, std::uint32_t numCacheLines, std::uint32_t cacheLineSize,
           std::uint32_t cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy = nullptr);
 
+    std::size_t calculateGateCount();
   private:
     // ========== Set-Up ==============
     SC_CTOR(Cache); // private since this is never to be called, just to get systemc typedef
