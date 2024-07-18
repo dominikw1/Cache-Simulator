@@ -280,7 +280,7 @@ int main(int argc, char** argv) {
     unsigned int cacheLineSize = 64;
     unsigned int cacheLatency = 2;
     unsigned int memoryLatency = 100;
-    enum Policy policy = LRU;    // 0 => lru, 1 => fifo, 2 => random
+    enum CacheReplacementPolicy policy = POLICY_LRU;    // 0 => lru, 1 => fifo, 2 => random
     int usingCache = 1; // 1 => true, x => false
     const char* tracefile = NULL;
 
@@ -418,11 +418,11 @@ int main(int argc, char** argv) {
             break;
 
         case LEAST_RECENTLY_USED:
-            if (policy == FIFO || policy == RANDOM) {
+            if (policy == POLICY_FIFO || policy == POLICY_RANDOM) {
                 fprintf(stderr, "Warning: More than one policy set. "
                                 "Simulating cache using default value LRU!\n");
             }
-            policy = LRU;
+            policy = POLICY_LRU;
             isLruSet = 1;
             break;
 
@@ -432,7 +432,7 @@ int main(int argc, char** argv) {
                                 "Simulating cache using default value LRU!\n");
                 break;
             }
-            policy = FIFO;
+            policy = POLICY_FIFO;
             break;
 
         case RANDOM_CHOICE:
@@ -442,7 +442,7 @@ int main(int argc, char** argv) {
                 break;
             }
 
-            policy = RANDOM;
+            policy = POLICY_RANDOM;
             break;
 
         case USE_CACHE:
