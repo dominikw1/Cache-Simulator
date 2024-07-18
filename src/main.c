@@ -276,8 +276,8 @@ int is_power_of_sixteen(unsigned long n) { return n && !(n & (n - 4)); }
 
 void checkCycleSize(bool longCycles, uint32_t cycles, struct Request* requests, const char* progname) {
     if (!longCycles && cycles > INT32_MAX) {
-        fprintf(stderr, "Error: %d is too big to be converted to an int. Set option --lcycles to increase range.\n",
-                cycles);
+        fprintf(stderr, "Error: %d is too big to be converted to an int. "
+                        "Set option --lcycles to increase range.\n", cycles);
         print_usage(progname);
         free(requests);
         requests = NULL;
@@ -295,19 +295,21 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-
-    // Default values for fullassociative cache
-    int directMapped = 0; // 0 => fullassociative, x => directmapped
+    // Set default values for fullassociative cache
     unsigned int cycles = 1000;
+    int directMapped = 0; // 0 => fullassociative, x => directmapped
     unsigned int cacheLines = 256;
     unsigned int cacheLineSize = 64;
     unsigned int cacheLatency = 2;
     unsigned int memoryLatency = 100;
+    size_t numRequests = 0;
+    struct Request* requests;
+    const char* tracefile = NULL;
+    // Default values for run_simulation_extended
     enum CacheReplacementPolicy policy = POLICY_LRU; // 0 => lru, 1 => fifo, 2 => random
     int usingCache = 1; // 1 => true, x => false
-    const char* tracefile = NULL;
 
-    // Extract file data
+    // Check input file and save file data to requests
     FILE* file = check_file(progname, argv[argc - 1], argv[1], NULL, "input file");
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
@@ -316,9 +318,7 @@ int main(int argc, char** argv) {
         print_usage(progname);
         return EXIT_FAILURE;
     }
-
-    size_t numRequests = 0;
-    struct Request* requests = (struct Request*)malloc(sizeof(struct Request) * file_info.st_size);
+    requests = (struct Request*)malloc(sizeof(struct Request) * file_info.st_size);
     if (requests == NULL) {
         perror("Error allocating memory buffer for file");
         fclose(file);
@@ -327,39 +327,40 @@ int main(int argc, char** argv) {
         requests = NULL;
         return EXIT_FAILURE;
     }
-
     extract_file_data(progname, file, requests, &numRequests);
 
-    // PARSING
+    // Command line argument parsing
     int opt;
     int option_index;
     char* endptr = NULL;
     const char* optstring = "c:h";
     static struct option long_options[] = {
-        {"cycles", required_argument, 0, 'c'},
-        {"lcycles", no_argument, 0, LONG_CYCLES},
-        {"directmapped", no_argument, 0, DIRECTMAPPED},
-        {"fullassociative", no_argument, 0, FULLASSOCIATIVE},
-        {"cacheline-size", required_argument, 0, CACHELINE_SIZE},
-        {"cachelines", required_argument, 0, CACHELINES},
-        {"cache-latency", required_argument, 0, CACHE_LATENCY},
-        {"memory-latency", required_argument, 0, MEMORY_LATENCY},
-        {"lru", no_argument, 0, LEAST_RECENTLY_USED},
-        {"fifo", no_argument, 0, FIRST_IN_FIRST_OUT},
-        {"random", no_argument, 0, RANDOM_CHOICE},
-        {"use-cache", required_argument, 0, USE_CACHE},
-        {"extended", no_argument, 0, CALL_EXTENDED},
-        {"tf=", required_argument, 0, TRACEFILE},
-        {"help", no_argument, 0, 'h'},
-        {0, 0, 0, 0}};
+            {"cycles", required_argument, 0, 'c'},
+            {"lcycles", no_argument, 0, LONG_CYCLES},
+            {"directmapped", no_argument, 0, DIRECTMAPPED},
+            {"fullassociative", no_argument, 0, FULLASSOCIATIVE},
+            {"cacheline-size", required_argument, 0, CACHELINE_SIZE},
+            {"cachelines", required_argument, 0, CACHELINES},
+            {"cache-latency", required_argument, 0, CACHE_LATENCY},
+            {"memory-latency", required_argument, 0, MEMORY_LATENCY},
+            {"lru", no_argument, 0, LEAST_RECENTLY_USED},
+            {"fifo", no_argument, 0, FIRST_IN_FIRST_OUT},
+            {"random", no_argument, 0, RANDOM_CHOICE},
+            {"use-cache", required_argument, 0, USE_CACHE},
+            {"extended", no_argument, 0, CALL_EXTENDED},
+            {"tf=", required_argument, 0, TRACEFILE},
+            {"help", no_argument, 0, 'h'},
+            {0, 0, 0, 0}};
 
+    // Variables needed for parsing
     FILE* t_file;
-    char* error_msg;
     char* option;
-    int isFullassociativeSet = 0;
+    char* error_msg;
     int isLruSet = 0;
     bool longCycles = false;
     int callExtended = 0;
+    int isFullassociativeSet = 0;
+
     opterr = 0; // Use own error messages
 
     while ((opt = getopt_long(argc, argv, optstring, long_options, &option_index)) != -1) {
@@ -452,12 +453,10 @@ int main(int argc, char** argv) {
 
         case FIRST_IN_FIRST_OUT:
             if (isLruSet) {
-                fprintf(stderr,
-                        "Warning: More than one policy set. Simulating cache using default value LRU!\n");
+                fprintf(stderr, "Warning: More than one policy set. Simulating cache using default value LRU!\n");
                 break;
             } else if (policy == POLICY_RANDOM) {
-                fprintf(stderr,
-                        "Error: --random and --fifo are both set. Please choose only one option!\n");
+                fprintf(stderr, "Error: --random and --fifo are both set. Please choose only one option!\n");
                 print_usage(progname);
                 free(requests);
                 requests = NULL;
@@ -468,12 +467,10 @@ int main(int argc, char** argv) {
 
         case RANDOM_CHOICE:
             if (isLruSet) {
-                fprintf(stderr,
-                        "Warning: More than one policy set. Simulating cache using default value LRU!\n");
+                fprintf(stderr, "Warning: More than one policy set. Simulating cache using default value LRU!\n");
                 break;
             } else if (policy == POLICY_FIFO) {
-                fprintf(stderr,
-                        "Error: --fifo and --random are both set. Please choose only one option!\n");
+                fprintf(stderr, "Error: --fifo and --random are both set. Please choose only one option!\n");
                 print_usage(progname);
                 free(requests);
                 requests = NULL;
@@ -513,12 +510,9 @@ int main(int argc, char** argv) {
             option = get_option();
             if (strcmp(option, "invalid") == 0) {
                 fprintf(stderr, "Error: Not a valid argument '%s'!\n", argv[optind - 1]);
-                print_usage(progname);
-                free(requests);
-                requests = NULL;
-                exit(EXIT_FAILURE);
+            } else {
+                fprintf(stderr, "Error: Option '%s' requires an argument.\n", option);
             }
-            fprintf(stderr, "Error: Option '%s' requires an argument.\n", option);
 
         default:
             print_usage(progname);
@@ -528,10 +522,9 @@ int main(int argc, char** argv) {
         }
     }
 
-    // TODO: Weitere nicht-sinnvolle inputs abfangen
     if (memoryLatency < cacheLatency) {
         fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
-    } // TODO: Cycles macht keinen Sinn
+    }
 
     checkCycleSize(longCycles, cycles, requests, progname);
 
@@ -540,8 +533,8 @@ int main(int argc, char** argv) {
         result = run_simulation_extended(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
                                          numRequests, requests, tracefile, policy, usingCache);
     } else {
-        result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLines, memoryLatency,
-                                numRequests, requests, tracefile);
+        result = run_simulation((int) cycles, directMapped, cacheLines, cacheLineSize, cacheLines,
+                                memoryLatency, numRequests, requests, tracefile);
     }
 
     free(requests);
@@ -554,6 +547,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+    // Print Simulation results
     // https://gist.github.com/ConnerWill/d4b6c776b509add763e17f9f113fd25b
     fprintf(stdout,
             "--------------------------------------------------\n"
