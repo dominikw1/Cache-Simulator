@@ -25,9 +25,14 @@
 #define TRACEFILE 138
 #define LONG_CYCLES 139
 
-extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
-                                    unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
-                                    struct Request requests[], const char* tracefile, int policy, int usingCache);
+extern struct Result run_simulation(int cycles, int directMapped, unsigned cacheLines, unsigned cacheLineSize,
+                                    unsigned cacheLatency, unsigned memoryLatency, size_t numRequests,
+                                    struct Request requests[], const char* tracefile);
+
+extern struct Result run_simulation_extended(uint32_t cycles, int directMapped, unsigned int cacheLines,
+                                             unsigned int cacheLineSize, unsigned int cacheLatency,
+                                             unsigned int memoryLatency, size_t numRequests, struct Request requests[],
+                                             const char* tracefile, enum CacheReplacementPolicy policy, int usingCache);
 
 // Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
 const char* usage_msg =
@@ -510,8 +515,8 @@ int main(int argc, char** argv) {
 
     checkCycleSize(longCycles, cycles, requests, progname);
 
-    struct Result result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
-                                          numRequests, requests, tracefile, policy, usingCache);
+    struct Result result = run_simulation_extended(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency,
+                                                   memoryLatency, numRequests, requests, tracefile, policy, usingCache);
 
     free(requests);
     requests = NULL;

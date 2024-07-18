@@ -3,10 +3,6 @@
 
 #include <stdio.h>
 
-enum CacheReplacementPolicy {
-    POLICY_LRU,
-    POLICY_FIFO,
-    POLICY_RANDOM
-};
+enum CacheReplacementPolicy { POLICY_LRU, POLICY_FIFO, POLICY_RANDOM };
 
 #endif
