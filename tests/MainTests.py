@@ -55,7 +55,6 @@ class TestInvalidInput(unittest.TestCase):
 
 class TestFile(unittest.TestCase):
     def test_error_opening(self):
-        # TODO l. 126
         pass
 
     def test_error_determining_file_size(self):
