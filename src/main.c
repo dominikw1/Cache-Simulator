@@ -386,7 +386,7 @@ int main(int argc, char** argv) {
         case DIRECTMAPPED:
             if (isFullassociativeSet) {
                 fprintf(stderr, "Warning: --fullassociative and --directmapped are both set. "
-                                "Using default value fullassociative!");
+                                "Using default value fullassociative!\n");
                 break;
             }
             directMapped = 1;
@@ -395,7 +395,7 @@ int main(int argc, char** argv) {
         case FULLASSOCIATIVE:
             if (directMapped) {
                 fprintf(stderr, "Warning: --fullassociative and --directmapped are both set. "
-                                "Using default value fullassociative!");
+                                "Using default value fullassociative!\n");
             }
             isFullassociativeSet = 1;
             break;
