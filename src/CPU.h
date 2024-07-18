@@ -118,6 +118,8 @@ private:
             waitForInstruction();
             validInstrRequestBus.write(false);
 
+            instructionReady = true;
+
             wait(triggerNextInstructionRead);
         }
     }
