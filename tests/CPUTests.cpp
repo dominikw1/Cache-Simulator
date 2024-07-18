@@ -98,7 +98,7 @@ SC_MODULE(DataMemoryMock) {
 
 class CPUTests : public testing::Test {
 protected:
-    CPU cpu{"cpu"};
+    CPU cpu{"cpu", 1000000};
     InstrMemoryMock instrMock{"instrMock"};
     DataMemoryMock dataMock{"dataMock"};
     sc_signal<bool> weSignal;
