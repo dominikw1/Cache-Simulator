@@ -16,7 +16,8 @@
 
 using namespace sc_core;
 
-std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(int replacementPolicy, int cacheSize);
+std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheReplacementPolicy replacementPolicy,
+                                                                       int cacheSize);
 
 constexpr std::uint8_t instructionCacheLineSize = 64;
 constexpr std::uint8_t instructionCacheNumLines = 16;
@@ -24,10 +25,10 @@ constexpr std::uint8_t instructionCacheNumLines = 16;
 template <MappingType mappingType>
 Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLineSize, unsigned int cacheLatency,
                       unsigned int memoryLatency, size_t numRequests, struct Request requests[], const char* tracefile,
-                      int policy, int usingCache) {
+                      CacheReplacementPolicy policy, int usingCache) {
     std::cout << "Starting Simulation...\n";
 
-   // std::cout << cacheLatency << " " << memoryLatency << std::endl;
+    // std::cout << cacheLatency << " " << memoryLatency << std::endl;
 
     CPU cpu{"CPU"};
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize};
@@ -199,7 +200,8 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
 
 struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
                              unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
-                             struct Request requests[], const char* tracefile, int policy, int usingCache) {
+                             struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
+                             int usingCache) {
     if (directMapped == 0) {
         return run_simulation<MappingType::Fully_Associative>(cycles, cacheLines, cacheLineSize, cacheLatency,
                                                               memoryLatency, numRequests, requests, tracefile, policy,
@@ -210,13 +212,14 @@ struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLin
     }
 }
 
-std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(int replacementPolicy, int cacheSize) {
+std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheReplacementPolicy replacementPolicy,
+                                                                       int cacheSize) {
     switch (replacementPolicy) {
-    case 0:
+    case POLICY_LRU:
         return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
-    case 1:
+    case POLICY_FIFO:
         return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
-    case 2:
+    case POLICY_RANDOM:
         return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
     default:
         throw std::runtime_error("Encountered unknown policy type");
