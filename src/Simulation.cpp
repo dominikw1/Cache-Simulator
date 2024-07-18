@@ -23,9 +23,10 @@ constexpr std::uint8_t instructionCacheLineSize = 64;
 constexpr std::uint8_t instructionCacheNumLines = 16;
 
 template <MappingType mappingType>
-Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLineSize, unsigned int cacheLatency,
-                      unsigned int memoryLatency, size_t numRequests, struct Request requests[], const char* tracefile,
-                      CacheReplacementPolicy policy, int usingCache) {
+Result run_simulation_extended(uint32_t cycles, unsigned int cacheLines, unsigned int cacheLineSize,
+                               unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
+                               struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
+                               int usingCache) {
     std::cout << "Starting Simulation...\n";
 
     // std::cout << cacheLatency << " " << memoryLatency << std::endl;
@@ -181,7 +182,7 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
         sc_trace(trace, instrRamReadySignal, "instrRamReadySignal");
     }
 
-    sc_start(cycles, SC_NS);
+    sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
 
     if (tracefile != NULL) {
         sc_close_vcd_trace_file(trace);
@@ -198,18 +199,26 @@ Result run_simulation(int cycles, unsigned int cacheLines, unsigned int cacheLin
     };
 }
 
-struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
-                             unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
-                             struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
-                             int usingCache) {
+struct Result run_simulation_extended(uint32_t cycles, int directMapped, unsigned int cacheLines,
+                                      unsigned int cacheLineSize, unsigned int cacheLatency, unsigned int memoryLatency,
+                                      size_t numRequests, struct Request requests[], const char* tracefile,
+                                      CacheReplacementPolicy policy, int usingCache) {
     if (directMapped == 0) {
-        return run_simulation<MappingType::Fully_Associative>(cycles, cacheLines, cacheLineSize, cacheLatency,
-                                                              memoryLatency, numRequests, requests, tracefile, policy,
-                                                              usingCache);
+        return run_simulation_extended<MappingType::Fully_Associative>(cycles, cacheLines, cacheLineSize, cacheLatency,
+                                                                       memoryLatency, numRequests, requests, tracefile,
+                                                                       policy, usingCache);
     } else {
-        return run_simulation<MappingType::Direct>(cycles, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
-                                                   numRequests, requests, tracefile, policy, usingCache);
+        return run_simulation_extended<MappingType::Direct>(cycles, cacheLines, cacheLineSize, cacheLatency,
+                                                            memoryLatency, numRequests, requests, tracefile, policy,
+                                                            usingCache);
     }
+}
+
+struct Result run_simulation(int cycles, int directMapped, unsigned cacheLines, unsigned cacheLineSize,
+                             unsigned cacheLatency, unsigned memoryLatency, size_t numRequests,
+                             struct Request requests[], const char* tracefile) {
+    return run_simulation_extended(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
+                                   numRequests, requests, tracefile, POLICY_LRU, true);
 }
 
 std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheReplacementPolicy replacementPolicy,

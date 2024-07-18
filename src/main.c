@@ -10,6 +10,7 @@
 #include "Policy/Policy.h"
 #include "Request.h"
 #include "Result.h"
+#include <stdbool.h>
 
 #define DIRECTMAPPED 128
 #define FULLASSOCIATIVE 129
@@ -22,29 +23,32 @@
 #define RANDOM_CHOICE 136
 #define USE_CACHE 137
 #define TRACEFILE 138
+#define LONG_CYCLES 139
 
 extern struct Result run_simulation(int cycles, int directMapped, unsigned int cacheLines, unsigned int cacheLineSize,
                                     unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
                                     struct Request requests[], const char* tracefile, int policy, int usingCache);
 
 // Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
-const char* usage_msg = "usage: %s <filename> [-c/--cycles c] [--directmapped] [--fullassociative] "
-                        "[--cacheline-size s] [--cachelines n] [--cache-latency l] "
-                        "[--memorylatency m] [--tf=<filename>] [-h/--help]\n"
-                        "   -c c / --cycles c       Set the number of cycles to be simulated to c\n"
-                        "   --directmapped          Simulate a direct-mapped cache\n"
-                        "   --fullassociative       Simulate a fully associative cache\n"
-                        "   --cacheline-size s      Set the cache line size to s bytes\n"
-                        "   --cachelines n          Set the number of cachelines to n\n"
-                        "   --cache-latency l       Set the cache latency to l cycles\n"
-                        "   --memory-latency m      Set the memory latency to m cycles\n"
-                        "   --lru                   Use LRU as cache-replacement policy\n"
-                        "   --fifo                  Use FIFO as cache-replacement policy\n"
-                        "   --random                Use random cache-replacement policy\n"
-                        "   --use-cache=<Y,n>       Simulates a system with cache or no cache\n"
-                        "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
-                        "trace file will be created\n"
-                        "   -h / --help             Show help message and exit\n";
+const char* usage_msg =
+    "usage: %s <filename> [-c/--cycles c] [--directmapped] [--fullassociative] "
+    "[--cacheline-size s] [--cachelines n] [--cache-latency l] "
+    "[--memorylatency m] [--tf=<filename>] [-h/--help]\n"
+    "   -c c / --cycles c       Set the number of cycles to be simulated to c. Allows inputs in range [0,2^16-1]\n"
+    "   --lcycles               Allow input of cycles of up to 2^32-1\n"
+    "   --directmapped          Simulate a direct-mapped cache\n"
+    "   --fullassociative       Simulate a fully associative cache\n"
+    "   --cacheline-size s      Set the cache line size to s bytes\n"
+    "   --cachelines n          Set the number of cachelines to n\n"
+    "   --cache-latency l       Set the cache latency to l cycles\n"
+    "   --memory-latency m      Set the memory latency to m cycles\n"
+    "   --lru                   Use LRU as cache-replacement policy\n"
+    "   --fifo                  Use FIFO as cache-replacement policy\n"
+    "   --random                Use random cache-replacement policy\n"
+    "   --use-cache=<Y,n>       Simulates a system with cache or no cache\n"
+    "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
+    "trace file will be created\n"
+    "   -h / --help             Show help message and exit\n";
 
 const char* help_msg = "Positional arguments:\n"
                        "   <filename>   The name of the file to be processed\n"
@@ -255,6 +259,8 @@ char* getOption(const char* progname, struct Request* requests) {
         return "--use-cache";
     case TRACEFILE:
         return "--tf=";
+    case LONG_CYCLES:
+        return "--lcycles";
     default:
         fprintf(stderr, "Error: Not a valid operation!\n");
         print_usage(progname);
@@ -269,6 +275,17 @@ int isPowerOfTwo(unsigned long n) { return n && !(n & (n - 1)); }
 
 int isPowerOfSixteen(unsigned long n) { return n && !(n & (n - 4)); }
 
+void checkCycleSize(bool longCycles, uint32_t cycles, struct Request* requests, const char* progname) {
+    if (!longCycles && cycles > INT32_MAX) {
+        fprintf(stderr, "Error: %d is too big to be converted to an int. Set option --lcycles to increase range.\n",
+                cycles);
+        print_usage(progname);
+        free(requests);
+        requests = NULL;
+        exit(EXIT_FAILURE);
+    }
+}
+
 int main(int argc, char** argv) {
 
     const char* progname = argv[0];
@@ -280,14 +297,14 @@ int main(int argc, char** argv) {
     }
 
     // Default values for fullassociative cache
-    int cycles = 1000;
+    uint32_t cycles = 1000;
     int directMapped = 0; // 0 => fullassociative, x => directmapped
     unsigned int cacheLines = 256;
     unsigned int cacheLineSize = 64;
     unsigned int cacheLatency = 2;
     unsigned int memoryLatency = 100;
     enum CacheReplacementPolicy policy = POLICY_LRU; // 0 => lru, 1 => fifo, 2 => random
-    int usingCache = 1;                         // 1 => true, x => false
+    int usingCache = 1;                              // 1 => true, x => false
     const char* tracefile = NULL;
 
     // Extract file data
@@ -319,6 +336,7 @@ int main(int argc, char** argv) {
     char* endptr = NULL;
     const char* optstring = "c:h";
     static struct option long_options[] = {{"cycles", required_argument, 0, 'c'},
+                                           {"lcycles", no_argument, 0, LONG_CYCLES},
                                            {"directmapped", no_argument, 0, DIRECTMAPPED},
                                            {"fullassociative", no_argument, 0, FULLASSOCIATIVE},
                                            {"cacheline-size", required_argument, 0, CACHELINE_SIZE},
@@ -338,6 +356,7 @@ int main(int argc, char** argv) {
     char* option;
     int isFullassociativeSet = 0;
     int isLruSet = 0;
+    bool longCycles = false;
     opterr = 0; // Use own error messages
 
     while ((opt = getopt_long(argc, argv, optstring, long_options, &option_index)) != -1) {
@@ -346,15 +365,12 @@ int main(int argc, char** argv) {
         switch (opt) {
         case 'c':
             error_msg = "Cycles cannot be smaller than 1.";
-            unsigned long c = check_user_input(endptr, error_msg, progname, "-c/--cycles", requests);
-            if (c > INT32_MAX) { // Check c before converting it to int
-                fprintf(stderr, "Error: %ld is too big to be converted to an int.\n", c);
-                print_usage(progname);
-                free(requests);
-                requests = NULL;
-                return EXIT_FAILURE;
-            }
-            cycles = (int)c;
+            cycles = check_user_input(endptr, error_msg, progname, "-c/--cycles", requests);
+            // to be checked for validity later once we know the range
+            break;
+
+        case LONG_CYCLES:
+            longCycles = true;
             break;
 
         case 'h':
@@ -488,6 +504,8 @@ int main(int argc, char** argv) {
     if (memoryLatency < cacheLatency) {
         fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
     } // TODO: Cycles macht keinen Sinn
+
+    checkCycleSize(longCycles, cycles, requests, progname);
 
     struct Result result = run_simulation(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
                                           numRequests, requests, tracefile, policy, usingCache);
