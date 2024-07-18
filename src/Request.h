@@ -1,6 +1,4 @@
-#ifndef REQUEST_H
-#define REQUEST_H
-
+#pragma once
 #include "stdint.h"
 
 struct Request {
