@@ -1,7 +1,8 @@
 import os
-
+import statistics
 def generateRandomNumFile(num: int) -> None:
     os.system(f"./../RandomNumberGenerator/a.out {num}")
+
 
 def normaliseBenchmarkInput(file: str) -> None:
     with open(file, 'r') as openFile:
@@ -9,6 +10,11 @@ def normaliseBenchmarkInput(file: str) -> None:
         
         wes = [line.split(',')[0] for line in lines if line.strip()]
         addresses = [int(line.split(',')[1],0) for line in lines if line.strip() ]
+        diffs = []
+        for i in range(len(addresses)-1):
+            diffs += [addresses[i+1]-addresses[0]]
+        print(file, "Average difference between consecutive accesses: ", abs(statistics.fmean(diffs)))
+        
         data = [int(line.split(',')[2],0) if (line.strip() and line.split(',')[2] != '') else None for line in lines ]
         outStr = ""
         minAddr = min(addresses)

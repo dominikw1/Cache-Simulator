@@ -179,7 +179,7 @@ SC_MODULE(RAMMock) {
 class CacheTests : public testing::Test {
   protected:
     CPUMock cpu{"CPU"};
-    Cache<MappingType::Direct> cache{"Cache", 10, 64, 10, std::make_unique<RandomPolicy<std::uint32_t>>(10)};
+    Cache<MappingType::Fully_Associative> cache{"Cache", 10, 64, 10, std::make_unique<RandomPolicy<std::uint32_t>>(10)};
     RAMMock ram{"RAM", 64 / 16};
 
     // CPU -> Cache
