@@ -206,9 +206,11 @@ TEST_F(CPUTests, CPUWritesMemoryCorrectlySingleRequest) {
 }
 
 TEST_F(CPUTests, CPUWritesMemoryCorrectlyMultipleRequests) {
+    std::uint32_t numRequests = 3;
     auto reqW1 = Request{1, 5, 1};
     auto reqW2 = Request{10, 1, 1};
     auto reqW3 = Request{1100, 10, 1};
+    Request requests[3];
 
     instrMock.instructionMemory[0] = reqW1;
     instrMock.instructionMemory[1] = reqW2;
@@ -227,7 +229,8 @@ TEST_F(CPUTests, CPUWritesMemoryCorrectlyMultipleRequests) {
 
 TEST_F(CPUTests, CPUHandlesRandomInputWithoutThrowing) {
     std::uint32_t numRequests = 100000;
-    auto requests = new Request[numRequests];
+    Request requests[numRequests];
+
     auto randomAddresses = generateRandomVector(numRequests, UINT32_MAX);
     auto randomData = generateRandomVector(numRequests, UINT32_MAX);
     auto randomWE = generateRandomVector(numRequests, 2);
