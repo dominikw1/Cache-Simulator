@@ -67,5 +67,7 @@ test:
 buildWithRAMReadAfterWrite: CXXFLAGS += -g -DSTRICT_RAM_READ_AFTER_WRITES
 buildWithRAMReadAfterWrite: $(TARGET)
 
+buildWithStrictInstrOrder: CXXFLAGS += -g -DSTRICT_RAM_READ_AFTER_WRITES -DSTRICT_INSTRUCTION_ORDER
+buildWithStrictInstrOrder: $(TARGET)
 
-.PHONY: all debug release clean test
+.PHONY: all debug release clean test buildWithStrictInstrOrder buildWithRAMReadAfterWrite
