@@ -7,8 +7,8 @@
 #include "Policy/LRUPolicy.h"
 #include "Policy/Policy.h"
 #include "Policy/RandomPolicy.h"
-#include "Request.h"
-#include "Result.h"
+#include "../Request.h"
+#include "../Result.h"
 
 #include <exception>
 

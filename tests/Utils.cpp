@@ -8,7 +8,7 @@
 
 std::vector<std::uint64_t> generateRandomVector(std::uint64_t len) {
     std::vector<std::uint64_t> vec(len, 0);
-    std::srand(std::time(nullptr) +rand());
+    std::srand(std::time(nullptr) + rand());
     std::generate(vec.begin(), vec.end(), []() { return std::rand(); });
     return vec;
 }

@@ -1,7 +1,7 @@
-#include "../src/Cache.h"
-#include "../src/Policy/LRUPolicy.h"
-#include "../src/Policy/RandomPolicy.h"
-#include "../src/Request.h"
+#include "../src/Simulation/Cache.h"
+#include "../src/Simulation/Policy/LRUPolicy.h"
+#include "../src/Simulation/Policy/RandomPolicy.h"
+#include "../src/Simulation/Request.h"
 #include "Utils.h"
 #include <cassert>
 #include <exception>

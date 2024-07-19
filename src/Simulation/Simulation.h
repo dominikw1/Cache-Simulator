@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Policy/Policy.h"
-#include "Request.h"
-#include "Result.h"
+#include "../Request.h"
+#include "../Result.h"
 #include "stddef.h"
 #include <stdint.h>
 

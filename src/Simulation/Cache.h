@@ -7,29 +7,36 @@
 
 #include <systemc>
 
+#include "../Request.h"
 #include "Cacheline.h"
 #include "DecomposedAddress.h"
 #include "Policy/ReplacementPolicy.h"
-#include "Request.h"
-#include "Result.h"
+#include "../Result.h"
 #include "SubRequest.h"
 #include "WriteBuffer.h"
 
 enum class MappingType { Direct, Fully_Associative };
 
 constexpr std::uint16_t RAM_READ_BUS_SIZE_IN_BYTE{16}; // NOT a config value, just a transparent way to access
-constexpr std::uint16_t BITS_IN_BYTE{8};
+constexpr std::uint16_t BITS_IN_BYTE{8}; // we could use the systemc BITS_PER_BYTE, but this gives more transparency
 constexpr std::uint16_t WRITE_BUFFER_SIZE{4}; // chosen by fair dice roll. guaranteed to be optimal :)
 
 /**
  * This module represents a Cache of a certain mapping type (Direct / Fully associative). It is meant to be connected
- * to a CPU and a RAM module. The bus size requirements are: a 32 bit data bus for in/out for the CPU and a 128 bit bus
+ * to a CPU and a RAM module.
+ *
+ * The data bus size requirements are: a 32 bit busses for in/out for the CPU and a 128 bit bus
  * for reads from the RAM and a 32 bit bus for writes to the RAM.
  *
  * Communication happens through a variation of the Ready/Valid Protocol. In our implementation, the requesting party
  * sets the corresponding valid-request signal to true. The responding party then performs the operation and once it is
  * ready to transmit sets its ready signal to true. There is no seperate "ready to receive" from te receiving party as
  * in our simplified simulation we always are waiting just for the ready-to-send signal.
+ *
+ * All operations happen on rising clock edge.
+ *
+ * This cache uses a write buffer able to buffer WRITE_BUFFER_SIZE writes at once. See its documentation for more
+ * detail.
  */
 
 template <MappingType mappingType> SC_MODULE(Cache) {

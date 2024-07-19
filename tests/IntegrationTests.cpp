@@ -1,10 +1,11 @@
-#include "../src/CPU.h"
-#include "../src/InstructionCache.h"
-#include "../src/Memory.h"
-#include "../src/Policy/FIFOPolicy.h"
-#include "../src/Policy/LRUPolicy.h"
-#include "../src/Policy/Policy.h"
-#include "../src/Policy/RandomPolicy.h"
+#include "../src/Simulation/CPU.h"
+#include "../src/Simulation/InstructionCache.h"
+#include "../src/Simulation/Memory.h"
+#include "../src/Simulation/Policy/FIFOPolicy.h"
+#include "../src/Simulation/Policy/LRUPolicy.h"
+#include "../src/Simulation/Policy/Policy.h"
+#include "../src/Simulation/Policy/RandomPolicy.h"
+
 #include "Utils.h"
 #include <gtest/gtest.h>
 #include <systemc>
@@ -121,8 +122,8 @@ TEST_P(IntegrationTests, FullyAssociative) {
 
 const auto memoryLatencyValues = testing::Values(0, 1, 10, 100, 1 << 31);
 const auto cacheLatencyValues = testing::Values(0, 1, 10, 100, 1 << 31);
-const auto cacheLines = testing::Values( 1, 10, 100, 1 << 31);
-const auto cacheLineSizes = testing::Values( 16, 32, 64, 128, 1 << 31);
+const auto cacheLines = testing::Values(1, 10, 100, 1 << 31);
+const auto cacheLineSizes = testing::Values(16, 32, 64, 128, 1 << 31);
 const auto policies = testing::Values(POLICY_FIFO, POLICY_LRU, POLICY_RANDOM);
 const auto numRequests =
     testing::Values(generateRandomRequests(0), generateRandomRequests(1), generateRandomRequests(10),

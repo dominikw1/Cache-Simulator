@@ -7,10 +7,10 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "Policy/Policy.h"
+#include "Simulation/Policy/Policy.h"
 #include "Request.h"
 #include "Result.h"
-#include "Simulation.h"
+#include "Simulation/Simulation.h"
 #include <stdbool.h>
 
 #define DIRECTMAPPED 128
