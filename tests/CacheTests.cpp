@@ -542,6 +542,8 @@ TEST_F(CacheTests, CacheSingleWriteUsesWriteBuffer) {
 //    }
 //}
 
+TEST(AddrDecompTests, ceilLog2WorksFor1) { ASSERT_EQ(safeCeilLog2(1), 0); }
+
 TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
     ram.latency = 1000;
     Request writeRequest1{10, 100, 1};

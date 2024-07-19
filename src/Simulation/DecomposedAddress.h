@@ -11,7 +11,7 @@ struct DecomposedAddress {
 constexpr inline std::uint32_t safeCeilLog2(std::uint32_t val) noexcept {
     assert(val != 0);
     auto highestSetBit = 32 - __builtin_clz(val) - 1;
-    if (1ull << highestSetBit == val)
+    if ((1ull << highestSetBit) == val)
         return highestSetBit;
     return highestSetBit + 1;
 }

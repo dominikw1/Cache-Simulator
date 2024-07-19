@@ -49,6 +49,7 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
     sc_trace_file* trace;
     if (tracefile != NULL) {
         trace = sc_create_vcd_trace_file(tracefile);
+        sc_trace(trace, connections.get()->clk, "clock");
 
         // Data Cache signals
         sc_trace(trace, connections.get()->cpuWeSignal, "cpuWeSignal");
