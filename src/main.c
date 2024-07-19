@@ -2,20 +2,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "Argparsing.h"
 #include "Request.h"
 #include "Result.h"
 #include "Simulation/Simulation.h"
-#include "Argparsing.h"
 
 
 int main(int argc, char** argv) {
-    struct Configuration configuration;
-    int exitFailure = parse_arguments(argc, argv, &configuration);    // Parse command line arguments
 
+    // Parse command line arguments
+    struct Configuration configuration;
+    int exitFailure = parse_arguments(argc, argv, &configuration);
     if (exitFailure) {
+        free(configuration.requests);
+        configuration.requests = NULL;
         return EXIT_FAILURE;
     }
 
+    // Call run_simulation method depending on
     struct Result result;
     if (configuration.callExtended) {
         result = run_simulation_extended(configuration.cycles, configuration.directMapped, configuration.cacheLines,
