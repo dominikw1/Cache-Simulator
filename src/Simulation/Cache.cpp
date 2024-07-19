@@ -4,7 +4,7 @@ template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Direct>::getCachelineOwnedByAddr(DecomposedAddress decomposedAddr) noexcept {
     auto cachelineExpectedAt = cacheInternal.begin() + decomposedAddr.index;
-    if (cachelineExpectedAt->isUsed && cachelineExpectedAt->tag == decomposedAddr.tag) {
+    if (cachelineExpectedAt->isValid && cachelineExpectedAt->tag == decomposedAddr.tag) {
         return cachelineExpectedAt;
     } else {
         return cacheInternal.end();
@@ -15,7 +15,7 @@ template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Fully_Associative>::getCachelineOwnedByAddr(DecomposedAddress decomposedAddr) noexcept {
     if (cachelineLookupTable.count(decomposedAddr.tag)) {
-        // isUsed is true by virtue of the tag being in there
+        // isValid is true by virtue of the tag being in there
         return cacheInternal.begin() + cachelineLookupTable[decomposedAddr.tag];
     } else {
         return cacheInternal.end();
@@ -33,8 +33,13 @@ Cache<MappingType::Direct>::chooseWhichCachelineToFillFromRAM(DecomposedAddress 
 template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(DecomposedAddress decomposedAddr) {
-    auto firstUnusedCacheline = std::find_if(cacheInternal.begin(), cacheInternal.end(),
-                                             [](const Cacheline& cacheline) { return !cacheline.isUsed; });
+    std::cout << cachelineLookupTable.numCacheLinesUsed << std::endl;
+    auto firstUnusedCacheline = cacheInternal.end();
+    if (cachelineLookupTable.numCacheLinesUsed != numCacheLines) {
+        firstUnusedCacheline = cacheInternal.begin() + cachelineLookupTable.numCacheLinesUsed;
+        cachelineLookupTable.numCacheLinesUsed += 1;
+    }
+
     if (firstUnusedCacheline == cacheInternal.end()) {
         firstUnusedCacheline = cacheInternal.begin() + replacementPolicy->pop();
         cachelineLookupTable.erase(firstUnusedCacheline->tag);
@@ -69,12 +74,9 @@ void Cache<MappingType::Fully_Associative>::registerUsage(std::vector<Cacheline>
 }
 
 template <MappingType mappingType> void Cache<mappingType>::waitForRAM() noexcept {
-    //  std::cout << "Now waiting for WriteBuffer" << std::endl;
     do {
         wait(clock.posedge_event());
     } while (!writeBufferReady.read());
-
-    // std::cout << " Done waiting for WriteBuffer" << std::endl;
 }
 
 template <> void Cache<MappingType::Fully_Associative>::precomputeAddressDecompositionBits() noexcept {
@@ -131,7 +133,7 @@ Cache<mappingType>::Cache(sc_core::sc_module_name name, unsigned int numCacheLin
 
     using namespace sc_core; // in scope as to not pollute global namespace
     if (replacementPolicy != nullptr && mappingType == MappingType::Direct) {
-        std::cout << "Replacement Policy is set on a direct mapped cache - this has no effect.\n";
+        std::cerr << "Replacement Policy is set on a direct mapped cache - this has no effect.\n";
     }
 
     zeroInitialiseCachelines();
@@ -145,41 +147,27 @@ Cache<mappingType>::Cache(sc_core::sc_module_name name, unsigned int numCacheLin
 template <MappingType mappingType>
 std::vector<Cacheline>::iterator
 Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) noexcept {
-    //  std::cout << "Writing RAM Read into cacheline " << std::endl;
     auto cachelineToWriteInto = chooseWhichCachelineToFillFromRAM(decomposedAddr);
 
-    // we do not allow any inputs violating this rule
+    // we do not allow any inputs violating this rule in the C-part
     assert(cachelineToWriteInto->data.size() % RAM_READ_BUS_SIZE_IN_BYTE == 0);
     sc_dt::sc_bv<RAM_READ_BUS_SIZE_IN_BYTE * BITS_IN_BYTE> dataRead;
     std::uint32_t numReadEvents = (cachelineToWriteInto->data.size() / RAM_READ_BUS_SIZE_IN_BYTE);
 
-    // dont need to wait before first one because we can only get here if RAM tells us it is ready
     for (std::size_t i = 0; i < numReadEvents; ++i) {
         dataRead = writeBufferDataOut.read();
-        //    std::cout << "Cache received: " << writeBufferDataOut.read() << std::endl;
-
         for (int byte = 0; byte < RAM_READ_BUS_SIZE_IN_BYTE; ++byte) {
             cachelineToWriteInto->data[RAM_READ_BUS_SIZE_IN_BYTE * i + byte] =
                 dataRead.range(BITS_IN_BYTE * byte + (BITS_IN_BYTE - 1), BITS_IN_BYTE * byte).to_uint();
-            //   std::cout << dataRead.range(BITS_IN_BYTE * byte + (BITS_IN_BYTE - 1), BITS_IN_BYTE * byte).to_uint() <<
-            //   "/"
-            //           << cachelineToWriteInto->data[RAM_READ_BUS_SIZE_IN_BYTE * i + byte] << " ";
         }
-        // std::cout << std::endl;
         //  if this is the last one we don't need to wait anymore
         if (i + 1 <= numReadEvents)
             wait(clock.posedge_event());
     }
-    //    std::cout << "Cache: Done reading into cacheline at " << sc_core::sc_time_stamp() << "\n";
 
     writeBufferValidRequest.write(false);
-    // wait(clock.posedge_event()); // DEBUG
-    // wait(clock.posedge_event()); // DEBUG
-    // std::cout << "Unsetting valid request now" << std::endl;
-    cachelineToWriteInto->isUsed = true;
+    cachelineToWriteInto->isValid = true;
     cachelineToWriteInto->tag = decomposedAddr.tag;
-
-    // std::cout << "Done writing RAM Read into cacheline :" << *cachelineToWriteInto << std::endl;
 
     return cachelineToWriteInto;
 }
@@ -197,11 +185,9 @@ std::vector<Cacheline>::iterator Cache<mappingType>::fetchIfNotPresent(std::uint
 
     auto cacheline = getCachelineOwnedByAddr(decomposedAddr);
     if (cacheline != cacheInternal.end()) {
-        // std::cout << "HIT" << std::endl;
         ++hitCount;
         return cacheline;
     }
-    // std::cout << "MISS" << std::endl;
     ++missCount;
 
     startReadFromRAM(addr);
@@ -211,50 +197,29 @@ std::vector<Cacheline>::iterator Cache<mappingType>::fetchIfNotPresent(std::uint
 
 template <MappingType mappingType>
 void Cache<mappingType>::handleSubRequest(SubRequest subRequest, std::uint32_t& readData) noexcept {
-    // std::cout << "Starting handling subrequest " << subRequest.addr << " " << subRequest.data << " "
-    //         << unsigned(subRequest.size) << " " << subRequest.we << " " << unsigned(subRequest.bitsBefore)
-    //       << std::endl;
-
-    // std::cout << "Potentially reading into cache if not present...\n";
     auto addr = subRequest.addr;
 
     // split into tag - index - offset
     auto decomposedAddr = decomposeAddress(addr);
     // check if in cache (waits for #cycles specified by cacheLatency) - if not read from RAM
-
-    // std::cout << "Curr tag: " << decomposedAddr.tag << std::endl;
-    // std::cout << "Curr index " << decomposedAddr.index << " offset " << decomposedAddr.offset << std::endl;
-    //  std::cout << "Tags in cache:" << std::endl;
-    // for (auto& cachl : cacheInternal) {
-    //   std::cout << cachl.tag << "\n";
-    //}
-
     auto cacheline = fetchIfNotPresent(addr, decomposedAddr);
-
-    // std::cout << "Done reading into cache\n";
 
     // if a fully associative Cache and we use a stateful policy we declare the use of the cacheline here. In Direct
     // Mapped cache this is a NOP
     registerUsage(cacheline);
-    // std::cout << "Cacheline we read looks like: " << *cacheline << std::endl;
 
     if (subRequest.we) {
         doWrite(*cacheline, decomposedAddr, subRequest.data, subRequest.size);
         passWriteOnToRAM(*cacheline, decomposedAddr, addr);
-        // std::cout << "After writing it now looks like: " << *cacheline << std::endl;
     } else {
         auto tempReadData = doRead(decomposedAddr, *cacheline, subRequest.size);
-        // std::cout << "Just read " << tempReadData << " from cache\n";
         readData = applyPartialRead(subRequest, readData, tempReadData);
     }
-
-    // std::cout << "Done with subcycle" << std::endl;
 }
 
 template <MappingType mappingType>
 std::uint32_t Cache<mappingType>::doRead(DecomposedAddress decomposedAddr, Cacheline& cacheline,
                                          std::uint8_t numBytes) noexcept {
-    //  std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
     assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
 
     std::uint32_t retVal = 0;
@@ -271,12 +236,10 @@ template <MappingType mappingType> void Cache<mappingType>::handleRequest() noex
 
         if (!cpuValidRequest.read())
             continue;
-        // std::cout << "Cache: Got request at " << sc_core::sc_time_stamp() << "\n";
 
         cyclesPassedInRequest = 0;
 
         auto request = constructRequestFromBusses();
-        //   std::cout << "Received request:\n" << request << "\n";
         auto subRequests = splitRequestIntoSubRequests(request, cacheLineSize);
 
         // while this is also passed into write requests, it is only relevant for read request and will not be accessed
@@ -288,20 +251,15 @@ template <MappingType mappingType> void Cache<mappingType>::handleRequest() noex
         }
 
         if (!request.we) {
-            //   std::cout << "Sending " << readData << " back to CPU" << std::endl;
             cpuDataOutBus.write(readData);
         }
-
-        //   std::cout << "Done with cycle" << std::endl;
 
         // it is the responsibility of the CPU to have stopped the valid request signal at the latest during the cycle
         // he gets this signal. To not still read the valid request signal from the previous cycle we sleep for one and
         // only then start checking again
         ready.write(true);
-        // std::cout << sc_core::sc_get_current_process_b()->get_parent()->basename() << ": Done with request at "
-        //         << sc_core::sc_time_stamp() << "\n";
 
-        wait(); // can we get rid of this somehow??s
+        wait();
     }
 }
 
@@ -331,35 +289,23 @@ void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddres
     data |= (cacheline.data[startByte + 2]) << 2 * BITS_IN_BYTE;
     data |= (cacheline.data[startByte + 3]) << 3 * BITS_IN_BYTE;
 
-    // std::cout << "Passing to write buffer" << std::endl;
     writeBufferAddr.write((startByte == static_cast<std::size_t>(decomposedAddr.offset)
                                ? (addr)
                                : ((addr / cacheLineSize) * cacheLineSize + cacheline.data.size() - 4)));
     writeBufferDataIn.write(data);
     writeBufferWE.write(true);
-    // wait(clock.posedge_event()); // DEBUG
-    // wait(clock.posedge_event()); // DEBUG
     writeBufferValidRequest.write(true);
-    // wait(clock.posedge_event()); // DEBUG
-    // wait(clock.posedge_event()); // DEBUG
-    // write buffer takes at least one cycle (DEFINITION)
     do {
         wait(clock.posedge_event());
         cyclesPassedInRequest++;
     } while (!writeBufferReady);
-    // std::cout << "Buffer said was ready" << std::endl;
     writeBufferValidRequest.write(false);
-    // wait(clock.posedge_event()); // DEBUG
-    // wait(clock.posedge_event()); // DEBUG
-    // std::cout << "Passed to write buffer " << std::endl;
 }
 
 template <MappingType mappingType> void Cache<mappingType>::startReadFromRAM(std::uint32_t addr) noexcept {
     std::uint32_t alignedAddr = (addr / cacheLineSize) * cacheLineSize;
     writeBufferAddr.write(alignedAddr);
     writeBufferWE.write(false);
-    //  std::cout << "Setting WB valid req to true in read " << std::endl;
-    // wait(clock.posedge_event()); // DEBUG
     writeBufferValidRequest.write(true);
 }
 
@@ -378,7 +324,7 @@ static std::size_t calcGateCountForCachelineSelection(std::uint32_t numCacheline
                                                       MappingType type,
                                                       ReplacementPolicy<std::uint32_t>* policy) noexcept {
     if (type == MappingType::Fully_Associative) {
-        // for performacne reasons we would have a binary tree of ors atop of comparators, but to prevent overflow let's
+        // for performance reasons we would have a binary tree of ors atop of comparators, but to prevent overflow let's
         // say we have #cachelines ones comparing in sequence where Comparator := 1 basic gate, a selector as wide as
         // #cachelines := 1 basic gate
         auto comparator = tagBits * numCachelines;
