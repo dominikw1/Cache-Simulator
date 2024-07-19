@@ -158,10 +158,12 @@ protected:
 
 TEST_F(CPUTests, CPUDispatchesSameInstructionAsInput) {
     auto req = Request{1, 5, 0};
+    Request requests[1] = {req};
+
     instrMock.instructionMemory[0] = req;
     dataMock.dataMemory[1] = 10;
 
-    CPU cpu{"cpu", new Request[]{req}, 1};
+    CPU cpu{"cpu", requests, 1};
     createConnectionsToCPU(cpu);
 
     sc_start(1, SC_SEC);
@@ -173,6 +175,7 @@ TEST_F(CPUTests, CPUDispatchesSameMultipleInstructionsAsInput) {
     auto req1 = Request{1, 5, 0};
     auto req2 = Request{2, 5, 1};
     auto req3 = Request{5, 10, 1};
+    Request requests[3] = {req1, req2, req3};
 
     instrMock.instructionMemory[0] = req1;
     instrMock.instructionMemory[1] = req2;
@@ -180,7 +183,7 @@ TEST_F(CPUTests, CPUDispatchesSameMultipleInstructionsAsInput) {
 
     dataMock.dataMemory[1] = 10;
 
-    CPU cpu{"cpu", new Request[]{req1, req2, req3}, 3};
+    CPU cpu{"cpu", requests, 3};
     createConnectionsToCPU(cpu);
 
     sc_start(1, SC_SEC);
@@ -192,10 +195,11 @@ TEST_F(CPUTests, CPUDispatchesSameMultipleInstructionsAsInput) {
 
 TEST_F(CPUTests, CPUWritesMemoryCorrectlySingleRequest) {
     auto reqW = Request{1, 5, 1};
+    Request requests[1] = {reqW};
 
     instrMock.instructionMemory[0] = reqW;
 
-    CPU cpu{"cpu", new Request[]{reqW}, 1};
+    CPU cpu{"cpu", requests, 1};
     createConnectionsToCPU(cpu);
 
     sc_start(1, SC_SEC);
@@ -206,17 +210,17 @@ TEST_F(CPUTests, CPUWritesMemoryCorrectlySingleRequest) {
 }
 
 TEST_F(CPUTests, CPUWritesMemoryCorrectlyMultipleRequests) {
-    std::uint32_t numRequests = 3;
     auto reqW1 = Request{1, 5, 1};
     auto reqW2 = Request{10, 1, 1};
     auto reqW3 = Request{1100, 10, 1};
-    Request requests[3];
+    Request requests[3] = {reqW1, reqW2, reqW3};
 
     instrMock.instructionMemory[0] = reqW1;
     instrMock.instructionMemory[1] = reqW2;
     instrMock.instructionMemory[2] = reqW3;
 
-    CPU cpu{"cpu", new Request[]{reqW1, reqW2, reqW3}, 3};
+
+    CPU cpu{"cpu", requests, 3};
     createConnectionsToCPU(cpu);
 
     sc_start(1, SC_SEC);
