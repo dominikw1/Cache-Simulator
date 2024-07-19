@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Cache.h"
 #include "../Request.h"
+#include "Cache.h"
 
 #include "Policy/FIFOPolicy.h"
 #include <memory>
@@ -40,7 +40,7 @@ SC_MODULE(InstructionCache) {
     sc_core::sc_in<bool> SC_NAMED(memoryReadyBus);
 
   private:
-    sc_core::sc_signal<bool> SC_NAMED(instrWeSignal, false);        // always false
+    sc_core::sc_signal<bool> SC_NAMED(instrWeSignal, false);       // always false
     sc_core::sc_signal<std::uint32_t> SC_NAMED(instrDataInSignal); // never read
 
     // All other ports can be directly connected to internal cache
@@ -79,6 +79,10 @@ SC_MODULE(InstructionCache) {
         SC_METHOD(interceptTooHighPCVal);
         sensitive << pcBus << validInstrRequestBus;
     }
+
+#ifdef STRICT_INSTRUCTION_ORDER
+    void setMemoryLatency(std::uint32_t latency) { cache.setMemoryLatency(latency); }
+#endif
 
   private:
     void interceptTooHighPCVal() {

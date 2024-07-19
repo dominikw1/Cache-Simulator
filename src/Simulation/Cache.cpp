@@ -344,7 +344,7 @@ static std::size_t calcGateCountForCachelineSelection(std::uint32_t numCacheline
 
 template <MappingType mappingType> std::size_t Cache<mappingType>::calculateGateCount() const { return 0; }
 #ifdef STRICT_INSTRUCTION_ORDER
-template <MappingType mappingType> void setMemoryLatency(std::uint32_t memoryLatency) {}
+template <MappingType mappingType> void Cache<mappingType>::setMemoryLatency(std::uint32_t memoryLatency) {}
 #endif
 
 template struct Cache<MappingType::Direct>;

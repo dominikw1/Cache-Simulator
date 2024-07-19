@@ -1,13 +1,13 @@
 #include "Simulation.h"
 #include "CPU.h"
 #include "Cache.h"
+#include "Connections.h"
 #include "InstructionCache.h"
 #include "Memory.h"
 #include "Policy/FIFOPolicy.h"
 #include "Policy/LRUPolicy.h"
 #include "Policy/Policy.h"
 #include "Policy/RandomPolicy.h"
-#include "Connections.h"
 
 #include <exception>
 
@@ -21,7 +21,7 @@ std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheRepl
 constexpr std::uint8_t instructionCacheLineSize = 64;
 constexpr std::uint8_t instructionCacheNumLines = 16;
 
-template<MappingType mappingType>
+template <MappingType mappingType>
 Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, unsigned int cacheLineSize,
                                unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
                                struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
@@ -38,6 +38,10 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
 
     InstructionCache instructionCache{"Instruction_Cache", instructionCacheNumLines, instructionCacheLineSize,
                                       cacheLatency, std::vector<Request>(requests, requests + numRequests)};
+#ifdef STRICT_INSTRUCTION_ORDER
+    dataCache.setMemoryLatency(memoryLatency);
+    instructionCache.setMemoryLatency(memoryLatency);
+#endif
 
     auto connections = connectComponents(cpu, dataRam, instructionRam, dataCache, instructionCache);
 
@@ -82,12 +86,9 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
     }
 
     return Result{
-            connections.get()->pcSignal >= numRequests - 1
-            ? cpu.getElapsedCycleCount()
-            : SIZE_MAX,
-            dataCache.missCount,
-            dataCache.hitCount,
-            1 // TODO: primitiveGateCount
+        connections.get()->pcSignal >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX, dataCache.missCount,
+        dataCache.hitCount,
+        1 // TODO: primitiveGateCount
     };
 }
 
@@ -116,14 +117,14 @@ struct Result run_simulation(int cycles, int directMapped, unsigned cacheLines, 
 std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheReplacementPolicy replacementPolicy,
                                                                        int cacheSize) {
     switch (replacementPolicy) {
-        case POLICY_LRU:
-            return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
-        case POLICY_FIFO:
-            return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
-        case POLICY_RANDOM:
-            return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
-        default:
-            throw std::runtime_error("Encountered unknown policy type");
+    case POLICY_LRU:
+        return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
+    case POLICY_FIFO:
+        return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
+    case POLICY_RANDOM:
+        return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
+    default:
+        throw std::runtime_error("Encountered unknown policy type");
     }
 }
 
