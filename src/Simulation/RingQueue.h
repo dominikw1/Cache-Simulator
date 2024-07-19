@@ -3,14 +3,14 @@
 #include <vector>
 
 template <typename T> class RingQueue {
-    typedef typename std::array<T>::iterator ItType;
+    typedef typename std::vector<T>::iterator ItType;
     std::vector<T> buffer;
     ItType begin, end;
     std::size_t currNumEl = 0;
     mutable std::mutex mutex;
 
   public:
-    RingQueue(std::size_t size) : buffer{std::array<T>(size)}, begin{buffer.begin()}, end{buffer.begin()} {}
+    RingQueue(std::size_t size) : buffer{std::vector<T>(size)}, begin{buffer.begin()}, end{buffer.begin()} {}
 
     std::size_t getSize() const {
         std::lock_guard<std::mutex> guard{mutex};
