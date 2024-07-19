@@ -40,7 +40,7 @@ def runBenchmark(input: Path, cacheSize: int, cacheLineNum: int, memLatency: int
     cmd = [pathToCacheExe, input, "--lcycles", "-c", str(4294967295), "--cache-latency" ,str(cacheLatency), "--memory-latency",str(memLatency) ,"--cachelines",str(cacheLineNum), "--cacheline-size", str(cacheSize) , f"--{policy}"]
     if direct_mapped:
         cmd += ["--directmapped"]
-    print(cmd)
+    #print(cmd)
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     res = extractRawRes(proc.communicate()[0].decode("utf-8"))
     
