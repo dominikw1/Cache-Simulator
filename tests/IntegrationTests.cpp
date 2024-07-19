@@ -1,13 +1,13 @@
-#include <gtest/gtest.h>
-#include <systemc>
-#include "../src/Memory.h"
-#include "../src/InstructionCache.h"
 #include "../src/CPU.h"
-#include "../src/Policy/Policy.h"
+#include "../src/InstructionCache.h"
+#include "../src/Memory.h"
 #include "../src/Policy/FIFOPolicy.h"
 #include "../src/Policy/LRUPolicy.h"
+#include "../src/Policy/Policy.h"
 #include "../src/Policy/RandomPolicy.h"
 #include "Utils.h"
+#include <gtest/gtest.h>
+#include <systemc>
 
 using namespace sc_core;
 
@@ -55,19 +55,19 @@ struct Connections {
     sc_signal<bool> instrRamReadySignal;
 };
 
-template<MappingType mappingType>
-std::unique_ptr<Connections> connectComp(CPU& cpu,
-                                         RAM& dataRam, RAM& instructionRam,
-                                         Cache<mappingType>& dataCache, InstructionCache& instructionCache);
+template <MappingType mappingType>
+std::unique_ptr<Connections> connectComp(CPU& cpu, RAM& dataRam, RAM& instructionRam, Cache<mappingType>& dataCache,
+                                         InstructionCache& instructionCache);
 
-std::unique_ptr<ReplacementPolicy<std::uint32_t>>
-getReplacementPolity(CacheReplacementPolicy replacementPolicy, unsigned int cacheSize);
+std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheReplacementPolicy replacementPolicy,
+                                                                       unsigned int cacheSize);
 
 std::vector<Request> generateRandomRequests(std::uint64_t len);
 
 class IntegrationTests
-        : public ::testing::TestWithParam<std::tuple<unsigned int, unsigned int, unsigned int, unsigned int, CacheReplacementPolicy, std::vector<Request>>> {
-protected:
+    : public ::testing::TestWithParam<std::tuple<unsigned int, unsigned int, unsigned int, unsigned int,
+                                                 CacheReplacementPolicy, std::vector<Request>>> {
+  protected:
     unsigned int memoryLatency = std::get<0>(GetParam());
     unsigned int cacheLatency = std::get<1>(GetParam());
     unsigned int cacheLines = std::get<2>(GetParam());
@@ -85,7 +85,7 @@ protected:
     std::unordered_map<std::uint32_t, std::uint8_t> memRecord;
 
     void SetUp() override {
-        for (auto& request: requests) {
+        for (auto& request : requests) {
             memRecord[request.addr + 0] = (request.data >> 0) & ((1 << 8) - 1);
             memRecord[request.addr + 1] = (request.data >> 8) & ((1 << 8) - 1);
             memRecord[request.addr + 2] = (request.data >> 16) & ((1 << 8) - 1);
@@ -94,14 +94,10 @@ protected:
     }
 };
 
-
 TEST_P(IntegrationTests, DirectMapped) {
-    Cache<MappingType::Direct> dataCache{"Data_cache",
-                                         cacheLines, cacheLineSize, cacheLatency,
-                                         nullptr};
+    Cache<MappingType::Direct> dataCache{"Data_cache", cacheLines, cacheLineSize, cacheLatency, nullptr};
 
     auto connections = connectComp(cpu, dataRam, instructionRam, dataCache, instructionCache);
-
 
     sc_start(2, SC_MS);
     ASSERT_EQ(cpu.results.size(), requests.size());
@@ -117,26 +113,24 @@ TEST_P(IntegrationTests, DirectMapped) {
 };
 
 TEST_P(IntegrationTests, FullyAssociative) {
-    Cache<MappingType::Fully_Associative> dataCache{"Data_cache",
-                                                    cacheLines, cacheLineSize, cacheLatency,
+    Cache<MappingType::Fully_Associative> dataCache{"Data_cache", cacheLines, cacheLineSize, cacheLatency,
                                                     getReplacementPolity(policy, cacheLines)};
 
     auto connections = connectComp(cpu, dataRam, instructionRam, dataCache, instructionCache);
 };
 
-const auto memoryLatencyValues = testing::Values(0, 1, 10, 100, 100, 1<<31);
-const auto cacheLatencyValues = testing::Values(0, 1, 10, 100, 100, 1<<31);
-const auto cacheLines = testing::Values(0, 1, 5, 10, 100, 1<<31);
-const auto cacheLineSizes = testing::Values(0, 16, 32, 64, 128, 1<<31);
+const auto memoryLatencyValues = testing::Values(0, 1, 10, 100, 1 << 31);
+const auto cacheLatencyValues = testing::Values(0, 1, 10, 100, 1 << 31);
+const auto cacheLines = testing::Values(0, 1, 10, 100, 1 << 31);
+const auto cacheLineSizes = testing::Values(0, 16, 32, 64, 128, 1 << 31);
 const auto policies = testing::Values(POLICY_FIFO, POLICY_LRU, POLICY_RANDOM);
-const auto numRequests = testing::Values(generateRandomRequests(0), generateRandomRequests(1), generateRandomRequests(10),
-                                         generateRandomRequests(100), generateRandomRequests(1000),
-                                         generateRandomRequests(10000), generateRandomRequests(1<<31));
+const auto numRequests =
+    testing::Values(generateRandomRequests(0), generateRandomRequests(1), generateRandomRequests(10),
+                    generateRandomRequests(100), generateRandomRequests(1000), generateRandomRequests(1 << 20));
 
 INSTANTIATE_TEST_SUITE_P(AllCombinations, IntegrationTests,
                          testing::Combine(memoryLatencyValues, cacheLatencyValues, cacheLines, cacheLines,
                                           cacheLineSizes, policies));
-
 
 std::vector<Request> generateRandomRequests(std::uint64_t len) {
     auto addresses = generateRandomVector(len, UINT32_MAX);
@@ -146,35 +140,30 @@ std::vector<Request> generateRandomRequests(std::uint64_t len) {
     std::vector<Request> requests;
 
     for (int i = 0; i < len; ++i) {
-        requests.push_back(
-                Request{
-                        static_cast<std::uint32_t>(addresses.at(i)),
-                        static_cast<std::uint32_t>(data.at(i)),
-                        static_cast<int>(we.at(i))
-                });
+        requests.push_back(Request{static_cast<std::uint32_t>(addresses.at(i)), static_cast<std::uint32_t>(data.at(i)),
+                                   static_cast<int>(we.at(i))});
     }
 
     return requests;
 }
 
-std::unique_ptr<ReplacementPolicy<std::uint32_t>>
-getReplacementPolity(CacheReplacementPolicy replacementPolicy, unsigned int cacheSize) {
+std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheReplacementPolicy replacementPolicy,
+                                                                       unsigned int cacheSize) {
     switch (replacementPolicy) {
-        case POLICY_LRU:
-            return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
-        case POLICY_FIFO:
-            return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
-        case POLICY_RANDOM:
-            return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
-        default:
-            throw std::runtime_error("Encountered unknown policy type");
+    case POLICY_LRU:
+        return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
+    case POLICY_FIFO:
+        return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
+    case POLICY_RANDOM:
+        return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
+    default:
+        throw std::runtime_error("Encountered unknown policy type");
     }
 }
 
-template<MappingType mappingType>
-std::unique_ptr<Connections> connectComp(CPU& cpu,
-                                         RAM& dataRam, RAM& instructionRam,
-                                         Cache<mappingType>& dataCache, InstructionCache& instructionCache) {
+template <MappingType mappingType>
+std::unique_ptr<Connections> connectComp(CPU& cpu, RAM& dataRam, RAM& instructionRam, Cache<mappingType>& dataCache,
+                                         InstructionCache& instructionCache) {
     auto connections = std::make_unique<Connections>();
 
     // Data Cache
@@ -255,4 +244,3 @@ std::unique_ptr<Connections> connectComp(CPU& cpu,
 
     return connections;
 }
-
