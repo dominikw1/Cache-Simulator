@@ -89,6 +89,9 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     std::uint32_t cacheLineSize{0}; // in Byte
     std::uint32_t cacheLatency{0};  // in Cycles
     std::unique_ptr<ReplacementPolicy<std::uint32_t>> replacementPolicy{nullptr};
+#ifdef STRICT_INSTRUCTION_ORDER
+    std::uint32_t memoryLatency{0};
+#endif
 
     // ====================================== Internals ======================================
     std::vector<Cacheline> cacheInternal;
@@ -131,6 +134,15 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @returns An approximation of the amount of primitive gates within this caches
      */
     std::size_t calculateGateCount() const;
+
+#ifdef STRICT_INSTRUCTION_ORDER
+    /**
+     * Sets the correct memory latency this system experiences. This is only to be used if one insists on not bypassing
+     * the speedup of the write buffer.
+     * @param[in] memoryLatency The latency of the RAM
+     */
+    void setMemoryLatency(std::uint32_t memoryLatency);
+#endif
 
   private:
     // ====================================== Set-Up ======================================

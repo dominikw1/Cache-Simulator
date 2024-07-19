@@ -1,7 +1,7 @@
+#include "../src/Request.h"
 #include "../src/Simulation/Cache.h"
 #include "../src/Simulation/Policy/LRUPolicy.h"
 #include "../src/Simulation/Policy/RandomPolicy.h"
-#include "../src/Request.h"
 #include "Utils.h"
 #include <cassert>
 #include <exception>
@@ -205,6 +205,9 @@ class CacheTests : public testing::Test {
     sc_clock clock{"clk", sc_time(1, SC_NS)};
     void SetUp() {
         ram.latency = 20;
+#ifdef STRICT_INSTRUCTION_ORDER
+        cache.setMemoryLatency(ram.latency);
+#endif
         cpu.clock.bind(clock);
         cpu.weBus.bind(cpuWeSignal);
         cpu.addrBus.bind(cpuAddressSignal);
@@ -538,6 +541,8 @@ TEST_F(CacheTests, CacheSingleWriteUsesWriteBuffer) {
 //        ASSERT_LT((1ull << log2V), (std::uint64_t)2ull * i);
 //    }
 //}
+
+TEST(AddrDecompTests, ceilLog2WorksFor1) { ASSERT_EQ(safeCeilLog2(1), 0); }
 
 TEST_F(CacheTests, CacheMultiWriteBuffersIfSameCacheline) {
     ram.latency = 1000;

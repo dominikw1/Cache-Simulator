@@ -123,7 +123,11 @@ template <std::uint8_t SIZE> constexpr bool WriteBuffer<SIZE>::weCanAcceptWrite(
 }
 
 template <std::uint8_t SIZE> constexpr bool WriteBuffer<SIZE>::weCanAcceptRead() noexcept {
+#ifdef STRICT_RAM_READ_AFTER_WRITES
+    return state == State::Idle && buffer.getSize() == 0;
+#else
     return state == State::Idle;
+#endif
 }
 
 template <std::uint8_t SIZE> bool WriteBuffer<SIZE>::thereIsAWrite() noexcept {

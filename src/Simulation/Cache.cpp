@@ -300,6 +300,12 @@ void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddres
         cyclesPassedInRequest++;
     } while (!writeBufferReady);
     writeBufferValidRequest.write(false);
+
+#ifdef STRICT_INSTRUCTION_ORDER
+    for (std::uint32_t waited = 0; waited < memoryLatency; ++waited) {
+        wait();
+    }
+#endif
 }
 
 template <MappingType mappingType> void Cache<mappingType>::startReadFromRAM(std::uint32_t addr) noexcept {
@@ -324,9 +330,9 @@ static std::size_t calcGateCountForCachelineSelection(std::uint32_t numCacheline
                                                       MappingType type,
                                                       ReplacementPolicy<std::uint32_t>* policy) noexcept {
     if (type == MappingType::Fully_Associative) {
-        // for performance reasons we would have a binary tree of ors atop of comparators, but to prevent overflow let's
-        // say we have #cachelines ones comparing in sequence where Comparator := 1 basic gate, a selector as wide as
-        // #cachelines := 1 basic gate
+        // for performance reasons we would have a binary tree of ors atop of comparators, but to prevent overflow
+        // let's say we have #cachelines ones comparing in sequence where Comparator := 1 basic gate, a selector as
+        // wide as #cachelines := 1 basic gate
         auto comparator = tagBits * numCachelines;
         auto propagation = numCachelines;
         return comparator + propagation + 1 + policy->calcBasicGates(); // i don't think this can overflow
@@ -337,6 +343,9 @@ static std::size_t calcGateCountForCachelineSelection(std::uint32_t numCacheline
 }
 
 template <MappingType mappingType> std::size_t Cache<mappingType>::calculateGateCount() const { return 0; }
+#ifdef STRICT_INSTRUCTION_ORDER
+template <MappingType mappingType> void Cache<mappingType>::setMemoryLatency(std::uint32_t memoryLatency) {}
+#endif
 
 template struct Cache<MappingType::Direct>;
 template struct Cache<MappingType::Fully_Associative>;

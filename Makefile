@@ -64,4 +64,10 @@ clean:
 test:
 	cmake -S . -B build  && cmake --build build  -j16 && cd build && ctest --output-on-failure --parallel 16
 
-.PHONY: all debug release clean test
+buildWithRAMReadAfterWrite: CXXFLAGS += -g -DSTRICT_RAM_READ_AFTER_WRITES
+buildWithRAMReadAfterWrite: $(TARGET)
+
+buildWithStrictInstrOrder: CXXFLAGS += -g -DSTRICT_RAM_READ_AFTER_WRITES -DSTRICT_INSTRUCTION_ORDER
+buildWithStrictInstrOrder: $(TARGET)
+
+.PHONY: all debug release clean test buildWithStrictInstrOrder buildWithRAMReadAfterWrite
