@@ -21,7 +21,7 @@ CXXFLAGS := -Wall -Wextra -pedantic -std=c++14  -I$(SCPATH)/include -L$(SCPATH)/
 
 
 
-CXX := $(shell command -v g++ || command -v clang++)
+CXX := $(shell command -v clang++)
 ifeq ($(strip $(CXX)),)
     $(error Neither clang++ nor g++ is available. Exiting.)
 endif

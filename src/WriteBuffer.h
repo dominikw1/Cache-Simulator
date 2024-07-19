@@ -31,7 +31,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
     const std::uint32_t readsPerCacheline = 0;
     const std::uint32_t cacheLineSize = 0;
 
-    constexpr WriteBuffer(sc_core::sc_module_name name, std::uint32_t readsPerCacheline,
+    WriteBuffer(sc_core::sc_module_name name, std::uint32_t readsPerCacheline,
                           std::uint32_t cacheLineSize) noexcept
         : sc_module{name}, readsPerCacheline{readsPerCacheline}, cacheLineSize{cacheLineSize} {
         using namespace sc_core;

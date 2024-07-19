@@ -112,38 +112,38 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * Connect the internal write buffer to the external ports of the cache and internal signals used to communicate
      * with it.
      */
-    constexpr void setUpWriteBufferConnects() noexcept;
+    void setUpWriteBufferConnects() noexcept;
     /**
      * Initialise all cachelines with 0 bytes.
      */
-    constexpr void zeroInitialiseCachelines() noexcept;
+    void zeroInitialiseCachelines() noexcept;
     /**
      * Precomputes what (and how many) bits of an adress correspond to tag, index and offset in our cache. Furthermore
      * preconstructs bit masks to extract those values.
      */
-    constexpr void precomputeAddressDecompositionBits() noexcept;
+    void precomputeAddressDecompositionBits() noexcept;
 
     // ========== Main Request Handling ==============
     /**
      * The main point of entry for each request. The request gets split up into non-cacheline crossing subrequests and
      * the appropriate signals to the outside world are set
      */
-    constexpr void handleRequest() noexcept;
+    void handleRequest() noexcept;
     /**
      * Handles the cacheline-internal requests and controls the actual performance like loading the cacheline from RAM
      * if not present, controlling the writes and reads, etc.
      */
-    constexpr void handleSubRequest(SubRequest subRequest, std::uint32_t & readData) noexcept;
+    void handleSubRequest(SubRequest subRequest, std::uint32_t & readData) noexcept;
     /**
      * Constructs a request object by reading the busses written to by the CPU for easier internal handling.
      */
-    constexpr Request constructRequestFromBusses() const noexcept;
+    Request constructRequestFromBusses() const noexcept;
 
     // ========== Helpers to determine which cache line to read from / write to ==============
     /**
      * Use precomputed masks to decompose address into tag, index and offset
      */
-    constexpr DecomposedAddress decomposeAddress(std::uint32_t address) noexcept;
+    DecomposedAddress decomposeAddress(std::uint32_t address) noexcept;
     /**
      * Use address decomposed into tag, index and offset to find a cacheline in the cache that is already "owned" by
      * this address, meaning the tag matches and it is a valid cacheline. How this cacheline is found is determined by
@@ -164,13 +164,12 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     /**
      * Determines whether we have a cache hit or not and fetches the cacheline from RAM if it's a miss
      */
-    constexpr std::vector<Cacheline>::iterator fetchIfNotPresent(std::uint32_t addr,
-                                                                 DecomposedAddress decomposedAddr) noexcept;
+    std::vector<Cacheline>::iterator fetchIfNotPresent(std::uint32_t addr, DecomposedAddress decomposedAddr) noexcept;
     /**
      * Sends request to RAM through Write Buffer to read in cacheline.
      * @param[in] addr Cacheline-size aligned addr for the first byte to be read
      */
-    constexpr void startReadFromRAM(std::uint32_t addr) noexcept;
+    void startReadFromRAM(std::uint32_t addr) noexcept;
     /**
      * Reads a data segment from cacheline
      * @param[in] decomposedAddr the address decomposed into tag, index and offset
@@ -178,17 +177,17 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] numBytes the amount of bytes we want to read
      * @returns the data segment just read in the lowest numBytes bytes of the uint32_t
      * */
-    constexpr std::uint32_t doRead(DecomposedAddress decomposedAddr, Cacheline & cacheline, std::uint8_t numBytes) noexcept;
+    std::uint32_t doRead(DecomposedAddress decomposedAddr, Cacheline & cacheline, std::uint8_t numBytes) noexcept;
     /**
      * Reads data from bus written to by RAM and copies it into the corresponding cacheline
      * */
-    constexpr std::vector<Cacheline>::iterator writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) noexcept;
+    std::vector<Cacheline>::iterator writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) noexcept;
 
     // ========== Writing to Cache ==============
     void doWrite(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t data, std::uint8_t numBytes);
     void passWriteOnToRAM(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t addr);
 
     // ========== Waiting Helpers ==============
-    constexpr void waitOutCacheLatency() noexcept;
+    void waitOutCacheLatency() noexcept;
     void waitForRAM();
 };
