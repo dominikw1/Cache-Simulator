@@ -31,8 +31,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
     const std::uint32_t readsPerCacheline = 0;
     const std::uint32_t cacheLineSize = 0;
 
-    WriteBuffer(sc_core::sc_module_name name, std::uint32_t readsPerCacheline,
-                          std::uint32_t cacheLineSize) noexcept
+    WriteBuffer(sc_core::sc_module_name name, std::uint32_t readsPerCacheline, std::uint32_t cacheLineSize) noexcept
         : sc_module{name}, readsPerCacheline{readsPerCacheline}, cacheLineSize{cacheLineSize} {
         using namespace sc_core;
 
@@ -175,10 +174,10 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         while (true) {
             wait();
             if (state == State::Read) {
-              //  std::cout << "WB: Got request at " << sc_core::sc_time_stamp() << "\n";
+                //  std::cout << "WB: Got request at " << sc_core::sc_time_stamp() << "\n";
                 passReadAlong();
                 state = State::Idle;
-                //std::cout << "WB: Done with request at " << sc_core::sc_time_stamp() << "\n";
+                // std::cout << "WB: Done with request at " << sc_core::sc_time_stamp() << "\n";
             }
         }
     }
@@ -187,10 +186,10 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
         while (true) {
             wait();
             if (state == State::Write) {
-                //std::cout << "WB: Got write request at " << sc_core::sc_time_stamp() << "\n";
+                // std::cout << "WB: Got write request at " << sc_core::sc_time_stamp() << "\n";
                 writeToRAM();
                 state = State::Idle;
-              //  std::cout << "WB: Done with write request at " << sc_core::sc_time_stamp() << "\n";
+                //  std::cout << "WB: Done with write request at " << sc_core::sc_time_stamp() << "\n";
             }
         }
     }

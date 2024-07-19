@@ -39,15 +39,14 @@ std::vector<Cacheline>::iterator Cache<MappingType::Fully_Associative>::chooseWh
     return firstUnusedCacheline;
 }
 
-template <>  DecomposedAddress Cache<MappingType::Direct>::decomposeAddress(std::uint32_t address) noexcept {
+template <> DecomposedAddress Cache<MappingType::Direct>::decomposeAddress(std::uint32_t address) noexcept {
     assert(addressOffsetBitMask > 0 && addressIndexBitMask > 0 && addressTagBitMask > 0);
     return DecomposedAddress{((address >> addressOffsetBits) >> addressIndexBits) & addressTagBitMask,
                              ((address >> addressOffsetBits) & addressIndexBitMask) % numCacheLines,
                              address & addressOffsetBitMask};
 }
 
-template <>
- DecomposedAddress Cache<MappingType::Fully_Associative>::decomposeAddress(std::uint32_t address) noexcept {
+template <> DecomposedAddress Cache<MappingType::Fully_Associative>::decomposeAddress(std::uint32_t address) noexcept {
     assert(addressOffsetBitMask > 0 && addressIndexBitMask == 0 && addressTagBitMask > 0);
     return DecomposedAddress{(address >> addressOffsetBits) & addressTagBitMask, 0, address & addressOffsetBitMask};
 }
@@ -63,7 +62,7 @@ void Cache<MappingType::Fully_Associative>::registerUsage(std::vector<Cacheline>
     replacementPolicy->logUse(cacheline - cacheInternal.begin());
 }
 
-template <MappingType mappingType> void Cache<mappingType>::waitForRAM() {
+template <MappingType mappingType> void Cache<mappingType>::waitForRAM() noexcept {
     //  std::cout << "Now waiting for WriteBuffer" << std::endl;
     do {
         wait(clock.posedge_event());
@@ -72,7 +71,7 @@ template <MappingType mappingType> void Cache<mappingType>::waitForRAM() {
     // std::cout << " Done waiting for WriteBuffer" << std::endl;
 }
 
-template <>  void Cache<MappingType::Fully_Associative>::precomputeAddressDecompositionBits() noexcept {
+template <> void Cache<MappingType::Fully_Associative>::precomputeAddressDecompositionBits() noexcept {
     addressOffsetBits = safeCeilLog2(cacheLineSize);
     addressIndexBits = 0; // no index bits in fully associative cache
     addressTagBits = 32 - addressOffsetBits;
@@ -81,7 +80,7 @@ template <>  void Cache<MappingType::Fully_Associative>::precomputeAddressDecomp
     addressTagBitMask = generateBitmaskForLowestNBits(addressTagBits);
 }
 
-template <>  void Cache<MappingType::Direct>::precomputeAddressDecompositionBits() noexcept {
+template <> void Cache<MappingType::Direct>::precomputeAddressDecompositionBits() noexcept {
     addressOffsetBits = safeCeilLog2(cacheLineSize);
     addressIndexBits = safeCeilLog2(numCacheLines);
     addressTagBits = 32 - addressIndexBits - addressOffsetBits;
@@ -91,7 +90,7 @@ template <>  void Cache<MappingType::Direct>::precomputeAddressDecompositionBits
     addressTagBitMask = generateBitmaskForLowestNBits(addressTagBits);
 }
 
-template <MappingType mappingType>  void Cache<mappingType>::setUpWriteBufferConnects() noexcept {
+template <MappingType mappingType> void Cache<mappingType>::setUpWriteBufferConnects() noexcept {
     writeBuffer.clock.bind(clock);
 
     writeBuffer.ready.bind(writeBufferReady);
@@ -111,7 +110,7 @@ template <MappingType mappingType>  void Cache<mappingType>::setUpWriteBufferCon
     writeBuffer.memoryReadyBus.bind(memoryReadyBus);
 }
 
-template <MappingType mappingType>  void Cache<mappingType>::zeroInitialiseCachelines() noexcept {
+template <MappingType mappingType> void Cache<mappingType>::zeroInitialiseCachelines() noexcept {
     for (auto& cacheline : cacheInternal) {
         cacheline.data = std::vector<std::uint8_t>(cacheLineSize, 0);
     }
@@ -138,7 +137,7 @@ Cache<mappingType>::Cache(sc_core::sc_module_name name, unsigned int numCacheLin
 }
 
 template <MappingType mappingType>
- std::vector<Cacheline>::iterator
+std::vector<Cacheline>::iterator
 Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) noexcept {
     //  std::cout << "Writing RAM Read into cacheline " << std::endl;
     auto cachelineToWriteInto = chooseWhichCachelineToFillFromRAM(decomposedAddr);
@@ -179,15 +178,15 @@ Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) 
     return cachelineToWriteInto;
 }
 
-template <MappingType mappingType>  void Cache<mappingType>::waitOutCacheLatency() noexcept {
+template <MappingType mappingType> void Cache<mappingType>::waitOutCacheLatency() noexcept {
     for (std::size_t i = 0; i < cacheLatency; ++i) {
         wait();
     }
 }
 
 template <MappingType mappingType>
- std::vector<Cacheline>::iterator
-Cache<mappingType>::fetchIfNotPresent(std::uint32_t addr, DecomposedAddress decomposedAddr) noexcept {
+std::vector<Cacheline>::iterator Cache<mappingType>::fetchIfNotPresent(std::uint32_t addr,
+                                                                       DecomposedAddress decomposedAddr) noexcept {
     waitOutCacheLatency();
 
     auto cacheline = getCachelineOwnedByAddr(decomposedAddr);
@@ -205,7 +204,7 @@ Cache<mappingType>::fetchIfNotPresent(std::uint32_t addr, DecomposedAddress deco
 }
 
 template <MappingType mappingType>
- void Cache<mappingType>::handleSubRequest(SubRequest subRequest, std::uint32_t& readData) noexcept {
+void Cache<mappingType>::handleSubRequest(SubRequest subRequest, std::uint32_t& readData) noexcept {
     // std::cout << "Starting handling subrequest " << subRequest.addr << " " << subRequest.data << " "
     //         << unsigned(subRequest.size) << " " << subRequest.we << " " << unsigned(subRequest.bitsBefore)
     //       << std::endl;
@@ -247,8 +246,8 @@ template <MappingType mappingType>
 }
 
 template <MappingType mappingType>
- std::uint32_t Cache<mappingType>::doRead(DecomposedAddress decomposedAddr, Cacheline& cacheline,
-                                                   std::uint8_t numBytes) noexcept {
+std::uint32_t Cache<mappingType>::doRead(DecomposedAddress decomposedAddr, Cacheline& cacheline,
+                                         std::uint8_t numBytes) noexcept {
     //  std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
     assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
 
@@ -259,7 +258,7 @@ template <MappingType mappingType>
     return retVal;
 }
 
-template <MappingType mappingType>  void Cache<mappingType>::handleRequest() noexcept {
+template <MappingType mappingType> void Cache<mappingType>::handleRequest() noexcept {
     while (true) {
         wait();
         ready.write(false);
@@ -302,7 +301,7 @@ template <MappingType mappingType>  void Cache<mappingType>::handleRequest() noe
 
 template <MappingType mappingType>
 void Cache<mappingType>::doWrite(Cacheline& cacheline, DecomposedAddress decomposedAddr, std::uint32_t data,
-                                 std::uint8_t numBytes) {
+                                 std::uint8_t numBytes) noexcept {
     //  std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
 
     assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
@@ -315,7 +314,8 @@ void Cache<mappingType>::doWrite(Cacheline& cacheline, DecomposedAddress decompo
 }
 
 template <MappingType mappingType>
-void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddress decomposedAddr, std::uint32_t addr) {
+void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddress decomposedAddr,
+                                          std::uint32_t addr) noexcept {
     std::uint32_t data = 0;
 
     std::size_t startByte = std::min(static_cast<std::size_t>(decomposedAddr.offset), cacheline.data.size() - 4);
@@ -348,7 +348,7 @@ void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddres
     // std::cout << "Passed to write buffer " << std::endl;
 }
 
-template <MappingType mappingType>  void Cache<mappingType>::startReadFromRAM(std::uint32_t addr) noexcept {
+template <MappingType mappingType> void Cache<mappingType>::startReadFromRAM(std::uint32_t addr) noexcept {
     std::uint32_t alignedAddr = (addr / cacheLineSize) * cacheLineSize;
     writeBufferAddr.write(alignedAddr);
     writeBufferWE.write(false);
@@ -357,20 +357,20 @@ template <MappingType mappingType>  void Cache<mappingType>::startReadFromRAM(st
     writeBufferValidRequest.write(true);
 }
 
-template <MappingType mappingType>  Request Cache<mappingType>::constructRequestFromBusses() const noexcept {
+template <MappingType mappingType> Request Cache<mappingType>::constructRequestFromBusses() const noexcept {
     return Request{cpuAddrBus.read(), cpuDataInBus.read(), cpuWeBus.read()};
 }
 
-static  std::size_t calcGateCountForInternalTable(std::uint32_t numCachelines, std::uint32_t cachelineSize,
-                                                           std::uint8_t tagBits) noexcept {
+static std::size_t calcGateCountForInternalTable(std::uint32_t numCachelines, std::uint32_t cachelineSize,
+                                                 std::uint8_t tagBits) noexcept {
     // each bit is an edge triggered D Flipflop á la ~10 gates.
     // we have 8 bits in a byte and numCachelines * cachelinesize bytes + tag bits
     return 10ull * numCachelines * (8ull * cachelineSize + tagBits);
 }
 
-static  std::size_t calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint8_t tagBits,
-                                                                MappingType type,
-                                                                ReplacementPolicy<std::uint32_t>* policy) noexcept {
+static std::size_t calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint8_t tagBits,
+                                                      MappingType type,
+                                                      ReplacementPolicy<std::uint32_t>* policy) noexcept {
     if (type == MappingType::Fully_Associative) {
         // for performacne reasons we would have a binary tree of ors atop of comparators, but to prevent overflow let's
         // say we have #cachelines ones comparing in sequence where Comparator := 1 basic gate, a selector as wide as

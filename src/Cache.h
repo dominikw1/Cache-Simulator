@@ -184,10 +184,11 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     std::vector<Cacheline>::iterator writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) noexcept;
 
     // ========== Writing to Cache ==============
-    void doWrite(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t data, std::uint8_t numBytes);
-    void passWriteOnToRAM(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t addr);
+    void doWrite(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t data,
+                 std::uint8_t numBytes) noexcept;
+    void passWriteOnToRAM(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t addr) noexcept;
 
     // ========== Waiting Helpers ==============
     void waitOutCacheLatency() noexcept;
-    void waitForRAM();
+    void waitForRAM() noexcept;
 };
