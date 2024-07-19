@@ -124,14 +124,14 @@ TEST_P(IntegrationTests, FullyAssociative) {
     auto connections = connectComp(cpu, dataRam, instructionRam, dataCache, instructionCache);
 };
 
-const auto memoryLatencyValues = testing::Values(1, 10, 100, 100);
-const auto cacheLatencyValues = testing::Values(1, 10, 100, 100);
-const auto cacheLines = testing::Values(1, 5, 10, 100);
-const auto cacheLineSizes = testing::Values(16, 32, 64, 128);
+const auto memoryLatencyValues = testing::Values(0, 1, 10, 100, 100, 1<<31);
+const auto cacheLatencyValues = testing::Values(0, 1, 10, 100, 100, 1<<31);
+const auto cacheLines = testing::Values(0, 1, 5, 10, 100, 1<<31);
+const auto cacheLineSizes = testing::Values(0, 16, 32, 64, 128, 1<<31);
 const auto policies = testing::Values(POLICY_FIFO, POLICY_LRU, POLICY_RANDOM);
-const auto numRequests = testing::Values(generateRandomRequests(1), generateRandomRequests(10),
+const auto numRequests = testing::Values(generateRandomRequests(0), generateRandomRequests(1), generateRandomRequests(10),
                                          generateRandomRequests(100), generateRandomRequests(1000),
-                                         generateRandomRequests(10000));
+                                         generateRandomRequests(10000), generateRandomRequests(1<<31));
 
 INSTANTIATE_TEST_SUITE_P(AllCombinations, IntegrationTests,
                          testing::Combine(memoryLatencyValues, cacheLatencyValues, cacheLines, cacheLines,
