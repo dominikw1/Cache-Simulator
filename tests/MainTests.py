@@ -70,6 +70,9 @@ class TestFile(unittest.TestCase):
     def test_wrong_file_format(self):
         pass
 
+    def test_hex_numbers(self):
+        pass
+
     def test_no_address_given(self):
         pass
 
