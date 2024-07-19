@@ -14,9 +14,12 @@ Cache<MappingType::Direct>::getCachelineOwnedByAddr(DecomposedAddress decomposed
 template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Fully_Associative>::getCachelineOwnedByAddr(DecomposedAddress decomposedAddr) noexcept {
-    return std::find_if(cacheInternal.begin(), cacheInternal.end(), [&decomposedAddr](Cacheline& cacheline) {
-        return cacheline.isUsed && cacheline.tag == decomposedAddr.tag;
-    });
+    if (cachelineLookupTable.count(decomposedAddr.tag)) {
+        // isUsed is true by virtue of the tag being in there
+        return cacheInternal.begin() + cachelineLookupTable[decomposedAddr.tag];
+    } else {
+        return cacheInternal.end();
+    }
 }
 
 template <>
@@ -28,14 +31,17 @@ Cache<MappingType::Direct>::chooseWhichCachelineToFillFromRAM(DecomposedAddress 
 }
 
 template <>
-std::vector<Cacheline>::iterator Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(
-    __attribute__((unused)) DecomposedAddress decomposedAddr) {
+std::vector<Cacheline>::iterator
+Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(DecomposedAddress decomposedAddr) {
     auto firstUnusedCacheline = std::find_if(cacheInternal.begin(), cacheInternal.end(),
                                              [](const Cacheline& cacheline) { return !cacheline.isUsed; });
     if (firstUnusedCacheline == cacheInternal.end()) {
         firstUnusedCacheline = cacheInternal.begin() + replacementPolicy->pop();
+        cachelineLookupTable.erase(firstUnusedCacheline->tag);
     }
     assert(firstUnusedCacheline != cacheInternal.end());
+
+    cachelineLookupTable[decomposedAddr.tag] = firstUnusedCacheline - cacheInternal.begin();
     return firstUnusedCacheline;
 }
 

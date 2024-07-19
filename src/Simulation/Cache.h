@@ -4,14 +4,17 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <type_traits>
+#include <typeinfo>
+#include <unordered_map>
 
 #include <systemc>
 
 #include "../Request.h"
+#include "../Result.h"
 #include "Cacheline.h"
 #include "DecomposedAddress.h"
 #include "Policy/ReplacementPolicy.h"
-#include "../Result.h"
 #include "SubRequest.h"
 #include "WriteBuffer.h"
 
@@ -91,6 +94,11 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     std::vector<Cacheline> cacheInternal;
     WriteBuffer<WRITE_BUFFER_SIZE> writeBuffer;
     std::uint32_t cyclesPassedInRequest{0};
+
+    struct Empty {}; // we only want to pay the price for having a hash-table if we need it
+    struct cachelineLookupTableType : std::conditional<mappingType == MappingType::Fully_Associative,
+                                                       std::unordered_map<std::uint32_t, std::uint32_t>, Empty>::type {
+    } cachelineLookupTable;
 
     // ====================================== Precomputation ======================================
     std::uint8_t addressOffsetBits{0};
