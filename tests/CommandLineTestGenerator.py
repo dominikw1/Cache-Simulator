@@ -2,7 +2,7 @@ import random
 
 # Parameters to change command line argument size and line count
 flags = 10
-lines = 5
+lines = 50
 debug_option = "valgrind -s "   # --leak-check=summary --show-leak-kinds=definite --track-origins=no
 
 progname = "./cache "
