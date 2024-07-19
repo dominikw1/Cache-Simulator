@@ -67,7 +67,7 @@ FILE* check_file(const char* progname, const char* filename_1, const char* filen
         exit(EXIT_FAILURE);
     }
 
-    // Lines 120-140 taken and adapted from GRA Week 3 "File IO" files.c
+    // Lines 71-81 taken and adapted from GRA Week 3 "File IO" files.c
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
         perror("Error determining file size");
@@ -75,14 +75,28 @@ FILE* check_file(const char* progname, const char* filename_1, const char* filen
         print_usage(progname);
         exit(EXIT_FAILURE);
     }
-    if (!S_ISREG(file_info.st_mode)) {
-        fprintf(stderr, "%s is not a regular file\n", filename);
+    if (S_ISDIR(file_info.st_mode)) {
+        fprintf(stderr, "Error: Filename should not be a directory.\n");
         fclose(file);
         print_usage(progname);
         exit(EXIT_FAILURE);
     }
-    if (S_ISDIR(file_info.st_mode)) {
-        fprintf(stderr, "Filename should not be a directory.\n");
+    // Taken from https://stackoverflow.com/questions/5899497/how-can-i-check-the-extension-of-a-file
+    const char *dot = strrchr(filename, '.');
+    if (!dot || dot == filename) {
+        fprintf(stderr, "Error: %s is not a valid file\n", filename);
+        fclose(file);
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    } else if (strcmp(dot+1, "csv") != 0) {
+        fprintf(stderr, "Error: %s is not a valid csv file!\n", filename);
+        fclose(file);
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+
+    if (!S_ISREG(file_info.st_mode)) {
+        fprintf(stderr, "Error: %s is not a regular file\n", filename);
         fclose(file);
         print_usage(progname);
         exit(EXIT_FAILURE);
