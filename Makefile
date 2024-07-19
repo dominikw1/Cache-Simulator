@@ -59,6 +59,7 @@ $(TARGET): $(C_OBJS) $(CPP_OBJS)
 clean:
 	rm -f $(TARGET)
 	rm -rf src/*.o
+	rm -f src/Simulation/*.o
 
 test:
 	cmake -S . -B build  && cmake --build build  -j16 && cd build && ctest --output-on-failure --parallel 16
