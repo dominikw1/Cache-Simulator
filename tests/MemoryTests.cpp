@@ -33,8 +33,8 @@ protected:
 
 TEST_F(MemoryTests, MemoryWriteAndReadSameAddress) {
     auto value = 1234;
-    auto valueInBytes = new std::uint8_t[]{static_cast<uint8_t>(value), static_cast<uint8_t>(value >> 8),
-                                           static_cast<uint8_t>(value >> 16), static_cast<uint8_t>(value >> 24)};
+    std::uint8_t valueInBytes[4] = {static_cast<uint8_t>(value), static_cast<uint8_t>(value >> 8),
+                                    static_cast<uint8_t>(value >> 16), static_cast<uint8_t>(value >> 24)};
 
     addressSignal = 0;
     dataInSignal = value;
