@@ -53,13 +53,16 @@ TEST_P(IntegrationTests, DirectMapped) {
     sc_start(2, SC_MS);
 
     for (int i = 0; i < requests.size(); ++i) {
-        // TODO
-        //ASSERT_EQ(cpu.results.at(i).first, requests.at(i).addr);
-        //ASSERT_EQ(cpu.results.at(i).second, requests.at(i).data);
-        ASSERT_EQ(memRecord[requests.at(i).addr], dataRam.dataMemory[requests.at(i).addr]);
-        ASSERT_EQ(memRecord[requests.at(i).addr + 1], dataRam.dataMemory[requests.at(i).addr + 1]);
-        ASSERT_EQ(memRecord[requests.at(i).addr + 2], dataRam.dataMemory[requests.at(i).addr + 2]);
-        ASSERT_EQ(memRecord[requests.at(i).addr + 3], dataRam.dataMemory[requests.at(i).addr + 3]);
+        if (requests.at(i).we) {
+            ASSERT_EQ(memRecord[requests.at(i).addr], dataRam.dataMemory[requests.at(i).addr]);
+            ASSERT_EQ(memRecord[requests.at(i).addr + 1], dataRam.dataMemory[requests.at(i).addr + 1]);
+            ASSERT_EQ(memRecord[requests.at(i).addr + 2], dataRam.dataMemory[requests.at(i).addr + 2]);
+            ASSERT_EQ(memRecord[requests.at(i).addr + 3], dataRam.dataMemory[requests.at(i).addr + 3]);
+        } else {
+            uint32_t expected = memRecord[requests.at(i).addr] | (memRecord[requests.at(i).addr + 1] << 8) |
+                                (memRecord[requests.at(i).addr + 2] << 16) | (memRecord[requests.at(i).addr + 3] << 24);
+            ASSERT_EQ(requests.at(i).data, expected);
+        }
     }
 };
 
@@ -80,12 +83,12 @@ const auto requests =
                         generateRandomRequests(100), generateRandomRequests(1000), generateRandomRequests(1 << 20));
 
 INSTANTIATE_TEST_SUITE_P(AllCombinations, IntegrationTests,
-                         testing::Combine(memoryLatencyValues, cacheLatencyValues, cacheLines, cacheLines,
-                                          cacheLineSizes, policies));
-// TODO: Add requets
+                         testing::Combine(memoryLatencyValues, cacheLatencyValues,
+                                          cacheLines, cacheLineSizes,
+                                          policies, requests));
 
-
-std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheReplacementPolicy replacementPolicy, unsigned int cacheSize) {
+std::unique_ptr<ReplacementPolicy<std::uint32_t>>
+getReplacementPolity(CacheReplacementPolicy replacementPolicy, unsigned int cacheSize) {
     switch (replacementPolicy) {
         case POLICY_LRU:
             return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
