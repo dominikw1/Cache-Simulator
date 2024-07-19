@@ -17,7 +17,7 @@ TARGET := cache
 SCPATH = $(SYSTEMC_HOME)
 
 # Additional flags for the compiler
-CXXFLAGS := -std=c++14  -I$(SCPATH)/include -L$(SCPATH)/lib -lsystemc -lm
+CXXFLAGS := -Wall -Wextra -pedantic -std=c++14  -I$(SCPATH)/include -L$(SCPATH)/lib -lsystemc -lm
 
 
 

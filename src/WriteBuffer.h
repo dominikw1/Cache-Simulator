@@ -101,7 +101,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
 
         ready.write(true);
         // dont need to wait before first one because we can only get here if RAM tells us it is ready
-        for (int i = 0; i < readsPerCacheline; ++i) {
+        for (std::size_t i = 0; i < readsPerCacheline; ++i) {
             //  std::cout << "Write buffer received: " << memoryDataInBus.read() << std::endl;
             cacheDataOutBus.write(memoryDataInBus.read());
             wait();
