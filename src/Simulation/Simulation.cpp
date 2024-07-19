@@ -22,7 +22,7 @@ constexpr std::uint8_t instructionCacheLineSize = 64;
 constexpr std::uint8_t instructionCacheNumLines = 16;
 
 template<MappingType mappingType>
-Result run_simulation_extended(uint32_t cycles, unsigned int cacheLines, unsigned int cacheLineSize,
+Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, unsigned int cacheLineSize,
                                unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
                                struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
                                int usingCache) {
@@ -91,7 +91,7 @@ Result run_simulation_extended(uint32_t cycles, unsigned int cacheLines, unsigne
     };
 }
 
-struct Result run_simulation_extended(uint32_t cycles, int directMapped, unsigned int cacheLines,
+struct Result run_simulation_extended(unsigned int cycles, int directMapped, unsigned int cacheLines,
                                       unsigned int cacheLineSize, unsigned int cacheLatency, unsigned int memoryLatency,
                                       size_t numRequests, struct Request requests[], const char* tracefile,
                                       CacheReplacementPolicy policy, int usingCache) {
