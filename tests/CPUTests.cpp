@@ -98,7 +98,6 @@ SC_MODULE(DataMemoryMock) {
 
 class CPUTests : public testing::Test {
 protected:
-    CPU cpu{"cpu", 1000000};
     InstrMemoryMock instrMock{"instrMock"};
     DataMemoryMock dataMock{"dataMock"};
     sc_signal<bool> weSignal;
@@ -121,6 +120,23 @@ protected:
     sc_clock clock{"clk", sc_time(1, SC_NS)};
 
     void SetUp() {
+        instrMock.clock.bind(clock);
+        instrMock.pcBus.bind(pcSignal);
+        instrMock.instrBus.bind(instrSignal);
+        instrMock.instrReadyBus.bind(instrReadySignal);
+        instrMock.validInstrRequest.bind(validInstrRequestSignal);
+
+        dataMock.clock.bind(clock);
+        dataMock.weBus.bind(weSignal);
+        dataMock.addressBus.bind(addressSignal);
+        dataMock.dataInBus.bind(dataOutSignal);
+        dataMock.dataOutBus.bind(dataInSignal);
+        dataMock.dataReadyBus.bind(dataReadySignal);
+        dataMock.validDataRequest.bind(validDataRequestSignal);
+        std::cout << "done binding mocks" << std::endl;
+    }
+
+    void createConnectionsToCPU(CPU& cpu) {
         cpu.clock.bind(clock);
         cpu.weBus.bind(weSignal);
         cpu.addressBus.bind(addressSignal);
@@ -137,20 +153,6 @@ protected:
         cpu.validDataRequestBus.bind(validDataRequestSignal);
 
         std::cout << "done binding cpu" << std::endl;
-        instrMock.clock.bind(clock);
-        instrMock.pcBus.bind(pcSignal);
-        instrMock.instrBus.bind(instrSignal);
-        instrMock.instrReadyBus.bind(instrReadySignal);
-        instrMock.validInstrRequest.bind(validInstrRequestSignal);
-
-        dataMock.clock.bind(clock);
-        dataMock.weBus.bind(weSignal);
-        dataMock.addressBus.bind(addressSignal);
-        dataMock.dataInBus.bind(dataOutSignal);
-        dataMock.dataOutBus.bind(dataInSignal);
-        dataMock.dataReadyBus.bind(dataReadySignal);
-        dataMock.validDataRequest.bind(validDataRequestSignal);
-        std::cout << "done binding mocks" << std::endl;
     }
 };
 
@@ -158,6 +160,9 @@ TEST_F(CPUTests, CPUDispatchesSameInstructionAsInput) {
     auto req = Request{1, 5, 0};
     instrMock.instructionMemory[0] = req;
     dataMock.dataMemory[1] = 10;
+
+    CPU cpu{"cpu", new Request[]{req}, 1};
+    createConnectionsToCPU(cpu);
 
     sc_start(1, SC_SEC);
     ASSERT_EQ(dataMock.dataProvided.size(), 1);
@@ -175,6 +180,9 @@ TEST_F(CPUTests, CPUDispatchesSameMultipleInstructionsAsInput) {
 
     dataMock.dataMemory[1] = 10;
 
+    CPU cpu{"cpu", new Request[]{req1, req2, req3}, 3};
+    createConnectionsToCPU(cpu);
+
     sc_start(1, SC_SEC);
     ASSERT_EQ(dataMock.dataProvided.size(), 3);
     ASSERT_EQ(dataMock.dataProvided.at(0), req1);
@@ -186,6 +194,9 @@ TEST_F(CPUTests, CPUWritesMemoryCorrectlySingleRequest) {
     auto reqW = Request{1, 5, 1};
 
     instrMock.instructionMemory[0] = reqW;
+
+    CPU cpu{"cpu", new Request[]{reqW}, 1};
+    createConnectionsToCPU(cpu);
 
     sc_start(1, SC_SEC);
     ASSERT_EQ(dataMock.dataProvided.size(), 1);
@@ -203,6 +214,9 @@ TEST_F(CPUTests, CPUWritesMemoryCorrectlyMultipleRequests) {
     instrMock.instructionMemory[1] = reqW2;
     instrMock.instructionMemory[2] = reqW3;
 
+    CPU cpu{"cpu", new Request[]{reqW1, reqW2, reqW3}, 3};
+    createConnectionsToCPU(cpu);
+
     sc_start(1, SC_SEC);
     ASSERT_EQ(dataMock.dataProvided.size(), 3);
 
@@ -213,15 +227,22 @@ TEST_F(CPUTests, CPUWritesMemoryCorrectlyMultipleRequests) {
 
 TEST_F(CPUTests, CPUHandlesRandomInputWithoutThrowing) {
     std::uint32_t numRequests = 100000;
+    auto requests = new Request[numRequests];
     auto randomAddresses = generateRandomVector(numRequests, UINT32_MAX);
     auto randomData = generateRandomVector(numRequests, UINT32_MAX);
     auto randomWE = generateRandomVector(numRequests, 2);
 
     for (std::size_t i = 0; i < numRequests; ++i) {
-        instrMock.instructionMemory[i] =
-                Request{static_cast<std::uint32_t>(randomAddresses[i]), static_cast<std::uint32_t>(randomData[i]),
-                        static_cast<int>(randomWE[i])};
+        auto req = Request{static_cast<std::uint32_t>(randomAddresses[i]),
+                           static_cast<std::uint32_t>(randomData[i]),
+                           static_cast<int>(randomWE[i])};
+        requests[i] = req;
+        instrMock.instructionMemory[i] = req;
     }
+
+    CPU cpu{"cpu", requests, numRequests};
+    createConnectionsToCPU(cpu);
+
 
     sc_start(5, SC_SEC);
     ASSERT_EQ(dataMock.dataProvided.size(), numRequests);
