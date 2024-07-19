@@ -96,8 +96,9 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     std::uint32_t cyclesPassedInRequest{0};
 
     struct Empty {}; // we only want to pay the price for having a hash-table if we need it
-    struct cachelineLookupTableType : std::conditional<mappingType == MappingType::Fully_Associative,
+    struct CachelineLookupTableType : std::conditional<mappingType == MappingType::Fully_Associative,
                                                        std::unordered_map<std::uint32_t, std::uint32_t>, Empty>::type {
+        std::uint32_t numCacheLinesUsed{0};
     } cachelineLookupTable;
 
     // ====================================== Precomputation ======================================

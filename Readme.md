@@ -24,5 +24,10 @@ Der LLVM-Pass instrumentiert während des Kompilierprozesses jede Instruktion, d
 
 ## Ergebnisse
 
+
+
 ## Persönlicher Beitrag
 
+- Dominik: Cache, Write-Buffer, Speicherzugriffanalyse, Design der Modulkommunikation, Tests
+- Matilda: C-Rahmenprogramm, Recherche, Project-Management
+- Emina: CPU, RAM, Tests, Aufsetzen der Simulation 
