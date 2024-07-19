@@ -2,8 +2,6 @@
 #include "stddef.h"
 #include "Simulation/Policy/Policy.h"
 
-//int print_error_msg(char* error);
-
 struct Configuration {
     unsigned int cycles;
     int directMapped;
@@ -39,7 +37,6 @@ static const char* usage_msg =
     "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
     "trace file will be created\n"
     "   -h / --help             Show help message and exit\n";
-
 
 void print_usage(const char* progname);
 

@@ -28,20 +28,13 @@
 
 
 // TODO: print usage progname entfernen
-/*
-int print_error_msg(char* error, const char* progname) {
-    fprintf(stderr, "%s", error);
-    print_usage(progname);
-    exit(EXIT_FAILURE);
-}
- */
 
 const char* help_msg = "Positional arguments:\n"
                        "   <filename>   The name of the file to be processed\n"
                        "\n"
                        "Optional arguments:\n"
                        "   -c c / --cycles c       The number of cycles used for the simulation (default: c = 1000)\n"
-                       "   --lcycles               Allow input of cycles of up to 2^32-1\n"
+                       "   --lcycles               If set input for cycles of up to 2^32-1 are allowed\n"
                        "   --directmapped          Simulates a direct-mapped cache\n"
                        "   --fullassociative       Simulates a fully associative cache (Set as default)\n"
                        "   --cacheline-size s      The size of a cache line in bytes (default: 64)\n"
@@ -91,7 +84,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
         requests = NULL;
         exit(EXIT_FAILURE);
     }
-    return (unsigned) n;
+    return (unsigned)n;
 }
 
 // TODO: exit durch return ersetzen
@@ -197,17 +190,17 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
     }
 
     // Set default values for fullassociative cache and run_simulation_extended
-    config->cycles = 1000;
+    config->cycles = 100000;
     config->directMapped = 0;       // 0 => fullassociative, x => directmapped
     config->cacheLines = 256;
     config->cacheLineSize = 64;
     config->cacheLatency = 2;
     config->memoryLatency = 100;
-    config->numRequests = 0;
     config->tracefile = NULL;
 
     config->policy = POLICY_LRU;    // 0 => lru, 1 => fifo, 2 => random
-    config->usingCache = 1;         // 1 => true, x => false
+    config->usingCache = 1;         // 1 => true, 0 => false
+    config->callExtended = 0;       // 0 => false, 1 => true
 
     // TODO: Check input file and save file data to requests
     FILE* file = check_file(progname, argv[argc - 1], argv[1], NULL, "input file");
@@ -219,6 +212,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
         return EXIT_FAILURE;
     }
     config->requests = (struct Request*)malloc(sizeof(struct Request) * file_info.st_size);
+    config->numRequests = 0;
     if (config->requests == NULL) {
         perror("Error allocating memory buffer for file");
         fclose(file);
@@ -258,7 +252,6 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
     char* error_msg;
     int isLruSet = 0;
     int longCycles = 0; // 0 => false, x => true
-    int callExtended = 0;
     int isFullassociativeSet = 0;
 
     opterr = 0; // Use own error messages
@@ -275,6 +268,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
         case LONG_CYCLES:
             longCycles = 1;
+            config->callExtended = 1;
             break;
 
         case 'h':
