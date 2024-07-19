@@ -10,6 +10,7 @@
 #include "Policy/Policy.h"
 #include "Request.h"
 #include "Result.h"
+#include "Simulation.h"
 #include <stdbool.h>
 
 #define DIRECTMAPPED 128
@@ -26,14 +27,6 @@
 #define LONG_CYCLES 139
 #define CALL_EXTENDED 140
 
-extern struct Result run_simulation(int cycles, int directMapped, unsigned cacheLines, unsigned cacheLineSize,
-                                    unsigned cacheLatency, unsigned memoryLatency, size_t numRequests,
-                                    struct Request requests[], const char* tracefile);
-
-extern struct Result run_simulation_extended(uint32_t cycles, int directMapped, unsigned int cacheLines,
-                                             unsigned int cacheLineSize, unsigned int cacheLatency,
-                                             unsigned int memoryLatency, size_t numRequests, struct Request requests[],
-                                             const char* tracefile, enum CacheReplacementPolicy policy, int usingCache);
 
 // Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
 const char* usage_msg =
