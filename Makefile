@@ -10,9 +10,6 @@ CPP_SRCS = src/SubRequest.cpp src/Simulation.cpp src/Cache.cpp
 C_OBJS = $(C_SRCS:.c=.o)
 CPP_OBJS = $(CPP_SRCS:.cpp=.o)
 
-# assignment task file
-# HEADERS := src/CacheInternal.h src/CPU.h src/InternalRequests.h src/memory.hpp src/ReadOnlySpan.h src/Request.h src/Result.h src/Simulation.h 
-
 # target name
 TARGET := cache
 
