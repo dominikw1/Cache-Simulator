@@ -92,10 +92,10 @@ inline void radixSort(std::int64_t* array, std::int64_t len) {
                 array[count++] = posBuckets[j][k];
             }
         }
+    }
 
-        for (std::int64_t j = 0; j < 10; j++) {
-            free(posBuckets[j]);
-            free(negBuckets[j]);
-        }
+    for (std::int64_t j = 0; j < 10; j++) {
+        free(posBuckets[j]);
+        free(negBuckets[j]);
     }
 }
