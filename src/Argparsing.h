@@ -43,4 +43,4 @@ static const char* usage_msg =
 
 void print_usage(const char* progname);
 
-int parseArguments(int argc, char** argv, struct Configuration* config);
+int parse_arguments(int argc, char** argv, struct Configuration* config);

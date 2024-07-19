@@ -176,7 +176,7 @@ int is_power_of_two(unsigned long n) { return n && !(n & (n - 1)); }
 
 int is_power_of_sixteen(unsigned long n) { return n && !(n & (n - 4)); }
 
-void checkCycleSize(int longCycles, uint32_t cycles, struct Request* requests, const char* progname) {
+void check_cycle_size(int longCycles, uint32_t cycles, struct Request* requests, const char* progname) {
     if (!longCycles && cycles > INT32_MAX) {
         fprintf(stderr, "Error: %d is too big to be converted to an int. "
                         "Set option --lcycles to increase range.\n", cycles);
@@ -188,7 +188,7 @@ void checkCycleSize(int longCycles, uint32_t cycles, struct Request* requests, c
 }
 
 
-int parseArguments(int argc, char** argv, struct Configuration* config) {
+int parse_arguments(int argc, char** argv, struct Configuration* config) {
     const char* progname = argv[0];
     if (argc == 1) {
         fprintf(stderr, "Positional argument missing!\n");
@@ -268,7 +268,7 @@ int parseArguments(int argc, char** argv, struct Configuration* config) {
 
         switch (opt) {
         case 'c':
-            error_msg = "Cycles cannot be smaller than 1.";
+            error_msg = "Cycles cannot be smaller than 1.\n";
             config->cycles = check_user_input(endptr, error_msg, progname, "-c/--cycles", config->requests);
             // to be checked for validity later once we know the range
             break;
@@ -426,7 +426,7 @@ int parseArguments(int argc, char** argv, struct Configuration* config) {
         fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
     }
 
-    checkCycleSize(longCycles, config->cycles, config->requests, progname);
+    check_cycle_size(longCycles, config->cycles, config->requests, progname);
 
     return EXIT_SUCCESS;
 }

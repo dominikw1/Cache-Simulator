@@ -9,9 +9,9 @@
 
 int main(int argc, char** argv) {
     struct Configuration configuration;
-    int failure = parseArguments(argc, argv, &configuration);    // Parse command line arguments
+    int exitFailure = parse_arguments(argc, argv, &configuration);    // Parse command line arguments
 
-    if(failure) {
+    if(exitFailure) {
         return EXIT_FAILURE;
     }
 
