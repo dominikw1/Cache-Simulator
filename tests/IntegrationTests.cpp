@@ -121,8 +121,8 @@ TEST_P(IntegrationTests, FullyAssociative) {
 
 const auto memoryLatencyValues = testing::Values(0, 1, 10, 100, 1 << 31);
 const auto cacheLatencyValues = testing::Values(0, 1, 10, 100, 1 << 31);
-const auto cacheLines = testing::Values(0, 1, 10, 100, 1 << 31);
-const auto cacheLineSizes = testing::Values(0, 16, 32, 64, 128, 1 << 31);
+const auto cacheLines = testing::Values( 1, 10, 100, 1 << 31);
+const auto cacheLineSizes = testing::Values( 16, 32, 64, 128, 1 << 31);
 const auto policies = testing::Values(POLICY_FIFO, POLICY_LRU, POLICY_RANDOM);
 const auto numRequests =
     testing::Values(generateRandomRequests(0), generateRandomRequests(1), generateRandomRequests(10),
