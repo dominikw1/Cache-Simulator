@@ -7,7 +7,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "Policy/Policy.h"
+#include "Simulation/Policy/Policy.h"
 #include "Request.h"
 #include "Argparsing.h"
 #include "FileDataExtraction.h"
