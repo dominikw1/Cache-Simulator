@@ -7,7 +7,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "Policy/Policy.h"
+#include "Simulation/Policy/Policy.h"
 #include "Request.h"
 #include "Argparsing.h"
 #include "FileDataExtraction.h"
@@ -74,7 +74,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
         exit(EXIT_FAILURE);
     }
 
-    if (n <= 0 || errno != 0) {
+    if (n <= 0 || errno != 0 || n > UINT32_MAX) {
         if (errno == 0 && n <= 0) { // Negative input and 0 not useful for simulation
             if (n == 0 && strcmp(option, "--cachelines") == 0) {
                 fprintf(stderr, "Warning: --cachelines must be at least 1. Setting use-cache=n.\n");
@@ -403,7 +403,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             break;
 
         case CALL_EXTENDED:
-            callExtended = 1;
+            config->callExtended = 1;
             break;
 
         case '?':

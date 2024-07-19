@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "Simulation/Policy/Policy.h"
 #include "Request.h"
 #include "Result.h"
 #include "Simulation/Simulation.h"
