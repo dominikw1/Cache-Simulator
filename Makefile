@@ -64,4 +64,8 @@ clean:
 test:
 	cmake -S . -B build  && cmake --build build  -j16 && cd build && ctest --output-on-failure --parallel 16
 
+buildWithRAMReadAfterWrite: CXXFLAGS += -g -DSTRICT_RAM_READ_AFTER_WRITES
+buildWithRAMReadAfterWrite: $(TARGET)
+
+
 .PHONY: all debug release clean test
