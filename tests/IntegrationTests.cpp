@@ -82,7 +82,7 @@ TEST_P(IntegrationTests, DirectMapped) {
     for (auto& mem : memRecord) {
         ASSERT_EQ(mem.second, dataRam.dataMemory[mem.first]);
     }
-};
+}
 
 TEST_P(IntegrationTests, FullyAssociative) {
     Cache<MappingType::Fully_Associative> dataCache{"Data_cache", cacheLines, cacheLineSize, cacheLatency,
@@ -103,7 +103,7 @@ TEST_P(IntegrationTests, FullyAssociative) {
     for (auto& mem : memRecord) {
         ASSERT_EQ(mem.second, dataRam.dataMemory[mem.first]);
     }
-};
+}
 
 std::string ParamNameGenerator(const testing::TestParamInfo<IntegrationTests::ParamType>& info) {
     auto memoryLatency = std::to_string(std::get<0>(info.param));

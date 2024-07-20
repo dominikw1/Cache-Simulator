@@ -2,7 +2,6 @@
 #include "../src/Simulation/Cache.h"
 #include "../src/Simulation/Policy/LRUPolicy.h"
 #include "../src/Simulation/Policy/RandomPolicy.h"
-#include "../src/Simulation/Saturating_Arithmetic.h"
 #include "Utils.h"
 #include <cassert>
 #include <exception>
@@ -168,7 +167,7 @@ template <typename T> class CacheTests : public testing::Test {
     sc_signal<bool, SC_MANY_WRITERS> SC_NAMED(ramReadySignal);
 
     sc_clock clock{"clk", sc_time(1, SC_NS)};
-    void SetUp() {
+    void SetUp() override {
         ram.latency = 20;
 #ifdef STRICT_INSTRUCTION_ORDER
         cache.setMemoryLatency(ram.latency);

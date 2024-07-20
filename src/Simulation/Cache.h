@@ -32,7 +32,7 @@ constexpr std::uint16_t WRITE_BUFFER_SIZE{4}; // chosen by fair dice roll. guara
  *
  * Communication happens through a variation of the Ready/Valid Protocol. In our implementation, the requesting party
  * sets the corresponding valid-request signal to true. The responding party then performs the operation and once it is
- * ready to transmit sets its ready signal to true. There is no seperate "ready to receive" from the receiving party as
+ * ready to transmit sets its ready signal to true. There is no separate "ready to receive" from the receiving party as
  * in our simplified simulation we always are waiting just for the ready-to-send signal.
  *
  * All operations happen on rising clock edge.
@@ -120,7 +120,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] cacheLineSize The number of bytes a cacheline holds. Has to be a multiple of the memory bus size 16B
      * and > 0.
      * @param[in] cacheLatency The number of cycles the cache takes to find out whether an access results in a hit or a
-     * miss. Mind that the total number of cycles until data has been fully transfered is strictly larger than this
+     * miss. Mind that the total number of cycles until data has been fully transferred is strictly larger than this
      * value, as the transferring takes some cycles itself.
      * @param[in] policy Optional parameter - the replacement policy taking effect when the cache is full and a new
      * entry shall be stored. Only relevant if MappingType is Fully_Associative, results in a warning on Direct if not
@@ -163,7 +163,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      */
     void zeroInitialiseCachelines() noexcept;
     /**
-     * Precomputes what (and how many) bits of an adress correspond to tag, index and offset in our cache. Furthermore
+     * Precomputes what (and how many) bits of an address correspond to tag, index and offset in our cache. Furthermore
      * preconstructs bit masks to extract those values.
      */
     void precomputeAddressDecompositionBits() noexcept;

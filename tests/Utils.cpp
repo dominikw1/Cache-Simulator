@@ -32,7 +32,7 @@ Request* generateRandomRequests(std::uint64_t len, std::uint64_t addressMax, std
     auto data = generateRandomVector(len, dataMax);
     auto we = generateRandomVector(len, weMax);
 
-    for (int i = 0; i < len; ++i) {
+    for (std::uint64_t i = 0; i < len; ++i) {
         requests[i] = Request{static_cast<std::uint32_t>(addresses.at(i)), static_cast<std::uint32_t>(data.at(i)),
                               static_cast<int>(we.at(i))};
     }

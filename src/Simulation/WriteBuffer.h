@@ -132,14 +132,14 @@ template <std::uint8_t SIZE> void WriteBuffer<SIZE>::passReadAlong() noexcept {
     memoryValidRequestBus.write(false);
 
     ready.write(true);
-    // dont need to wait before first one because we can only get here if RAM tells us it is ready
+    // don't need to wait before first one because we can only get here if RAM tells us it is ready
     for (std::size_t i = 0; i < readsPerCacheline; ++i) {
         cacheDataOutBus.write(memoryDataInBus.read());
         wait();
     }
 
     ready.write(false);
-    wait(); // this wait is needed because otherwise on rising edge this would instantly be overriden ig??
+    wait(); // this wait is needed because otherwise on rising edge this would instantly be overwritten ig??
 }
 
 template <std::uint8_t SIZE> constexpr std::uint32_t WriteBuffer<SIZE>::makeAddrAligned(std::uint32_t addr) noexcept {

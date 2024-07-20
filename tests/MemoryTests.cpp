@@ -18,7 +18,7 @@ protected:
 
     sc_clock clock{"clk", sc_time(1, SC_NS)};
 
-    void SetUp() {
+    void SetUp() override {
         ram.validRequestBus(validRequestSignal);
         ram.weBus(weSignal);
         ram.addressBus(addressSignal);

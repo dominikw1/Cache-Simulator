@@ -47,7 +47,7 @@ class TestExtractFileData(unittest.TestCase):
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
-    def test_no_addres_given(self):
+    def test_no_address_given(self):
         args = INVALID_FILE_PATH + '/no_address.csv'
         expected_output = "Error: Wrong file format! No address given.\n" + print_usage
         output = capture_stderr(args).decode()

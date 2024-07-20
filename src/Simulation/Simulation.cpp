@@ -48,7 +48,7 @@ auto setUpTracefile(const char* traceFile, Connections& connections, CacheType& 
     sc_trace(trace.get(), connections.CPU_to_dataCache_Address, "CPU_to_dataCache_Address");
     sc_trace(trace.get(), connections.CPU_to_dataCache_Data, "CPU_to_dataCache_Data");
     sc_trace(trace.get(), connections.CPU_to_dataCache_WE, "CPU_to_dataCache_WE");
-    sc_trace(trace.get(), connections.CPU_to_dataCache_Vaid_Request, "CPU_to_dataCache_Vaid_Request");
+    sc_trace(trace.get(), connections.CPU_to_dataCache_Valid_Request, "CPU_to_dataCache_Valid_Request");
     sc_trace(trace.get(), connections.dataCache_to_CPU_Data, "dataCache_to_CPU_Data");
     sc_trace(trace.get(), connections.dataCache_to_CPU_Ready, "dataCache_to_CPU_Ready");
 
@@ -87,7 +87,7 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
                                struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
                                int usingCache) {
 
-    CPU cpu{"CPU", requests, numRequests};
+    CPU cpu{"CPU", requests};
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE};
     RAM instructionRam{"Instruction_RAM", memoryLatency, cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE};
 

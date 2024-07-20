@@ -20,7 +20,7 @@ template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Fully_Associative>::getCachelineOwnedByAddr(const DecomposedAddress& decomposedAddr) noexcept {
     wait(); // reference hash table implementation has a frequency of 370MHz, we run at 1GHz. To compensate for this
-    wait(); // dicreptancy, we wait 2 extra cycles.  (source: https://ar5iv.labs.arxiv.org/html/2108.03390v2)
+    wait(); // discrepancy, we wait 2 extra cycles.  (source: https://ar5iv.labs.arxiv.org/html/2108.03390v2)
 
     if (cachelineLookupTable.count(decomposedAddr.tag)) {
         // isValid is true by virtue of the tag being in there
@@ -56,7 +56,7 @@ Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(const D
         cachelineLookupTable.erase(firstUnusedCacheline->tag);
     }
     assert(firstUnusedCacheline != cacheInternal.end());
-    // enter us into hashtabe because we now own this cacheline
+    // enter us into hashtable because we now own this cacheline
     cachelineLookupTable[decomposedAddr.tag] = firstUnusedCacheline - cacheInternal.begin();
     return firstUnusedCacheline;
 }
@@ -79,7 +79,7 @@ template <> DecomposedAddress Cache<MappingType::Fully_Associative>::decomposeAd
 template <>
 void Cache<MappingType::Direct>::registerUsage(
     __attribute__((unused)) std::vector<Cacheline>::iterator cacheline) noexcept {
-    // no bookeeping needed
+    // no bookkeeping needed
 }
 
 template <>
@@ -334,7 +334,7 @@ static constexpr std::size_t calcGateCountForInternalTable(std::uint32_t numCach
 }
 
 static constexpr std::size_t calcGateCountForSubRequestSplitting() {
-    // there are max 2 subrequets per request (4 bytes and 16 byte min cacheline) so we just need a single bit storage
+    // there are max 2 subrequest per request (4 bytes and 16 byte min cacheline) so we just need a single bit storage
     // for which one we are at and then some gates to extract the subrequest, so some shifts and some 32 bit adders.
     // Let's approximate with 3 adders and 2 shifts and 4 AND Gates (very roughly)
     return 3u * 150u + 2u + 4u;
@@ -355,15 +355,15 @@ calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t ca
 
     if (type == MappingType::Fully_Associative) {
         // we use a hashtable to find out which cacheline a given tag belongs to. As shown in this paper:
-        // https://ar5iv.labs.arxiv.org/html/2108.03390v2 such a hashtable can be implemented on a Intel Stratix 10
+        // https://ar5iv.labs.arxiv.org/html/2108.03390v2 such a hashtable can be implemented on an Intel Stratix 10
         // GX1800 FPGA. As shown here:
         // https://www.intel.com/content/www/us/en/products/sku/210291/intel-stratix-10-gx-2800-fpga/specifications.html
-        // such an FPGA has 2753000 "logic elements", which we eqaute to primitive gates here.
+        // such an FPGA has 2753000 "logic elements", which we equate to primitive gates here.
         std::size_t FPGA = 2753000u;
         // a 32 bit register to store the amount of filled cachelines
         std::size_t validCachelineCntr = BITS_IN_BYTE * 32u;
-        std::size_t validCacheIncementer = 150u; // as in instructions
-        return addSatUnsigned(FPGA, validCachelineCntr, decomposingAddr, validCacheIncementer, selector,
+        std::size_t validCacheIncrementer = 150u; // as in instructions
+        return addSatUnsigned(FPGA, validCachelineCntr, decomposingAddr, validCacheIncrementer, selector,
                               policy.calcBasicGates());
     } else {
         return addSatUnsigned(decomposingAddr, selector);
@@ -371,13 +371,13 @@ calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t ca
 }
 
 static constexpr size_t calcGateCountForDoingReads(std::uint32_t cacheLineSize) noexcept {
-    // we need a register of size enought to store all wordsPerRead in cacheline and an incrementer
+    // we need a register of size enough to store all wordsPerRead in cacheline and an incrementer
     return addSatUnsigned(mulSatUnsigned(static_cast<size_t>(safeCeilLog2(cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE))),
                           static_cast<size_t>(150));
 }
 
 static constexpr size_t calcGateCountForMisc() {
-    // random miscellanious parts not counted in other calculations
+    // random miscellaneous parts not counted in other calculations
     return 1000;
 }
 

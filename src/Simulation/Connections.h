@@ -17,7 +17,7 @@ struct Connections {
     sc_core::sc_signal<std::uint32_t> SC_NAMED(CPU_to_dataCache_Address);
     sc_core::sc_signal<std::uint32_t> SC_NAMED(CPU_to_dataCache_Data);
     sc_core::sc_signal<bool> SC_NAMED(CPU_to_dataCache_WE);
-    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(CPU_to_dataCache_Vaid_Request);
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(CPU_to_dataCache_Valid_Request);
 
     // Cache -> CPU
     sc_core::sc_signal<std::uint32_t> SC_NAMED(dataCache_to_CPU_Data);
@@ -88,12 +88,12 @@ inline std::unique_ptr<Connections> connectComponents(CPU& cpu, RAM& dataRam, RA
     cpu.addressBus(connections->CPU_to_dataCache_Address);
     cpu.dataOutBus(connections->CPU_to_dataCache_Data);
     cpu.weBus(connections->CPU_to_dataCache_WE);
-    cpu.validDataRequestBus(connections->CPU_to_dataCache_Vaid_Request);
+    cpu.validDataRequestBus(connections->CPU_to_dataCache_Valid_Request);
 
     dataCache.cpuAddrBus(connections->CPU_to_dataCache_Address);
     dataCache.cpuDataInBus(connections->CPU_to_dataCache_Data);
     dataCache.cpuWeBus(connections->CPU_to_dataCache_WE);
-    dataCache.cpuValidRequest(connections->CPU_to_dataCache_Vaid_Request);
+    dataCache.cpuValidRequest(connections->CPU_to_dataCache_Valid_Request);
 
     // Cache -> CPU
     cpu.dataInBus(connections->dataCache_to_CPU_Data);
