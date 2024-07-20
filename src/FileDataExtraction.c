@@ -23,6 +23,7 @@ void extract_file_data(const char* progname, FILE* file, struct Request* request
         if (read_line < 3 && !feof(file)) {
             if (read_line == -1) {
                 fprintf(stderr, "Wrong file format! An error occurred while reading from the file.\n");
+                goto error;
             }
             if (read_line < 2) { // Address was not read from file
                 fprintf(stderr, "Wrong file format! No address given.\n");
