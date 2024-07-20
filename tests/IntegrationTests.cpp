@@ -64,15 +64,10 @@ TEST_P(IntegrationTests, DirectMapped) {
     for (int i = 0; i < requestsSize; ++i) {
         if (!requests[i].we) {
             ASSERT_EQ(requests[i].data, readRecord[i]);
-        } else {
-            std::cout << "Address: " << requests[i].addr << " Data: " << requests[i].data << std::endl;
         }
     }
 
-    std::cout << "MemRecord" << std::endl;
-
     for (auto& mem : memRecord) {
-        std::cout << "Address: " << mem.first << " Data: " << sc_dt::sc_bv<8>(mem.second) << std::endl;
         ASSERT_EQ(mem.second, dataRam.dataMemory[mem.first]);
     }
 };
@@ -82,6 +77,20 @@ TEST_P(IntegrationTests, FullyAssociative) {
                                                     getReplacementPolity(policy, cacheLines)};
 
     auto connections = connectComponents(cpu, dataRam, instructionRam, dataCache, instructionCache);
+
+    sc_start(1, SC_MS);
+
+    ASSERT_EQ(cpu.pcBus, requestsSize);
+
+    for (int i = 0; i < requestsSize; ++i) {
+        if (!requests[i].we) {
+            ASSERT_EQ(requests[i].data, readRecord[i]);
+        }
+    }
+
+    for (auto& mem : memRecord) {
+        ASSERT_EQ(mem.second, dataRam.dataMemory[mem.first]);
+    }
 };
 
 const auto memoryLatencyValues = testing::Values(0, 1, 10, 100);
