@@ -19,9 +19,9 @@ struct Configuration {
 };
 
 static const char* usage_msg =
-    "usage: %s <filename> [-c c/--cycles c] [--lcycles] [--directmapped] [--fullassociative] "
+    "usage: %s [-c c/--cycles c] [--lcycles] [--directmapped] [--fullassociative] "
     "[--cacheline-size s] [--cachelines n] [--cache-latency l] [--memorylatency m] "
-    "[--lru] [--fifo] [--random] [--use-cache=<Y,n>] [--tf=<filename>] [--extended] [-h/--help]\n"
+    "[--lru] [--fifo] [--random] [--use-cache=<Y,n>] [--tf=<filename>] [--extended] [-h/--help] <filename>\n"
     "   -c c / --cycles c       Set the number of cycles to be simulated to c. Allows inputs in range [0,2^16-1]\n"
     "   --lcycles               Allow input of cycles of up to 2^32-1\n"
     "   --directmapped          Simulate a direct-mapped cache\n"

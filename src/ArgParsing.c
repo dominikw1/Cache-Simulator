@@ -112,7 +112,7 @@ char* get_option() {
     case TRACEFILE:
         return "--tf";
     default:
-        return "invalid";
+        return "no option";
     }
 }
 
@@ -143,11 +143,6 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
     config->usingCache = 1;         // Default: true
     config->callExtended = 0;       // Default: false
 
-    // Check input file for valid file format
-    FILE* file = check_file(progname, argv[argc - 1], argv[1]);
-
-    // Check file data and save data to requests
-    extract_file_data(progname, file, config);
 
     // Command line argument parsing
     int opt;
@@ -327,8 +322,17 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
         case '?':
             option = get_option();
-            if (strcmp(option, "invalid") == 0) {
-                fprintf(stderr, "Error: Not a valid argument '%s'!\n", argv[optind - 1]);
+            if (strcmp(option, "no option") == 0) { // Check if optarg is positional argument
+                if (optind < argc) {
+                    // Check input file for valid file format
+                    FILE* file = check_file(progname, argv[optind], argv[1]);
+
+                    // Check file data and save data to requests
+                    extract_file_data(progname, file, config);
+                } else {
+                    fprintf(stderr, "Error: Positional argument is missing!\n");
+                    exit(EXIT_FAILURE);
+                }
             } else {
                 fprintf(stderr, "Error: Option %s requires an argument.\n", option);
             }
