@@ -26,8 +26,8 @@ class TestInvalidInput(unittest.TestCase):
         self.assertEqual(expected_output, output)
 
     def test_larger_unsigned_int(self):
-        args = ' --cycles 5000000000 ' + FILE_PATH
-        expected_output = "Invalid input: 5000000000 is too big to be converted to an unsigned int.\n" + print_usage
+        args = ' --cycles 9000000000 ' + FILE_PATH
+        expected_output = "Invalid input: 9000000000 is too big to be converted to an unsigned int.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
@@ -68,14 +68,14 @@ class TestInvalidInput(unittest.TestCase):
         self.assertEqual(expected_output, output)
 
     def test_invalid_cache_latency(self):
-        args = ' --cache-latency 0 ' + FILE_PATH
-        expected_output = "Invalid input: Cache-latency cannot be zero or negativ.\n" + print_usage
+        args = ' --cache-latency -50 ' + FILE_PATH
+        expected_output = "Invalid input: Cache-latency cannot be negative.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
     def test_invalid_memory_latency(self):
-        args = ' --memory-latency 0 ' + FILE_PATH
-        expected_output = "Invalid input: Memory-latency cannot be zero or negativ.\n" + print_usage
+        args = ' --memory-latency -50 ' + FILE_PATH
+        expected_output = "Invalid input: Memory-latency cannot be negative.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
@@ -224,6 +224,19 @@ class TestWarnings(unittest.TestCase):
         output = capture_stderr(args).decode()
         self.assertIn(expected_output, output)
 
+    def test_zero_cache_latency(self):
+        args = ' --cache-latency 0 ' + FILE_PATH
+        expected_output = "Warning: A value of 0 for --cache-latency is not realistic!\n"
+        output = capture_stderr(args).decode()
+        self.assertEqual(expected_output, output)
+
+    def test_zero_memory_latency(self):
+        args = ' --memory-latency 0 ' + FILE_PATH
+        expected_output = ("Warning: A value of 0 for --memory-latency is not realistic!\nWarning: Memory latency is "
+                           "less than cache latency.\n")
+        output = capture_stderr(args).decode()
+        self.assertEqual(expected_output, output)
+
 
 class TestOther(unittest.TestCase):
     def test_help_message(self):
@@ -260,7 +273,7 @@ class TestOther(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
-print_usage = ("usage: /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/cache [-c c/--cycles c] [--lcycles] "
+print_usage = ("usage: " + CACHE_PATH + " [-c c/--cycles c] [--lcycles] "
                "[--directmapped] [--fullassociative] "
                "[--cacheline-size s] [--cachelines n] [--cache-latency l] [--memorylatency m] "
                "[--lru] [--fifo] [--random] [--use-cache=<Y,n>] [--tf=<filename>] [--extended] [-h/--help] <filename>\n"

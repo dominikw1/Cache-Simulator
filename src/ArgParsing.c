@@ -65,7 +65,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
     }
 
     if (n <= 0 || errno != 0 || n > UINT32_MAX) {
-        if (errno == 0) {
+        if (errno == 0 && n <= 0) {
             if (n == 0) {   // Allow certain options with value 0
                 if (strncmp(option, "--cachelines", 12) == 0) {
                     fprintf(stderr, "Warning: --cachelines must be at least 1. Setting use-cache=n.\n");
@@ -74,7 +74,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
                     fprintf(stderr, "Warning: A value of 0 for %s is not realistic!\n", option);
                     return 0;
                 }
-            } else if (n < 0) {  // Negative input not useful for simulation
+            } else {  // Negative input not useful for simulation
                 fprintf(stderr, "Invalid input: %s\n", message);
             }
         } else if (n > UINT32_MAX) { // Input needs to fit into predefined datatypes for run_simulation method
@@ -249,13 +249,13 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             break;
 
         case CACHE_LATENCY:
-            error_msg = "Cache-latency cannot be negativ.";
+            error_msg = "Cache-latency cannot be negative.";
             unsigned long l = check_user_input(endptr, error_msg, progname, "--cache-latency");
             config->cacheLatency = l;
             break;
 
         case MEMORY_LATENCY:
-            error_msg = "Memory-latency cannot be negativ.";
+            error_msg = "Memory-latency cannot be negative.";
             unsigned long m = check_user_input(endptr, error_msg, progname, "--memory-latency");
             config->memoryLatency = m;
             break;
