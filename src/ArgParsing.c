@@ -59,9 +59,9 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
     endptr = NULL;
     long n = strtol(optarg, &endptr, 10);   // Using datatype 'long' to check for negative input
     if (*endptr != '\0' || endptr == optarg) {
-        fprintf(stderr, "Invalid input: '%s' is not a number.\n", optarg);
+        fprintf(stderr, "Invalid input: '%s' is not an int.\n", optarg);
         print_usage(progname);
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     if (n <= 0 || errno != 0 || n > UINT32_MAX) {
@@ -70,13 +70,14 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
                 fprintf(stderr, "Warning: --cachelines must be at least 1. Setting use-cache=n.\n");
                 return 0;
             }
-            fprintf(stderr, "Invalid input: %s\n", message);
+            fprintf(stderr, "Invalid input: %s\n", message);    // n <= 0
         } else if (n > UINT32_MAX) { // Input needs to fit into predefined datatypes for run_simulation method
             fprintf(stderr, "Invalid input: %ld is too big to be converted to an unsigned int.\n", n);
-        } else {
+        } else {    // Print errno error message
             fprintf(stderr, "Error parsing number for option %s. %s", option, strerror(errno));
         }
-        return EXIT_FAILURE;
+        print_usage(progname);
+        exit(EXIT_FAILURE);
     }
 
     return (unsigned)n;
@@ -84,10 +85,10 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
 
 int check_cycle_size(int longCycles, const char* progname, struct Configuration* config) {
     if ((!longCycles && !config->callExtended) && config->cycles > INT32_MAX) {
-        fprintf(stderr, "Error: %d is too big to be converted to an int. "
-                        "Set option --lcycles to increase range.\n", config->cycles);
+        fprintf(stderr, "Error: Overflow detected. Input for -c/--cycles is too big to be converted "
+                        "to an int. Set option --lcycles to increase range.\n");
         print_usage(progname);
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
     return EXIT_SUCCESS;
 }
@@ -178,7 +179,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
         switch (opt) {
         case 'c':
-            error_msg = "Cycles cannot be smaller than 1.\n";
+            error_msg = "Cycles cannot be smaller than 1.";
             config->cycles = check_user_input(endptr, error_msg, progname, "-c/--cycles");
             // Checked for validity later once we know the range
             break;
@@ -214,11 +215,11 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             unsigned long s = check_user_input(endptr, error_msg, progname, "--cacheline-size");
 
             if (!is_multiple_of_sixteen(s)) {
-                fprintf(stderr, "Invalid Input: Cacheline size should be a multiple of 16 bytes!\n");
+                fprintf(stderr, "Invalid input: Cacheline size should be a multiple of 16 bytes!\n");
                 print_usage(progname);
                 exit(EXIT_FAILURE);
             } else if (!is_power_of_two(s)) {
-                fprintf(stderr, "Invalid Input: Cacheline size should be a power of 2!\n");
+                fprintf(stderr, "Invalid input: Cacheline size should be a power of 2!\n");
                 print_usage(progname);
                 exit(EXIT_FAILURE);
             }
@@ -267,7 +268,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
                 fprintf(stderr, "Warning: More than one policy set. Simulating cache using default value LRU!\n");
                 break;
             } else if (config->policy == POLICY_RANDOM) {
-                fprintf(stderr, "Error: --random and --fifo are both set. Please choose only one option!\n");
+                fprintf(stderr, "Error: --fifo and --random are both set. Please choose only one option!\n");
                 print_usage(progname);
                 exit(EXIT_FAILURE);
             }
@@ -320,8 +321,8 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             option = get_option();
             if (strcmp(option, "invalid") != 0) { // Check if optarg is positional argument
                 fprintf(stderr, "Error: Option %s requires an argument.\n", option);
-            } else if (optarg != NULL){
-                fprintf(stderr, "Error: Not a valid option %s.\n", optarg);
+            } else if (argv[optind - 1] != NULL) {
+                fprintf(stderr, "Error: Not a valid option '%s'.\n", argv[optind - 1]);
             } else {
                 fprintf(stderr, "Error: Not a valid option.\n");
             }
