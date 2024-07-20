@@ -7,7 +7,6 @@
 #include "Result.h"
 #include "Simulation/Simulation.h"
 
-
 int main(int argc, char** argv) {
 
     // Parse command line arguments
@@ -27,7 +26,7 @@ int main(int argc, char** argv) {
                                          configuration.memoryLatency, configuration.numRequests, configuration.requests,
                                          configuration.tracefile, configuration.policy, configuration.usingCache);
     } else {
-        result = run_simulation((int) configuration.cycles, configuration.directMapped, configuration.cacheLines,
+        result = run_simulation((int)configuration.cycles, configuration.directMapped, configuration.cacheLines,
                                 configuration.cacheLineSize, configuration.cacheLatency, configuration.memoryLatency,
                                 configuration.numRequests, configuration.requests, configuration.tracefile);
     }

@@ -33,7 +33,6 @@ Cache<MappingType::Direct>::chooseWhichCachelineToFillFromRAM(DecomposedAddress 
 template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(DecomposedAddress decomposedAddr) {
-    std::cout << cachelineLookupTable.numCacheLinesUsed << std::endl;
     auto firstUnusedCacheline = cacheInternal.end();
     if (cachelineLookupTable.numCacheLinesUsed != numCacheLines) {
         firstUnusedCacheline = cacheInternal.begin() + cachelineLookupTable.numCacheLinesUsed;
@@ -75,7 +74,7 @@ void Cache<MappingType::Fully_Associative>::registerUsage(std::vector<Cacheline>
 
 template <MappingType mappingType> void Cache<mappingType>::waitForRAM() noexcept {
     do {
-        wait(clock.posedge_event());
+        wait();
     } while (!writeBufferReady.read());
 }
 
@@ -162,7 +161,7 @@ Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) 
         }
         //  if this is the last one we don't need to wait anymore
         if (i + 1 <= numReadEvents)
-            wait(clock.posedge_event());
+            wait();
     }
 
     writeBufferValidRequest.write(false);
@@ -237,8 +236,6 @@ template <MappingType mappingType> void Cache<mappingType>::handleRequest() noex
         if (!cpuValidRequest.read())
             continue;
 
-        cyclesPassedInRequest = 0;
-
         auto request = constructRequestFromBusses();
         auto subRequests = splitRequestIntoSubRequests(request, cacheLineSize);
 
@@ -296,8 +293,7 @@ void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddres
     writeBufferWE.write(true);
     writeBufferValidRequest.write(true);
     do {
-        wait(clock.posedge_event());
-        cyclesPassedInRequest++;
+        wait();
     } while (!writeBufferReady);
     writeBufferValidRequest.write(false);
 
