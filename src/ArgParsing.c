@@ -26,7 +26,7 @@
 #define TRACEFILE 139
 #define USE_CACHE 140
 
-
+// Taken inspiration and adapted from exercises 'Nutzereingaben' and 'File IO' from GRA Week 3
 const char* help_msg = "Positional arguments:\n"
                        "   <filename>   The name of the file to be processed\n"
                        "\n"
@@ -49,7 +49,6 @@ const char* help_msg = "Positional arguments:\n"
                        "\'policy' and \'use-cache'\n"
                        "   -h / --help             Show this help message and exit\n";
 
-// Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
 void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, progname, progname); }
 
 void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
@@ -68,7 +67,6 @@ FILE* check_file(const char* progname, const char* filename_1, const char* filen
         exit(EXIT_FAILURE);
     }
 
-    // Lines 71-81 taken and adapted from GRA Week 3 "File IO" files.c
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
         perror("Error determining file size");
@@ -82,9 +80,10 @@ FILE* check_file(const char* progname, const char* filename_1, const char* filen
         print_usage(progname);
         exit(EXIT_FAILURE);
     }
-    // Taken from https://stackoverflow.com/questions/5899497/how-can-i-check-the-extension-of-a-file
+
+    // Taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
     const char *dot = strrchr(filename, '.');
-    if (!dot || dot == filename) {
+    if (dot == NULL || dot == filename) {
         fprintf(stderr, "Error: %s is not a valid file\n", filename);
         fclose(file);
         print_usage(progname);
@@ -163,7 +162,7 @@ char* get_option() {
     case USE_CACHE:
         return "--use-cache";
     case TRACEFILE:
-        return "--tf=";
+        return "--tf";
     default:
         return "invalid";
     }
@@ -361,7 +360,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             config->policy = POLICY_RANDOM;
             break;
 
-        case USE_CACHE:
+        case USE_CACHE: // use-cache=n used for benchmarking
             if ((strcmp(optarg, "n") == 0) || (strcmp(optarg, "N") == 0) || (strcmp(optarg, "no") == 0) ||
                 (strcmp(optarg, "No") == 0)) {
                 config->usingCache = 0;
@@ -370,16 +369,18 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
                        (strcmp(optarg, "Yes") == 0)) {
                 break;
             }
-            if (optarg == NULL) {
-                fprintf(stderr, "Warning: Option --use-cache is not set. Using default value 'Y'.");
+
+            if (*optarg == '\0') {
+                fprintf(stderr, "Error: Option --use-cache requires an argument.\n");
             } else {
-                fprintf(stderr, "Warning: Not a valid option for --use-cache. Using default value 'Y'.");
+                fprintf(stderr, "Error: '%s' is not a valid option for --use-cache.\n", optarg);
             }
-            break;
+            print_usage(progname);
+            return EXIT_FAILURE;
 
         case TRACEFILE:
-            if (optarg == NULL || *optarg == '\0') {
-                fprintf(stderr, "Error: Option --tf= requires an argument.\n");
+            if (*optarg == '\0') {
+                fprintf(stderr, "Error: Option --tf requires an argument.\n");
                 print_usage(progname);
                 return EXIT_FAILURE;
             }
@@ -395,8 +396,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             if (strcmp(option, "invalid") == 0) {
                 fprintf(stderr, "Error: Not a valid argument '%s'!\n", argv[optind - 1]);
             } else {
-                //fprintf(stderr, "%s", optarg);
-                fprintf(stderr, "Error: Option '%s' requires an argument.\n", option);
+                fprintf(stderr, "Error: Option %s requires an argument.\n", option);
             }
 
         default:
