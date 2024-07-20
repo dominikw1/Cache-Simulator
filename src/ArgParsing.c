@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 
 #include "Argparsing.h"
@@ -361,12 +362,10 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             break;
 
         case USE_CACHE: // use-cache=n used for benchmarking
-            if ((strcmp(optarg, "n") == 0) || (strcmp(optarg, "N") == 0) || (strcmp(optarg, "no") == 0) ||
-                (strcmp(optarg, "No") == 0)) {
+            if (strlen(optarg) < 3 && (strncasecmp(optarg, "n", 2) == 0 || strncasecmp(optarg, "no", 2) == 0)) {
                 config->usingCache = 0;
                 break;
-            } else if ((strcmp(optarg, "y") == 0) || (strcmp(optarg, "Y") == 0) || (strcmp(optarg, "yes") == 0) ||
-                       (strcmp(optarg, "Yes") == 0)) {
+            } else if (strlen(optarg) < 4 && (strncasecmp(optarg, "y", 2) == 0 || strncasecmp(optarg, "yes", 2) == 0)) {
                 break;
             }
 
