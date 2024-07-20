@@ -7,27 +7,25 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "Simulation/Policy/Policy.h"
-#include "Request.h"
 #include "Argparsing.h"
 #include "FileDataExtraction.h"
+#include "Request.h"
+#include "Simulation/Policy/Policy.h"
 
-#define DIRECTMAPPED 128
-#define FULLASSOCIATIVE 129
-#define CACHELINE_SIZE 130
-#define CACHELINES 131
-#define CACHE_LATENCY 132
-#define MEMORY_LATENCY 133
-#define LEAST_RECENTLY_USED 134
-#define FIRST_IN_FIRST_OUT 135
-#define RANDOM_CHOICE 136
-#define USE_CACHE 137
-#define TRACEFILE 138
-#define LONG_CYCLES 139
-#define CALL_EXTENDED 140
+#define CACHE_LATENCY 128
+#define CACHELINE_SIZE 129
+#define CACHELINES 130
+#define CALL_EXTENDED 131
+#define DIRECTMAPPED 132
+#define FIRST_IN_FIRST_OUT 133
+#define FULLASSOCIATIVE 134
+#define LEAST_RECENTLY_USED 135
+#define LONG_CYCLES 136
+#define MEMORY_LATENCY 137
+#define RANDOM_CHOICE 138
+#define TRACEFILE 139
+#define USE_CACHE 140
 
-
-// TODO: print usage progname entfernen
 
 const char* help_msg = "Positional arguments:\n"
                        "   <filename>   The name of the file to be processed\n"
@@ -54,6 +52,57 @@ const char* help_msg = "Positional arguments:\n"
 void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, progname, progname); }
 
 void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
+
+FILE* check_file(const char* progname, const char* filename_1, const char* filename_2, char* filetype) {
+    const char* filename = filename_1;
+    FILE* file = fopen(filename, "r");
+    if (file == NULL) { // Accept positional argument as first and last command line argument
+        file = fopen(filename_2, "r");
+        filename = filename_2;
+    }
+
+    if (file == NULL) {
+        fprintf(stderr, "Error opening %s: %s\n", filetype, strerror(errno));
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+
+    // Lines 71-81 taken and adapted from GRA Week 3 "File IO" files.c
+    struct stat file_info;
+    if (fstat(fileno(file), &file_info) != 0) {
+        perror("Error determining file size");
+        fclose(file);
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+    if (S_ISDIR(file_info.st_mode)) {
+        fprintf(stderr, "Error: Filename should not be a directory.\n");
+        fclose(file);
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+    // Taken from https://stackoverflow.com/questions/5899497/how-can-i-check-the-extension-of-a-file
+    const char *dot = strrchr(filename, '.');
+    if (!dot || dot == filename) {
+        fprintf(stderr, "Error: %s is not a valid file\n", filename);
+        fclose(file);
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    } else if (strcmp(dot+1, "csv") != 0) {
+        fprintf(stderr, "Error: %s is not a valid csv file!\n", filename);
+        fclose(file);
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+
+    if (!S_ISREG(file_info.st_mode)) {
+        fprintf(stderr, "Error: %s is not a regular file\n", filename);
+        fclose(file);
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
+    return file;
+}
 
 unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option,
                                struct Request* requests) {
@@ -87,60 +136,15 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
     return (unsigned)n;
 }
 
-// TODO: exit durch return ersetzen
-FILE* check_file(const char* progname, const char* filename_1, const char* filename_2, struct Request* requests,
-                 char* filetype) {
-    const char* filename = filename_1;
-    FILE* file = fopen(filename, "r");
-    if (file == NULL) { // Accept positional argument as first and last command line argument
-        file = fopen(filename_2, "r");
-        filename = filename_2;
-    }
-
-    if (file == NULL) {
-        fprintf(stderr, "Error opening %s: %s\n", filetype, strerror(errno));
+void check_cycle_size(int longCycles, uint32_t cycles, struct Request* requests, const char* progname) {
+    if (!longCycles && cycles > INT32_MAX) {
+        fprintf(stderr, "Error: %d is too big to be converted to an int. "
+                        "Set option --lcycles to increase range.\n", cycles);
         print_usage(progname);
-        if (requests != NULL) {
-            free(requests);
-            requests = NULL;
-        }
+        free(requests);
+        requests = NULL;
         exit(EXIT_FAILURE);
     }
-
-    // Lines 120-140 taken and adapted from GRA Week 3 "File IO" files.c
-    struct stat file_info;
-    if (fstat(fileno(file), &file_info) != 0) {
-        perror("Error determining file size");
-        fclose(file);
-        print_usage(progname);
-        if (requests != NULL) {
-            free(requests);
-            requests = NULL;
-        }
-        exit(EXIT_FAILURE);
-    }
-    if (!S_ISREG(file_info.st_mode)) {
-        fprintf(stderr, "%s is not a regular file\n", filename);
-        fclose(file);
-        print_usage(progname);
-        if (requests != NULL) {
-            free(requests);
-            requests = NULL;
-        }
-        exit(EXIT_FAILURE);
-    }
-    if (S_ISDIR(file_info.st_mode)) {
-        fprintf(stderr, "Filename should not be a directory.\n");
-        fclose(file);
-        print_usage(progname);
-        if (requests != NULL) {
-            free(requests);
-            requests = NULL;
-        }
-        exit(EXIT_FAILURE);
-    }
-
-    return file;
 }
 
 char* get_option() {
@@ -169,24 +173,14 @@ int is_power_of_two(unsigned long n) { return n && !(n & (n - 1)); }
 
 int is_power_of_sixteen(unsigned long n) { return n && !(n & (n - 4)); }
 
-void check_cycle_size(int longCycles, uint32_t cycles, struct Request* requests, const char* progname) {
-    if (!longCycles && cycles > INT32_MAX) {
-        fprintf(stderr, "Error: %d is too big to be converted to an int. "
-                        "Set option --lcycles to increase range.\n", cycles);
-        print_usage(progname);
-        free(requests);
-        requests = NULL;
-        exit(EXIT_FAILURE);
-    }
-}
-
 
 int parse_arguments(int argc, char** argv, struct Configuration* config) {
+
     const char* progname = argv[0];
     if (argc == 1) {
         fprintf(stderr, "Positional argument missing!\n");
         print_usage(progname);
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     // Set default values for fullassociative cache and run_simulation_extended
@@ -199,11 +193,11 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
     config->tracefile = NULL;
 
     config->policy = POLICY_LRU;    // 0 => lru, 1 => fifo, 2 => random
-    config->usingCache = 1;         // 1 => true, 0 => false
-    config->callExtended = 0;       // 0 => false, 1 => true
+    config->usingCache = 1;         // Default: true
+    config->callExtended = 0;       // Default: false
 
-    // TODO: Check input file and save file data to requests
-    FILE* file = check_file(progname, argv[argc - 1], argv[1], NULL, "input file");
+    // Check input file and save file data to requests
+    FILE* file = check_file(progname, argv[argc - 1], argv[1], "input file");
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
         perror("Error determining file size");
@@ -211,14 +205,13 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
         print_usage(progname);
         return EXIT_FAILURE;
     }
+
     config->requests = (struct Request*)malloc(sizeof(struct Request) * file_info.st_size);
     config->numRequests = 0;
     if (config->requests == NULL) {
         perror("Error allocating memory buffer for file");
         fclose(file);
         print_usage(progname);
-        free(config->requests);
-        config->requests = NULL;
         return EXIT_FAILURE;
     }
 
@@ -247,12 +240,11 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
                                            {0, 0, 0, 0}};
 
     // Variables needed for parsing
-    FILE* t_file;
     char* option;
     char* error_msg;
     int isLruSet = 0;
-    int longCycles = 0; // 0 => false, x => true
     int isFullassociativeSet = 0;
+    int longCycles = 0; // 0 => false, x => true
 
     opterr = 0; // Use own error messages
 
@@ -275,7 +267,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             print_help(progname);
             free(config->requests);
             config->requests = NULL;
-            return EXIT_SUCCESS;
+            exit(EXIT_SUCCESS);
 
         case DIRECTMAPPED:
             if (isFullassociativeSet) {
@@ -301,8 +293,6 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             if (!is_power_of_sixteen(s)) {
                 fprintf(stderr, "Invalid Input: Cacheline size should be a multiple of 16 bytes!\n");
                 print_usage(progname);
-                free(config->requests);
-                config->requests = NULL;
                 return EXIT_FAILURE;
             }
 
@@ -352,8 +342,6 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             } else if (config->policy == POLICY_RANDOM) {
                 fprintf(stderr, "Error: --random and --fifo are both set. Please choose only one option!\n");
                 print_usage(progname);
-                free(config->requests);
-                config->requests = NULL;
                 return EXIT_FAILURE;
             }
             config->policy = POLICY_FIFO;
@@ -366,8 +354,6 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             } else if (config->policy == POLICY_FIFO) {
                 fprintf(stderr, "Error: --fifo and --random are both set. Please choose only one option!\n");
                 print_usage(progname);
-                free(config->requests);
-                config->requests = NULL;
                 return EXIT_FAILURE;
             }
 
@@ -391,9 +377,12 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             break;
 
         case TRACEFILE:
-            t_file = check_file(progname, optarg, NULL, config->requests, "tracefile");
+            if (optarg == NULL || *optarg == '\0') {
+                fprintf(stderr, "Error: Option --tf= requires an argument.\n");
+                print_usage(progname);
+                return EXIT_FAILURE;
+            }
             config->tracefile = optarg;
-            fclose(t_file);
             break;
 
         case CALL_EXTENDED:
@@ -405,13 +394,12 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             if (strcmp(option, "invalid") == 0) {
                 fprintf(stderr, "Error: Not a valid argument '%s'!\n", argv[optind - 1]);
             } else {
+                //fprintf(stderr, "%s", optarg);
                 fprintf(stderr, "Error: Option '%s' requires an argument.\n", option);
             }
 
         default:
             print_usage(progname);
-            free(config->requests);
-            config->requests = NULL;
             return EXIT_FAILURE;
         }
     }
