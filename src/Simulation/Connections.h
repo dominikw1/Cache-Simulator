@@ -117,7 +117,7 @@ inline std::unique_ptr<Connections> connectComponents(CPU& cpu, RAM& dataRam, RA
     instructionRam.validRequestBus(connections->instrCache_to_instrRAM_Valid_Request);
 
     instructionCache.memoryAddrBus(connections->instrCache_to_instrRAM_Address);
-    instructionCache.memoryDataOutBus(connections->instrCache_to_instrRAM_Address);
+    instructionCache.memoryDataOutBus(connections->instrCache_to_instrRAM_Data);
     instructionCache.memoryWeBus(connections->instrCache_to_instrRAM_WE);
     instructionCache.memoryValidRequestBus(connections->instrCache_to_instrRAM_Valid_Request);
 
