@@ -236,8 +236,6 @@ template <MappingType mappingType> void Cache<mappingType>::handleRequest() noex
         if (!cpuValidRequest.read())
             continue;
 
-        cyclesPassedInRequest = 0;
-
         auto request = constructRequestFromBusses();
         auto subRequests = splitRequestIntoSubRequests(request, cacheLineSize);
 
@@ -296,7 +294,6 @@ void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddres
     writeBufferValidRequest.write(true);
     do {
         wait(clock.posedge_event());
-        cyclesPassedInRequest++;
     } while (!writeBufferReady);
     writeBufferValidRequest.write(false);
 

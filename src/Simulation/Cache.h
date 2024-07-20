@@ -96,7 +96,6 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     // ====================================== Internals ======================================
     std::vector<Cacheline> cacheInternal;
     WriteBuffer<WRITE_BUFFER_SIZE> writeBuffer;
-    std::uint32_t cyclesPassedInRequest{0};
 
     struct Empty {}; // we only want to pay the price for having a hash-table if we need it
     struct CachelineLookupTableType : std::conditional<mappingType == MappingType::Fully_Associative,
@@ -137,7 +136,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
 
 #ifdef STRICT_INSTRUCTION_ORDER
     /**
-     * Sets the correct memory latency this system experiences. This is only to be used if one insists on not bypassing
+     * Sets the correct memory latency this system experiences. This is only to be used if one insists on bypassing
      * the speedup of the write buffer.
      * @param[in] memoryLatency The latency of the RAM
      */
