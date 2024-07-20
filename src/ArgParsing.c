@@ -55,17 +55,13 @@ void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, pr
 
 void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
 
-unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option, struct Request* requests, int posArgFound) {
+unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option) {
     endptr = NULL;
     long n = strtol(optarg, &endptr, 10);   // Using datatype 'long' to check for negative input
     if (*endptr != '\0' || endptr == optarg) {
         fprintf(stderr, "Invalid input: '%s' is not a number.\n", optarg);
         print_usage(progname);
-        if (posArgFound) {
-            free(requests);
-            requests = NULL;
-        }
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     if (n <= 0 || errno != 0 || n > UINT32_MAX) {
@@ -80,27 +76,20 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
         } else {
             fprintf(stderr, "Error parsing number for option %s. %s", option, strerror(errno));
         }
-        if (posArgFound) {
-            free(requests);
-            requests = NULL;
-        }
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     return (unsigned)n;
 }
 
-void check_cycle_size(int longCycles, unsigned int cycles, struct Request* requests, const char* progname, struct Configuration* config, int posArgFound) {
-    if ((!longCycles && !config->callExtended) && cycles > INT32_MAX) {
+int check_cycle_size(int longCycles, const char* progname, struct Configuration* config) {
+    if ((!longCycles && !config->callExtended) && config->cycles > INT32_MAX) {
         fprintf(stderr, "Error: %d is too big to be converted to an int. "
-                        "Set option --lcycles to increase range.\n", cycles);
+                        "Set option --lcycles to increase range.\n", config->cycles);
         print_usage(progname);
-        if (posArgFound) {
-            free(requests);
-            requests = NULL;
-        }
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
+    return EXIT_SUCCESS;
 }
 
 char* get_option() {
@@ -120,7 +109,7 @@ char* get_option() {
     case TRACEFILE:
         return "--tf";
     default:
-        return "no option";
+        return "invalid";
     }
 }
 
@@ -134,7 +123,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
     const char* progname = argv[0];
     if (argc == 1) {
-        fprintf(stderr, "Positional argument missing!\n");
+        fprintf(stderr, "Error: Positional argument missing!\n");
         print_usage(progname);
         exit(EXIT_FAILURE);
     }
@@ -180,7 +169,6 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
     char* error_msg;
     int isLruSet = 0;
     int isFullassociativeSet = 0;
-    int posArgFound = 0;
     int longCycles = 0; // Default: false
 
     opterr = 0; // Use own error messages
@@ -191,7 +179,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
         switch (opt) {
         case 'c':
             error_msg = "Cycles cannot be smaller than 1.\n";
-            config->cycles = check_user_input(endptr, error_msg, progname, "-c/--cycles", config->requests, posArgFound);
+            config->cycles = check_user_input(endptr, error_msg, progname, "-c/--cycles");
             // Checked for validity later once we know the range
             break;
 
@@ -202,10 +190,6 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
         case 'h':
             print_help(progname);
-            if (posArgFound) {
-                free(config->requests);
-                config->requests = NULL;
-            }
             exit(EXIT_SUCCESS);
 
         case DIRECTMAPPED:
@@ -227,24 +211,16 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
         case CACHELINE_SIZE:
             error_msg = "Cacheline size should be at least 1.";
-            unsigned long s = check_user_input(endptr, error_msg, progname, "--cacheline-size", config->requests, posArgFound);
+            unsigned long s = check_user_input(endptr, error_msg, progname, "--cacheline-size");
 
             if (!is_multiple_of_sixteen(s)) {
                 fprintf(stderr, "Invalid Input: Cacheline size should be a multiple of 16 bytes!\n");
                 print_usage(progname);
-                if (posArgFound) {
-                    return EXIT_FAILURE;
-                } else {
-                    exit(EXIT_FAILURE);
-                }
+                exit(EXIT_FAILURE);
             } else if (!is_power_of_two(s)) {
                 fprintf(stderr, "Invalid Input: Cacheline size should be a power of 2!\n");
                 print_usage(progname);
-                if (posArgFound) {
-                    return EXIT_FAILURE;
-                } else {
-                    exit(EXIT_FAILURE);
-                }
+                exit(EXIT_FAILURE);
             }
 
             config->cacheLineSize = s;
@@ -252,7 +228,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
         case CACHELINES:
             error_msg = "Number of cache-lines must be at least 1.";
-            unsigned long n = check_user_input(endptr, error_msg, progname, "--cachelines", config->requests, posArgFound);
+            unsigned long n = check_user_input(endptr, error_msg, progname, "--cachelines");
             if (n == 0) { // Use no cache for simulation due to user input --cachelines 0
                 config->usingCache = 0;
                 config->cacheLines = 0;
@@ -267,13 +243,13 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
         case CACHE_LATENCY:
             error_msg = "Cache-latency cannot be zero or negativ.";
-            unsigned long l = check_user_input(endptr, error_msg, progname, "--cache-latency", config->requests, posArgFound);
+            unsigned long l = check_user_input(endptr, error_msg, progname, "--cache-latency");
             config->cacheLatency = l;
             break;
 
         case MEMORY_LATENCY:
             error_msg = "Memory-latency cannot be zero or negativ.";
-            unsigned long m = check_user_input(endptr, error_msg, progname, "--memory-latency", config->requests, posArgFound);
+            unsigned long m = check_user_input(endptr, error_msg, progname, "--memory-latency");
             config->memoryLatency = m;
             break;
 
@@ -293,11 +269,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             } else if (config->policy == POLICY_RANDOM) {
                 fprintf(stderr, "Error: --random and --fifo are both set. Please choose only one option!\n");
                 print_usage(progname);
-                if (posArgFound) {
-                    return EXIT_FAILURE;
-                } else {
-                    exit(EXIT_FAILURE);
-                }
+                exit(EXIT_FAILURE);
             }
             config->policy = POLICY_FIFO;
             break;
@@ -309,11 +281,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             } else if (config->policy == POLICY_FIFO) {
                 fprintf(stderr, "Error: --fifo and --random are both set. Please choose only one option!\n");
                 print_usage(progname);
-                if (posArgFound) {
-                    return EXIT_FAILURE;
-                } else {
-                    exit(EXIT_FAILURE);
-                }
+                exit(EXIT_FAILURE);
             }
 
             config->policy = POLICY_RANDOM;
@@ -333,21 +301,13 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
                 fprintf(stderr, "Error: '%s' is not a valid option for --use-cache.\n", optarg);
             }
             print_usage(progname);
-            if (posArgFound) {
-                return EXIT_FAILURE;
-            } else {
-                exit(EXIT_FAILURE);
-            }
+            exit(EXIT_FAILURE);
 
         case TRACEFILE:
             if (*optarg == '\0') {
                 fprintf(stderr, "Error: Option --tf requires an argument.\n");
                 print_usage(progname);
-                if (posArgFound) {
-                    return EXIT_FAILURE;
-                } else {
-                    exit(EXIT_FAILURE);
-                }
+                exit(EXIT_FAILURE);
             }
             config->tracefile = optarg;
             break;
@@ -358,28 +318,17 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
         case '?':
             option = get_option();
-            if (strcmp(option, "no option") == 0) { // Check if optarg is positional argument
-                if (optind < argc) {
-                    // Check input file for valid file format and save data to requests
-                    FILE* file = check_file(progname, argv[optind], argv[1]);
-                    extract_file_data(progname, file, config);
-                    posArgFound = 1;
-                    break;
-                } else {
-                    fprintf(stderr, "Error: Positional argument is missing!\n");
-                    exit(EXIT_FAILURE);
-                }
-            } else {
+            if (strcmp(option, "invalid") != 0) { // Check if optarg is positional argument
                 fprintf(stderr, "Error: Option %s requires an argument.\n", option);
+            } else if (optarg != NULL){
+                fprintf(stderr, "Error: Not a valid option %s.\n", optarg);
+            } else {
+                fprintf(stderr, "Error: Not a valid option.\n");
             }
 
         default:
             print_usage(progname);
-            if (posArgFound) {
-                return EXIT_FAILURE;
-            } else {
-                exit(EXIT_FAILURE);
-            }
+            exit(EXIT_FAILURE);
         }
     }
 
@@ -387,8 +336,18 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
         fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
     }
 
-    check_cycle_size(longCycles, config->cycles, config->requests, progname, config, posArgFound);
+    check_cycle_size(longCycles, progname, config);
+
+    // Check for Positional Argument
+    if (optind < argc) {
+        // Check input file for valid file format and save data to requests
+        FILE* file = check_file(progname, argv[optind]);
+        extract_file_data(progname, file, config);
+    } else {
+        fprintf(stderr, "Error: Positional argument is missing!\n");
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    }
 
     return EXIT_SUCCESS;
-
 }

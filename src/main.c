@@ -11,12 +11,7 @@ int main(int argc, char** argv) {
 
     // Parse command line arguments
     struct Configuration configuration;
-    int exitFailure = parse_arguments(argc, argv, &configuration);
-    if (exitFailure) {
-        free(configuration.requests);
-        configuration.requests = NULL;
-        return EXIT_FAILURE;
-    }
+    parse_arguments(argc, argv, &configuration);
 
     // Call run_simulation method depending on user input for extended method
     struct Result result;

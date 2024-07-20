@@ -26,14 +26,9 @@ void validate_file_format(const char* progname, FILE* file, const char* filename
     }
 }
 
-FILE* check_file(const char* progname, const char* filename_1, const char* filename_2) {
+FILE* check_file(const char* progname, const char* filename) {
     struct stat file_info;
-    const char* filename = filename_1;
     FILE* file = fopen(filename, "r");
-    if (file == NULL) { // Accept positional argument as first and last command line argument
-        file = fopen(filename_2, "r");
-        filename = filename_2;
-    }
 
     if (file == NULL) {
         fprintf(stderr, "Error opening input file: %s\n", strerror(errno));
