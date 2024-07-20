@@ -92,16 +92,15 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
                  "instrCache_to_instrRAM_Valid_Request");
         sc_trace(trace.get(), connections.get()->instrRAM_to_instrCache_Data, "instrRAM_to_instrCache_Data");
         sc_trace(trace.get(), connections.get()->instrRAM_to_instrCache_Ready, "instrRAM_to_instrCache_Ready");
+
+        // trace Write Buffer signals too
         dataCache.traceInternalSignals(trace.get());
     }
 
     sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
 
-    return Result{
-        connections.get()->CPU_to_instrCache_PC >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX,
-        dataCache.missCount, dataCache.hitCount,
-        dataCache.calculateGateCount() // TODO: primitiveGateCount
-    };
+    return Result{connections.get()->CPU_to_instrCache_PC >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX,
+                  dataCache.missCount, dataCache.hitCount, dataCache.calculateGateCount()};
 }
 
 struct Result run_simulation_extended(unsigned int cycles, int directMapped, unsigned int cacheLines,
