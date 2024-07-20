@@ -36,23 +36,28 @@ template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(DecomposedAddress decomposedAddr) {
     auto firstUnusedCacheline = cacheInternal.end();
+    // since there is no way for a valid cacheline to become invalid again, we can safely just fill them up one by one.
+    // If this process has finished, there are sadly no more free cachelines - and there never will be again
     if (cachelineLookupTable.numCacheLinesUsed != numCacheLines) {
         firstUnusedCacheline = cacheInternal.begin() + cachelineLookupTable.numCacheLinesUsed;
         cachelineLookupTable.numCacheLinesUsed += 1;
     }
 
+    // if there was no free cacheline :(
     if (firstUnusedCacheline == cacheInternal.end()) {
         firstUnusedCacheline = cacheInternal.begin() + replacementPolicy->pop();
+        // kick out entry for tag we replaced
         cachelineLookupTable.erase(firstUnusedCacheline->tag);
     }
     assert(firstUnusedCacheline != cacheInternal.end());
-
+    // enter us into hashtabe because we now onw this cacheline
     cachelineLookupTable[decomposedAddr.tag] = firstUnusedCacheline - cacheInternal.begin();
     return firstUnusedCacheline;
 }
 
 template <> DecomposedAddress Cache<MappingType::Direct>::decomposeAddress(std::uint32_t address) noexcept {
     assert(addressOffsetBitMask > 0 && addressIndexBitMask > 0 && addressTagBitMask > 0);
+    // modding the offset bits is presumably not necessary, but has been left in as a precaution
     return DecomposedAddress{((address >> addressOffsetBits) >> addressIndexBits) & addressTagBitMask,
                              ((address >> addressOffsetBits) & addressIndexBitMask) % numCacheLines,
                              (address & addressOffsetBitMask) % cacheLineSize};
@@ -60,6 +65,7 @@ template <> DecomposedAddress Cache<MappingType::Direct>::decomposeAddress(std::
 
 template <> DecomposedAddress Cache<MappingType::Fully_Associative>::decomposeAddress(std::uint32_t address) noexcept {
     assert(addressOffsetBitMask > 0 && addressIndexBitMask == 0 && addressTagBitMask > 0);
+    // modding the offset bits is presumably not necessary, but has been left in as a precaution
     return DecomposedAddress{(address >> addressOffsetBits) & addressTagBitMask, 0,
                              (address & addressOffsetBitMask) % cacheLineSize};
 }
@@ -76,6 +82,7 @@ void Cache<MappingType::Fully_Associative>::registerUsage(std::vector<Cacheline>
 }
 
 template <MappingType mappingType> void Cache<mappingType>::waitForRAM() noexcept {
+    // maybe this should be a while?
     do {
         wait();
     } while (!writeBufferReady.read());
@@ -286,13 +293,12 @@ void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddres
     writeBufferDataIn.write(data);
     writeBufferWE.write(true);
     writeBufferValidRequest.write(true);
+
     wait();
     writeBufferValidRequest.write(false);
-    
     while (!writeBufferReady) {
         wait();
     }
-    std::cout << "cache got ready" << sc_core::sc_time_stamp() << "\n";
 
 #ifdef STRICT_INSTRUCTION_ORDER
     for (std::uint32_t waited = 0; waited < memoryLatency; ++waited) {
