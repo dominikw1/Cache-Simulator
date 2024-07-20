@@ -104,7 +104,7 @@ int extract_file_data(const char* progname, FILE* file, struct Configuration* co
         char* l = line;
 
         if (read_line != 3) {
-            if (strchr(line, ',') == NULL) {
+            if (strchr(l, ',') == NULL) {
                 fprintf(stderr, "Error: Wrong file format! An error occured while reading from the file!\n");
                 goto error;
             }
@@ -113,7 +113,7 @@ int extract_file_data(const char* progname, FILE* file, struct Configuration* co
                 goto error;
             }
 
-            comma = strchr(line, ','); // Check if address is given
+            comma = strchr(l, ','); // Check if address is given
             if (strncmp(comma + 1, "\0", 1) == 0) {
                 fprintf(stderr, "Error: Wrong file format! No address given.\n");
                 goto error;
