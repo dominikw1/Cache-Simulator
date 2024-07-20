@@ -6,10 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <sys/stat.h>
 
 #include "Argparsing.h"
-#include "FileDataExtraction.h"
+#include "FileProcessor.h"
 #include "Request.h"
 #include "Simulation/Policy/Policy.h"
 
@@ -54,59 +53,7 @@ void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, pr
 
 void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
 
-FILE* check_file(const char* progname, const char* filename_1, const char* filename_2, char* filetype) {
-    const char* filename = filename_1;
-    FILE* file = fopen(filename, "r");
-    if (file == NULL) { // Accept positional argument as first and last command line argument
-        file = fopen(filename_2, "r");
-        filename = filename_2;
-    }
-
-    if (file == NULL) {
-        fprintf(stderr, "Error opening %s: %s\n", filetype, strerror(errno));
-        print_usage(progname);
-        exit(EXIT_FAILURE);
-    }
-
-    struct stat file_info;
-    if (fstat(fileno(file), &file_info) != 0) {
-        perror("Error determining file size");
-        fclose(file);
-        print_usage(progname);
-        exit(EXIT_FAILURE);
-    }
-    if (S_ISDIR(file_info.st_mode)) {
-        fprintf(stderr, "Error: Filename should not be a directory.\n");
-        fclose(file);
-        print_usage(progname);
-        exit(EXIT_FAILURE);
-    }
-
-    // Taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
-    const char *dot = strrchr(filename, '.');   // Check for valid file format
-    if (dot == NULL || dot == filename) {
-        fprintf(stderr, "Error: %s is not a valid file\n", filename);
-        fclose(file);
-        print_usage(progname);
-        exit(EXIT_FAILURE);
-    } else if (strcmp(dot+1, "csv") != 0) {
-        fprintf(stderr, "Error: %s is not a valid csv file!\n", filename);
-        fclose(file);
-        print_usage(progname);
-        exit(EXIT_FAILURE);
-    }
-
-    if (!S_ISREG(file_info.st_mode)) {
-        fprintf(stderr, "Error: %s is not a regular file\n", filename);
-        fclose(file);
-        print_usage(progname);
-        exit(EXIT_FAILURE);
-    }
-    return file;
-}
-
-unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option,
-                               struct Request* requests) {
+unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option, struct Request* requests) {
     endptr = NULL;
     long n = strtol(optarg, &endptr, 10);   // Using datatype 'long' to check for negative input
     if (*endptr != '\0' || endptr == optarg) {
@@ -197,7 +144,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
     config->callExtended = 0;       // Default: false
 
     // Check input file for valid file format
-    FILE* file = check_file(progname, argv[argc - 1], argv[1], "input file");
+    FILE* file = check_file(progname, argv[argc - 1], argv[1]);
 
     // Check file data and save data to requests
     extract_file_data(progname, file, config);

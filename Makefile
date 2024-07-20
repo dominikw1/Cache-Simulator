@@ -3,7 +3,7 @@
 # ---------------------------------------
 
 # entry point for the program and target name
-C_SRCS = src/main.c src/ArgParsing.c src/FileDataExtraction.c
+C_SRCS = src/main.c src/ArgParsing.c src/FileProcessor.c
 CPP_SRCS = src/Simulation/SubRequest.cpp src/Simulation/Simulation.cpp src/Simulation/Cache.cpp
 
 # Object files
