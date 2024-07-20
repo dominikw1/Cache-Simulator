@@ -132,6 +132,6 @@ std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheRepl
 }
 
 int sc_main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
-    std::cout << "ERROR: call to sc_main method\n";
+    std::cout << "ERROR: Call to sc_main method!\n";
     return 1;
 }
