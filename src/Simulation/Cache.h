@@ -68,6 +68,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     sc_core::sc_out<bool> SC_NAMED(ready);
     sc_core::sc_out<std::uint32_t> SC_NAMED(cpuDataOutBus);
 
+  private:
     // ====================================== Internal Signals  ======================================
     // Buffer -> Cache
     sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(writeBufferReady);
@@ -79,6 +80,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     sc_core::sc_signal<bool> SC_NAMED(writeBufferWE);
     sc_core::sc_signal<bool> SC_NAMED(writeBufferValidRequest);
 
+  public:
     // ====================================== Hit/Miss Bookkeeping  ======================================
     std::uint64_t hitCount{0};
     std::uint64_t missCount{0};
@@ -138,7 +140,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * Adds internal signals to and from write buffer to the trace file
      * @param[in] traceFile The trace file the signals shall be added to
      */
- //   void traceInternalSignals(sc_core::sc_trace_file* traceFile) const;
+    void traceInternalSignals(sc_core::sc_trace_file* const traceFile) const;
 
 #ifdef STRICT_INSTRUCTION_ORDER
     /**

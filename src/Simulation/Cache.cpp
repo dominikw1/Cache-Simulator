@@ -1,5 +1,7 @@
 #include "Cache.h"
 
+using namespace sc_core;
+
 template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Direct>::getCachelineOwnedByAddr(DecomposedAddress decomposedAddr) noexcept {
@@ -125,13 +127,11 @@ template <MappingType mappingType> void Cache<mappingType>::zeroInitialiseCachel
 }
 
 template <MappingType mappingType>
-Cache<mappingType>::Cache(sc_core::sc_module_name name, std::uint32_t numCacheLines, std::uint32_t cacheLineSize,
+Cache<mappingType>::Cache(sc_module_name name, std::uint32_t numCacheLines, std::uint32_t cacheLineSize,
                           std::uint32_t cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy) noexcept
     : sc_module{name}, numCacheLines{numCacheLines}, cacheLineSize{cacheLineSize}, cacheLatency{cacheLatency},
       replacementPolicy{std::move(policy)}, cacheInternal{numCacheLines},
       writeBuffer{"writeBuffer", cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE, cacheLineSize} {
-
-    using namespace sc_core; // in scope as to not pollute global namespace
     if (replacementPolicy != nullptr && mappingType == MappingType::Direct) {
         std::cerr << "Replacement Policy is set on a direct mapped cache - this has no effect.\n";
     }
@@ -339,9 +339,14 @@ template <MappingType mappingType> std::size_t Cache<mappingType>::calculateGate
 template <MappingType mappingType> void Cache<mappingType>::setMemoryLatency(std::uint32_t memoryLatency) {}
 #endif
 
-// template <MappingType mappingType> void Cache<mappingType>::traceInternalSignals(sc_trace_file*  traceFile) {
-
-//}
+template <MappingType mappingType> void Cache<mappingType>::traceInternalSignals(sc_trace_file* const traceFile) const {
+    sc_trace(traceFile, writeBufferReady, "WriteBuffer_Cache_Ready");
+    sc_trace(traceFile, writeBufferDataOut, "WriteBuffer_Cache_Data_Out");
+    sc_trace(traceFile, writeBufferAddr, "Cache_WriteBuffer_Addr");
+    sc_trace(traceFile, writeBufferDataIn, "Cache_WriteBuffer_Data_in");
+    sc_trace(traceFile, writeBufferWE, "Cache_WriteBuffer_WE");
+    sc_trace(traceFile, writeBufferValidRequest, "Cache_WriteBuffer_Valid_Request");
+}
 
 template struct Cache<MappingType::Direct>;
 template struct Cache<MappingType::Fully_Associative>;
