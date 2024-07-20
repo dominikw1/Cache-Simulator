@@ -125,7 +125,6 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] policy Optional parameter - the replacement policy taking effect when the cache is full and a new
      * entry shall be stored. Only relevant if MappingType is Fully_Associative, results in a warning on Direct if not
      * null_ptr. Takes ownership of the policy. Default value is nullptr.
-     *
      */
     Cache(sc_core::sc_module_name name, std::uint32_t numCacheLines, std::uint32_t cacheLineSize,
           std::uint32_t cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy = nullptr);
@@ -224,7 +223,8 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] decomposedAddr  The address pre-decomposed into tag, index and offset
      * @returns an iterator to the cacheline (now) populated with the correct data corresponding to the address
      */
-    std::vector<Cacheline>::iterator fetchIfNotPresent(std::uint32_t addr, const DecomposedAddress& decomposedAddr) noexcept;
+    std::vector<Cacheline>::iterator fetchIfNotPresent(std::uint32_t addr,
+                                                       const DecomposedAddress& decomposedAddr) noexcept;
     /**
      * Sends request to RAM through Write Buffer to read in cacheline.
      * @param[in] addr  Cacheline-size aligned addr for the first byte to be read
@@ -237,7 +237,8 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] numBytes  The amount of bytes we want to read
      * @returns the data segment just read in the lowest numBytes bytes of the uint32_t
      * */
-    std::uint32_t doRead(const DecomposedAddress& decomposedAddr, Cacheline & cacheline, std::uint32_t numBytes) noexcept;
+    std::uint32_t doRead(const DecomposedAddress& decomposedAddr, Cacheline& cacheline,
+                         std::uint32_t numBytes) noexcept;
     /**
      * Reads data from bus written to by RAM and copies it into the corresponding cacheline
      * */

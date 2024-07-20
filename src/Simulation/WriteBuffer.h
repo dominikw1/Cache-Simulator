@@ -3,6 +3,26 @@
 #include <cassert>
 #include <cstdint>
 #include <systemc>
+/**
+ * This module represents a buffer for the cache. All RAM-memory accesses go through this buffer.
+ *
+ * Its main purpose is, as its name says, to buffer writes. Since the cache usually does not care about whether his
+ * write has already arrived in RAM or that it not having done so yet will simply be guaranteed to not interfere with
+ * its future operations, this can save us a lot of cycles.
+ *
+ * Its default behaviour is to buffer all writes and, when a read happens, to check for whether the read would be
+ * affected by buffered writes. If that is not the case, the read gets performed there and then, before the remaining
+ * writes. As this is not completely sequentially consistent (imagine a peripheral that keeps track of reads happening
+ * on it and therefore possibly changing what we would read on our read), there is the option of compiling this cache
+ * with the definition STRICT_RAM_READ_AFTER_WRITES. This will lead to the behaviour of reads only going through if all
+ * writes are done.
+ *
+ * Operations happen on both rising and falling edge. Since the write buffer is a very small component, having only half
+ * a cycle for both kinds of operations is fine.
+ * On rising edge: The state is updated depending on current state and external busses
+ * On falling edge: An operation is performed depending on which state we decided to be in. This operation is either a
+ * read or a write (or nothing)
+ */
 
 template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
   public:
@@ -29,8 +49,8 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
     sc_core::sc_in<sc_dt::sc_bv<128>> SC_NAMED(memoryDataInBus);
     sc_core::sc_in<bool> SC_NAMED(memoryReadyBus);
 
-    const std::uint32_t readsPerCacheline = 0;
-    const std::uint32_t cacheLineSize = 0;
+    const std::uint32_t readsPerCacheline;
+    const std::uint32_t cacheLineSize;
 
     WriteBuffer(sc_core::sc_module_name name, std::uint32_t readsPerCacheline, std::uint32_t cacheLineSize) noexcept
         : sc_module{name}, readsPerCacheline{readsPerCacheline}, cacheLineSize{cacheLineSize} {
@@ -62,20 +82,27 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
     State state = State::Idle;
     bool pending = false;
 
-    void writeToRAM() noexcept;
-    void passReadAlong() noexcept;
-    constexpr std::uint32_t makeAddrAligned(std::uint32_t addr) noexcept;
-    bool isReadAddrInWriteBuffer(std::uint32_t readAddr) noexcept;
-    constexpr bool weCanAcceptWrite() noexcept;
-    constexpr bool weCanAcceptRead() noexcept;
-    bool thereIsAWrite() noexcept;
-    bool thereIsARead() noexcept;
+    // ============= State update =============
+    void updateState() noexcept;
     void acceptWriteRequest() noexcept;
     void acceptReadRequest() noexcept;
-    bool shouldStartNextWrite() noexcept;
-    void updateState() noexcept;
+
+    // ============= Reading =============
     void handleRead() noexcept;
+    void passReadAlong() noexcept;
+
+    // ============= Writing =============
     void handleWrite() noexcept;
+    void writeToRAM() noexcept;
+
+    // ============= Helpers =============
+    constexpr bool weCanAcceptWrite() noexcept;
+    constexpr bool weCanAcceptRead() noexcept;
+    bool shouldStartNextWrite() noexcept;
+    bool thereIsAWrite() noexcept;
+    bool thereIsARead() noexcept;
+    bool isReadAddrInWriteBuffer(std::uint32_t readAddr) noexcept;
+    constexpr std::uint32_t makeAddrAligned(std::uint32_t addr) noexcept;
 };
 
 template <std::uint8_t SIZE> void WriteBuffer<SIZE>::writeToRAM() noexcept {
