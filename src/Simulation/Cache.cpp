@@ -163,7 +163,7 @@ Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) 
 
     for (std::size_t i = 0; i < numReadEvents; ++i) {
         dataRead = writeBufferDataOut.read();
-        for (int byte = 0; byte < RAM_READ_BUS_SIZE_IN_BYTE; ++byte) {
+        for (std::size_t byte = 0; byte < RAM_READ_BUS_SIZE_IN_BYTE; ++byte) {
             cachelineToWriteInto->data[RAM_READ_BUS_SIZE_IN_BYTE * i + byte] =
                 dataRead.range(BITS_IN_BYTE * byte + (BITS_IN_BYTE - 1), BITS_IN_BYTE * byte).to_uint();
         }
@@ -214,7 +214,6 @@ void Cache<mappingType>::handleSubRequest(SubRequest subRequest, std::uint32_t& 
     registerUsage(cacheline);
 
     if (subRequest.we) {
-        std::cout << "Passing on write for " << subRequest.addr << std::endl;
         doWrite(*cacheline, decomposedAddr, subRequest.data, subRequest.size);
         passWriteOnToRAM(*cacheline, decomposedAddr, addr);
     } else {
@@ -242,9 +241,8 @@ template <MappingType mappingType> void Cache<mappingType>::handleRequest() noex
 
         if (!cpuValidRequest.read())
             continue;
-        std::cout << "got request for " << cpuAddrBus.read() << std::endl;
-        auto request = constructRequestFromBusses();
-        auto subRequests = splitRequestIntoSubRequests(request, cacheLineSize);
+        const auto request = constructRequestFromBusses();
+        const auto subRequests = splitRequestIntoSubRequests(request, cacheLineSize);
 
         // while this is also passed into write requests, it is only relevant for read request and will not be accessed
         // if invalid for the request type
@@ -257,10 +255,6 @@ template <MappingType mappingType> void Cache<mappingType>::handleRequest() noex
         if (!request.we) {
             cpuDataOutBus.write(readData);
         }
-
-        // it is the responsibility of the CPU to have stopped the valid request signal at the latest during the cycle
-        // he gets this signal. To not still read the valid request signal from the previous cycle we sleep for one and
-        // only then start checking again
         ready.write(true);
     }
 }
@@ -295,7 +289,7 @@ void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddres
     writeBufferValidRequest.write(true);
 
     wait();
-    writeBufferValidRequest.write(false);
+    writeBufferValidRequest.write(false); // ensure we only set valid for exactly one cycle
     while (!writeBufferReady) {
         wait();
     }
@@ -318,11 +312,14 @@ template <MappingType mappingType> Request Cache<mappingType>::constructRequestF
     return Request{cpuAddrBus.read(), cpuDataInBus.read(), cpuWeBus.read()};
 }
 
+
+
+
 static std::size_t calcGateCountForInternalTable(std::uint32_t numCachelines, std::uint32_t cachelineSize,
                                                  std::uint32_t tagBits) noexcept {
-    // each bit is an edge triggered D Flipflop á la ~10 gates.
+    // each bit register takes 4 gates
     // we have 8 bits in a byte and numCachelines * cachelinesize bytes + tag bits
-    return 10ull * numCachelines * (8ull * cachelineSize + tagBits);
+    return 4ull * numCachelines * (8ull * cachelineSize + tagBits);
 }
 
 static std::size_t calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t tagBits,
