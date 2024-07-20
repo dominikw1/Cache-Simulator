@@ -34,6 +34,7 @@ class IntegrationTests
                                       std::vector<Request>(requests, requests + requestsSize)};
 
     std::unordered_map<std::uint32_t, std::uint8_t> memRecord;
+    std::unordered_map<std::uint32_t, std::uint32_t> readRecord;
 
     void SetUp() override {
         for (int i = 0; i < requestsSize; ++i) {
@@ -42,6 +43,10 @@ class IntegrationTests
                 memRecord[requests[i].addr + 1] = (requests[i].data >> 8) & ((1 << 8) - 1);
                 memRecord[requests[i].addr + 2] = (requests[i].data >> 16) & ((1 << 8) - 1);
                 memRecord[requests[i].addr + 3] = (requests[i].data >> 24) & ((1 << 8) - 1);
+            } else {
+                uint32_t expected = memRecord[requests[i].addr] | (memRecord[requests[i].addr + 1] << 8) |
+                                    (memRecord[requests[i].addr + 2] << 16) | (memRecord[requests[i].addr + 3] << 24);
+                readRecord[i] = expected;
             }
         }
     }
@@ -55,16 +60,18 @@ TEST_P(IntegrationTests, DirectMapped) {
     sc_start(1, SC_MS);
 
     for (int i = 0; i < requestsSize; ++i) {
-        if (requests[i].we) {
-            ASSERT_EQ(memRecord[requests[i].addr], dataRam.dataMemory[requests[i].addr]);
-            ASSERT_EQ(memRecord[requests[i].addr + 1], dataRam.dataMemory[requests[i].addr + 1]);
-            ASSERT_EQ(memRecord[requests[i].addr + 2], dataRam.dataMemory[requests[i].addr + 2]);
-            ASSERT_EQ(memRecord[requests[i].addr + 3], dataRam.dataMemory[requests[i].addr + 3]);
+        if (!requests[i].we) {
+            ASSERT_EQ(requests[i].data, readRecord[i]);
         } else {
-            uint32_t expected = memRecord[requests[i].addr] | (memRecord[requests[i].addr + 1] << 8) |
-                                (memRecord[requests[i].addr + 2] << 16) | (memRecord[requests[i].addr + 3] << 24);
-            ASSERT_EQ(requests[i].data, expected);
+            std::cout << "Address: " << requests[i].addr << " Data: " << requests[i].data << std::endl;
         }
+    }
+
+    std::cout << "MemRecord" << std::endl;
+
+    for (auto& mem : memRecord) {
+        std::cout << "Address: " << mem.first << " Data: " << sc_dt::sc_bv<8>(mem.second) << std::endl;
+        ASSERT_EQ(mem.second, dataRam.dataMemory[mem.first]);
     }
 };
 
@@ -80,18 +87,19 @@ const auto cacheLatencyValues = testing::Values(0, 1, 10, 100);
 const auto cacheLines = testing::Values(1, 10, 100);
 const auto cacheLineSizes = testing::Values(16, 32, 64, 128);
 const auto policies = testing::Values(POLICY_FIFO, POLICY_LRU, POLICY_RANDOM);
-const auto requests = testing::Values(std::pair<Request*, size_t>(generateRandomRequests(0), 0),
-                                      std::pair<Request*, size_t>(generateRandomRequests(1), 1),
-                                      std::pair<Request*, size_t>(generateRandomRequests(10), 10),
-                                      std::pair<Request*, size_t>(generateRandomRequests(100), 100),
-                                      std::pair<Request*, size_t>(generateRandomRequests(1000), 1000));
+const auto requests =
+    testing::Values(std::pair<Request*, size_t>(generateRandomRequests(0), 0),
+                    std::pair<Request*, size_t>(generateRandomRequests(1), 1),
+                    std::pair<Request*, size_t>(generateRandomRequests(10), 10),
+                    std::pair<Request*, size_t>(generateRandomRequests(100), 100),
+                    std::pair<Request*, size_t>(generateRandomRequests(1000), 1000),
+                    std::pair<Request*, size_t>(generateRandomRequests(2000, 100, UINT32_MAX, 2), 2000));
 
 std::string ParamNameGenerator(const testing::TestParamInfo<IntegrationTests::ParamType>& info);
 
 INSTANTIATE_TEST_SUITE_P(AllCombinations, IntegrationTests,
-                         testing::Combine(memoryLatencyValues, cacheLatencyValues,
-                                          cacheLines, cacheLineSizes,
-                                          policies, requests),
+                         testing::Combine(memoryLatencyValues, cacheLatencyValues, cacheLines, cacheLineSizes, policies,
+                                          requests),
                          ParamNameGenerator);
 
 std::string ParamNameGenerator(const testing::TestParamInfo<IntegrationTests::ParamType>& info) {
@@ -118,5 +126,3 @@ std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheRepl
         throw std::runtime_error("Encountered unknown policy type");
     }
 }
-
-
