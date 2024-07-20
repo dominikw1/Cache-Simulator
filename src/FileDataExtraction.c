@@ -61,7 +61,7 @@ void extract_file_data(const char* progname, FILE* file, struct Request* request
     } while (!feof(file));
 
     fclose(file);
-    return EXIT_SUCCESS;
+    return;
 
 error:
     fclose(file);
