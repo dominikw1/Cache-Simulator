@@ -31,9 +31,9 @@ SC_MODULE(InstrMemoryMock) {
             wait(clock.posedge_event());
             instrReadyBus.write(false);
 
-            do {
+            while (!validInstrRequest) {
                 wait(clock.posedge_event());
-            } while (!validInstrRequest);
+            }
 
             auto pc = pcBus.read();
             std::cout << "Providing instruction at " << pc << std::endl;
@@ -78,9 +78,9 @@ SC_MODULE(DataMemoryMock) {
             wait(clock.posedge_event());
             dataReadyBus.write(false);
 
-            do {
+            while (!validDataRequest) {
                 wait(clock.posedge_event());
-            } while (!validDataRequest);
+            }
 
             // std::cout << "Providing/writing data at " << addressBus.read() << std::endl;
             if (weBus.read() == 0) {
@@ -97,7 +97,7 @@ SC_MODULE(DataMemoryMock) {
 };
 
 class CPUTests : public testing::Test {
-protected:
+  protected:
     InstrMemoryMock instrMock{"instrMock"};
     DataMemoryMock dataMock{"dataMock"};
     sc_signal<bool> weSignal;
@@ -219,7 +219,6 @@ TEST_F(CPUTests, CPUWritesMemoryCorrectlyMultipleRequests) {
     instrMock.instructionMemory[1] = reqW2;
     instrMock.instructionMemory[2] = reqW3;
 
-
     CPU cpu{"cpu", requests, 3};
     createConnectionsToCPU(cpu);
 
@@ -240,8 +239,7 @@ TEST_F(CPUTests, CPUHandlesRandomInputWithoutThrowing) {
     auto randomWE = generateRandomVector(numRequests, 2);
 
     for (std::size_t i = 0; i < numRequests; ++i) {
-        auto req = Request{static_cast<std::uint32_t>(randomAddresses[i]),
-                           static_cast<std::uint32_t>(randomData[i]),
+        auto req = Request{static_cast<std::uint32_t>(randomAddresses[i]), static_cast<std::uint32_t>(randomData[i]),
                            static_cast<int>(randomWE[i])};
         requests[i] = req;
         instrMock.instructionMemory[i] = req;
@@ -249,7 +247,6 @@ TEST_F(CPUTests, CPUHandlesRandomInputWithoutThrowing) {
 
     CPU cpu{"cpu", requests, numRequests};
     createConnectionsToCPU(cpu);
-
 
     sc_start(5, SC_SEC);
     ASSERT_EQ(dataMock.dataProvided.size(), numRequests);

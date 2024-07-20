@@ -36,7 +36,7 @@ SC_MODULE(CPUMock) {
             // std::cout << " --------------------------- " << std::endl;
             // std::cout << "Providing instruction at " << currPC << std::endl;
             if (instructions.size() <= currPC) {
-                // std::cout << "Ending simulation" << std::endl;
+                std::cout << "Ending simulation" << std::endl;
                 return;
             }
             Request requestToWrite = instructions.at(currPC);
@@ -49,9 +49,10 @@ SC_MODULE(CPUMock) {
             instructionsProvided.push_back(requestToWrite);
             // std::cout << "Done providing instruction" << std::endl;
             wait();
-            do {
+            validRequestBus.write(false);
+            while (!cacheReadyBus) {
                 wait();
-            } while (!cacheReadyBus.read());
+            }
 
             // std::cout << "Cache request done " << std::endl;
             // std::cout << "Logging received data" << std::endl;
@@ -65,7 +66,6 @@ SC_MODULE(CPUMock) {
 
             // std::cout << "Incrementing pc" << std::endl;
             ++currPC;
-            validRequestBus.write(false);
             // std::cout << "Done with cycle" << std::endl;
         }
     }
@@ -124,54 +124,41 @@ SC_MODULE(RAMMock) {
 
             if (!validDataRequest.read())
                 continue;
+            // std::cout << "RAM: Got request at " << sc_core::sc_time_stamp() << "\n";
 
-            // wait for a few cycles
-            for (size_t i = 0; i < latency; ++i) {
+            // Wait out latency
+            // std::cout<<latency<<std::endl;
+            for (std::size_t cycles = 0; cycles < latency; ++cycles) {
                 wait(clock.posedge_event());
             }
-
-            // //std::cout << "RAM: dealing with new request" << std::endl;
-            bool we = weBus.read();
-            if (we) {
-                // std::cout << "Actually writing to RAM: " << addressBus.read() << " " << dataInBus.read() <<
-                // std::endl;
+            std::cout << "RAM: done with latency at " << sc_core::sc_time_stamp() <<"performing " << weBus.read()<< "\n";
+            std::cout<<"at "<<addressBus.read()<<std::endl;
+            if (weBus.read()) {
+                // Writing happens in one cycle -> one able to write 32 bits
                 dataMemory[addressBus.read()] = (dataInBus.read() & ((1 << 8) - 1));
                 dataMemory[addressBus.read() + 1] = (dataInBus.read() >> 8) & ((1 << 8) - 1);
                 dataMemory[addressBus.read() + 2] = (dataInBus.read() >> 16) & ((1 << 8) - 1);
                 dataMemory[addressBus.read() + 3] = (dataInBus.read() >> 24) & ((1 << 8) - 1);
                 readyBus.write(true);
-                // std::cout << "Memory done writing" << std::endl;
-
-                // std::cout << "Total written ram now looks like: " << std::endl;
-                //  for (auto& pair : dataMemory) {
-                // std::cout << pair.first << ": " << pair.second << std::endl;
-                //}
                 wait(clock.posedge_event());
             } else {
-                // 128 / 8 -> 16
-                // std::cout << "Actually reading from RAM: " << addressBus.read() << " " << std::endl;
-                readyBus.write(true);
-                //  wait(clock.posedge_event());
-                sc_dt::sc_bv<128> toWrite;
+                // Reading takes wordsPerRead cycles
+                sc_dt::sc_bv<128> readData;
                 for (std::size_t i = 0; i < wordsPerRead; ++i) {
-                    // std::cout << "Doing a part read " << i << std::endl;
-                    for (int byte = 0; byte < 16; ++byte) {
-                        // //std::cout << "Doing it for a byte " << std::endl;
-                        // //std::cout << unsigned(readByteFromMem(addressBus.read() + i * 16 + byte)) << " ";
-                        toWrite.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() + i * 16 + byte);
+                    // 128 / 8 -> 16
+                    for (std::size_t byte = 0; byte < 16; ++byte) {
+                        readData.range(8 * byte + 7, 8 * byte) = readByteFromMem(addressBus.read() + i * 16 + byte);
                     }
-                    // std::cout << "RAM sending: " << toWrite << std::endl;
-                    dataOutBus.write(toWrite);
-                    if (i + 1 != wordsPerRead) {
-                        wait(clock.posedge_event());
-                    }
+                    dataOutBus.write(readData);
+
+                    // Next word is ready and then wait for next cycle to continue reading
+                    readyBus.write(true);
+                    wait(clock.posedge_event());
                 }
-                // std::cout << "Memory done reading" << std::endl;
             }
-            // //std::cout << "recording data op" << std::endl;
+            //  std::cout << "RAM done with request at " << sc_core::sc_time_stamp() << "\n";
 
             ++numRequestsPerformed;
-            // //std::cout << "Done providing/writing data" << std::endl;
         }
     }
 };
@@ -596,7 +583,8 @@ TEST_F(CacheTests, CacheWriteBufferHandlesMoreWritesThanCapacity) {
     cpu.instructions.push_back(writeRequest5);
     cpu.instructions.push_back(writeRequest6);
 
-    sc_start(5, SC_MS);
+    sc_start(10, SC_MS);
+    ASSERT_EQ(cpu.instructionsProvided.size(), 6);
     ASSERT_EQ(ram.numRequestsPerformed, 7); // 6 writes + 1 read
 }
 
