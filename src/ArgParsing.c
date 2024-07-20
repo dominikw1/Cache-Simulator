@@ -83,7 +83,7 @@ FILE* check_file(const char* progname, const char* filename_1, const char* filen
     }
 
     // Taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
-    const char *dot = strrchr(filename, '.');
+    const char *dot = strrchr(filename, '.');   // Check for valid file format
     if (dot == NULL || dot == filename) {
         fprintf(stderr, "Error: %s is not a valid file\n", filename);
         fclose(file);
@@ -172,8 +172,7 @@ char* get_option() {
 // Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
 int is_power_of_two(unsigned long n) { return n && !(n & (n - 1)); }
 
-int is_power_of_sixteen(unsigned long n) { return n && !(n & (n - 4)); }
-
+int is_multiple_of_sixteen(unsigned long n) { return !(n & 0b1111); }
 
 int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
@@ -197,26 +196,11 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
     config->usingCache = 1;         // Default: true
     config->callExtended = 0;       // Default: false
 
-    // Check input file and save file data to requests
+    // Check input file for valid file format
     FILE* file = check_file(progname, argv[argc - 1], argv[1], "input file");
-    struct stat file_info;
-    if (fstat(fileno(file), &file_info) != 0) {
-        perror("Error determining file size");
-        fclose(file);
-        print_usage(progname);
-        return EXIT_FAILURE;
-    }
 
-    config->requests = (struct Request*)malloc(sizeof(struct Request) * file_info.st_size);
-    config->numRequests = 0;
-    if (config->requests == NULL) {
-        perror("Error allocating memory buffer for file");
-        fclose(file);
-        print_usage(progname);
-        return EXIT_FAILURE;
-    }
-
-    extract_file_data(progname, file, config->requests, &config->numRequests); // Save data to requests
+    // Check file data and save data to requests
+    extract_file_data(progname, file, config);
 
     // Command line argument parsing
     int opt;
@@ -291,8 +275,12 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             error_msg = "Cacheline size should be at least 1.";
             unsigned long s = check_user_input(endptr, error_msg, progname, "--cacheline-size", config->requests);
 
-            if (!is_power_of_sixteen(s)) {
+            if (!is_multiple_of_sixteen(s)) {
                 fprintf(stderr, "Invalid Input: Cacheline size should be a multiple of 16 bytes!\n");
+                print_usage(progname);
+                return EXIT_FAILURE;
+            } else if (!is_power_of_two(s)) {
+                fprintf(stderr, "Invalid Input: Cacheline size should be a power of 2!\n");
                 print_usage(progname);
                 return EXIT_FAILURE;
             }
