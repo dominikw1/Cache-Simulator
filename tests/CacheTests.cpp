@@ -142,7 +142,6 @@ SC_MODULE(RAMMock) {
                 dataMemory[addressBus.read() + 2] = (dataInBus.read() >> 16) & ((1 << 8) - 1);
                 dataMemory[addressBus.read() + 3] = (dataInBus.read() >> 24) & ((1 << 8) - 1);
                 readyBus.write(true);
-                wait(clock.posedge_event());
             } else {
                 // Reading takes wordsPerRead cycles
                 sc_dt::sc_bv<128> readData;
@@ -155,7 +154,10 @@ SC_MODULE(RAMMock) {
 
                     // Next word is ready and then wait for next cycle to continue reading
                     readyBus.write(true);
-                    wait(clock.posedge_event());
+
+                    if (i != wordsPerRead - 1) {
+                        wait(clock.posedge_event());
+                    }
                 }
             }
             //  std::cout << "RAM done with request at " << sc_core::sc_time_stamp() << "\n";

@@ -68,7 +68,6 @@ SC_MODULE(CPU) {
                 skipAhead = false;
             }
             if (instructionReady) {
-                std::cout << "CPU: got instr at " << sc_core::sc_time_stamp();
                 instructionReady = false;
 
                 Request currentRequest = instrBus.read();
@@ -86,10 +85,6 @@ SC_MODULE(CPU) {
 
                 if (!currentRequest.we) {
                     instructions[program_counter - 1].data = dataInBus;
-                }
-
-                if (program_counter == numInstructions) {
-                    sc_core::sc_stop();
                 }
             }
         }
@@ -129,7 +124,6 @@ SC_MODULE(CPU) {
         while (!dataReadyBus) {
             wait();
         }
-        std::cout << "CPU: done waiting at " << sc_core::sc_time_stamp();
         skipAhead = true;
     }
 };

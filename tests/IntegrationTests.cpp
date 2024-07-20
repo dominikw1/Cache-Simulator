@@ -59,6 +59,8 @@ TEST_P(IntegrationTests, DirectMapped) {
 
     sc_start(1, SC_MS);
 
+    ASSERT_EQ(cpu.pcBus, requestsSize);
+
     for (int i = 0; i < requestsSize; ++i) {
         if (!requests[i].we) {
             ASSERT_EQ(requests[i].data, readRecord[i]);

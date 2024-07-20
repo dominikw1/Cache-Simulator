@@ -85,7 +85,6 @@ void Cache<MappingType::Fully_Associative>::registerUsage(std::vector<Cacheline>
 }
 
 template <MappingType mappingType> void Cache<mappingType>::waitForRAM() noexcept {
-    // maybe this should be a while?
     do {
         wait();
     } while (!writeBufferReady.read());

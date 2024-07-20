@@ -1,7 +1,7 @@
 #pragma once
 #include "RingQueue.h"
-#include <cstdint>
 #include <cassert>
+#include <cstdint>
 #include <systemc>
 
 template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
@@ -85,9 +85,9 @@ template <std::uint8_t SIZE> void WriteBuffer<SIZE>::writeToRAM() noexcept {
     memoryDataOutBus.write(next.data);
     memoryWeBus.write(true);
     memoryValidRequestBus.write(true);
-    do {
+    while (!memoryReadyBus.read()) {
         wait();
-    } while ((!memoryReadyBus.read()));
+    }
     memoryValidRequestBus.write(false);
 }
 
@@ -96,9 +96,9 @@ template <std::uint8_t SIZE> void WriteBuffer<SIZE>::passReadAlong() noexcept {
     memoryWeBus.write(false);
     memoryValidRequestBus.write(true);
 
-    do {
+    while (!memoryReadyBus.read()) {
         wait();
-    } while (!memoryReadyBus.read());
+    }
     memoryValidRequestBus.write(false);
 
     ready.write(true);
