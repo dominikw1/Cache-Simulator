@@ -55,40 +55,42 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
         sc_trace(trace.get(), connections.get()->clk, "clock");
 
         // Data Cache signals
-        sc_trace(trace.get(), connections.get()->cpuWeSignal, "CPU_Cache_WE");
-        sc_trace(trace.get(), connections.get()->cpuAddressSignal, "CPU_Cache_Address");
-        sc_trace(trace.get(), connections.get()->cpuDataOutSignal, "CPU_Cache_Data_Out");
-        sc_trace(trace.get(), connections.get()->cpuValidDataRequestSignal, "CPU_Cache_Valid_Request");
-        sc_trace(trace.get(), connections.get()->cpuDataInSignal, "Cache_CPU_Data_In");
-        sc_trace(trace.get(), connections.get()->cpuDataReadySignal, "Cache_CPU_Ready");
+        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_Address, "CPU_to_dataCache_Address");
+        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_Data, "CPU_to_dataCache_Data");
+        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_WE, "CPU_to_dataCache_WE");
+        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_Vaid_Request, "CPU_to_dataCache_Vaid_Request");
+        sc_trace(trace.get(), connections.get()->dataCache_to_CPU_Data, "dataCache_to_CPU_Data");
+        sc_trace(trace.get(), connections.get()->dataCache_to_CPU_Ready, "dataCache_to_CPU_Ready");
 
-        sc_trace(trace.get(), connections.get()->ramWeSignal, "Cache_RAM_WE");
-        sc_trace(trace.get(), connections.get()->ramAddressSignal, "Cache_RAM_Address");
-        sc_trace(trace.get(), connections.get()->ramDataInSignal, "Cache_RAM_Data_In");
-        sc_trace(trace.get(), connections.get()->ramValidRequestSignal, "Cache_RAM_Valid_Request");
-        sc_trace(trace.get(), connections.get()->ramDataOutSignal, "RAM_Cache_Data_Out");
-        sc_trace(trace.get(), connections.get()->ramReadySignal, "RAM_Cache_Ready");
+        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Address, "dataCache_to_dataRAM_Address");
+        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Data, "dataCache_to_dataRAM_Data");
+        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_WE, "dataCache_to_dataRAM_WE");
+        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Valid_Request, "dataCache_to_dataRAM_Valid_Request");
+        sc_trace(trace.get(), connections.get()->dataRAM_to_dataCache_Data, "dataRAM_to_dataCache_Data");
+        sc_trace(trace.get(), connections.get()->dataRAM_to_dataCache_Ready, "dataRAM_to_dataCache_Ready");
 
         // Instruction Cache signals
-        sc_trace(trace.get(), connections.get()->validInstrRequestSignal, "Instr_CPU_Cache_Valid_Request");
-        sc_trace(trace.get(), connections.get()->pcSignal, "Instr_CPU_Cache_PC");
-        sc_trace(trace.get(), connections.get()->instructionSignal, "Instr_Cache_CPU_Instruction");
-        sc_trace(trace.get(), connections.get()->instrReadySignal, "Instr_Cache_CPU_Ready");
+        sc_trace(trace.get(), connections.get()->CPU_to_instrCache_PC, "CPU_to_instrCache_PC");
+        sc_trace(trace.get(), connections.get()->CPU_to_instrCache_Valid_Request, "CPU_to_instrCache_Valid_Request");
+        sc_trace(trace.get(), connections.get()->instrCache_to_CPU_Instruction, "instrCache_to_CPU_Instruction");
+        sc_trace(trace.get(), connections.get()->instrCache_to_CPU_Ready, "instrCache_to_CPU_Ready");
 
-        sc_trace(trace.get(), connections.get()->instrRamAddressSignal, "Instr_Cache_RAM_Address");
-        sc_trace(trace.get(), connections.get()->instrRamWeBus, "Instr_Cache_RAM_WE");
-        sc_trace(trace.get(), connections.get()->instrRamValidRequestBus, "Instr_Cache_RAM_Valid_Request");
-        sc_trace(trace.get(), connections.get()->instrRamDataInBus, "Instr_Cache_RAM_Data_In");
-        sc_trace(trace.get(), connections.get()->instrRamDataOutSignal, "Instr_RAM_Cache_Data_out");
-        sc_trace(trace.get(), connections.get()->instrRamReadySignal, "Instr_RAM_Cache_Ready");
+        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_Address, "instrCache_to_instrRAM_Address");
+        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_Data, "instrCache_to_instrRAM_Data");
+        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_WE, "instrCache_to_instrRAM_WE");
+        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_Valid_Request,
+                 "instrCache_to_instrRAM_Valid_Request");
+        sc_trace(trace.get(), connections.get()->instrRAM_to_instrCache_Data, "instrRAM_to_instrCache_Data");
+        sc_trace(trace.get(), connections.get()->instrRAM_to_instrCache_Ready, "instrRAM_to_instrCache_Ready");
         dataCache.traceInternalSignals(trace.get());
     }
 
     sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
 
+
     return Result{
-        connections.get()->pcSignal >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX, dataCache.missCount,
-        dataCache.hitCount,
+        connections.get()->CPU_to_instrCache_PC >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX,
+        dataCache.missCount, dataCache.hitCount,
         dataCache.calculateGateCount() // TODO: primitiveGateCount
     };
 }

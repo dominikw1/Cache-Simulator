@@ -9,47 +9,47 @@
 #include "Memory.h"
 
 struct Connections {
-    sc_core::sc_clock clk{"Clock", sc_core::sc_time(1, sc_core::SC_NS)};
+    sc_core::sc_clock SC_NAMED(clk, sc_core::sc_time(1, sc_core::SC_NS));
 
     // Data Cache
     // CPU -> Cache
-    sc_core::sc_signal<bool> SC_NAMED(cpuWeSignal);
-    sc_core::sc_signal<std::uint32_t> SC_NAMED(cpuAddressSignal);
-    sc_core::sc_signal<std::uint32_t> SC_NAMED(cpuDataOutSignal);
-    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(cpuValidDataRequestSignal);
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(CPU_to_dataCache_Address);
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(CPU_to_dataCache_Data);
+    sc_core::sc_signal<bool> SC_NAMED(CPU_to_dataCache_WE);
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(CPU_to_dataCache_Vaid_Request);
 
     // Cache -> CPU
-    sc_core::sc_signal<std::uint32_t> SC_NAMED(cpuDataInSignal);
-    sc_core::sc_signal<bool> SC_NAMED(cpuDataReadySignal);
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(dataCache_to_CPU_Data);
+    sc_core::sc_signal<bool> SC_NAMED(dataCache_to_CPU_Ready);
 
     // Cache -> RAM
-    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(ramWeSignal);
-    sc_core::sc_signal<std::uint32_t, sc_core::SC_MANY_WRITERS> SC_NAMED(ramAddressSignal);
-    sc_core::sc_signal<std::uint32_t> SC_NAMED(ramDataInSignal);
-    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(ramValidRequestSignal);
+    sc_core::sc_signal<std::uint32_t, sc_core::SC_MANY_WRITERS> SC_NAMED(dataCache_to_dataRAM_Address);
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(dataCache_to_dataRAM_Data);
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(dataCache_to_dataRAM_WE);
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(dataCache_to_dataRAM_Valid_Request);
 
     // RAM -> Cache
-    sc_core::sc_signal<sc_dt::sc_bv<128>> SC_NAMED(ramDataOutSignal);
-    sc_core::sc_signal<bool> SC_NAMED(ramReadySignal);
+    sc_core::sc_signal<sc_dt::sc_bv<128>> SC_NAMED(dataRAM_to_dataCache_Data);
+    sc_core::sc_signal<bool> SC_NAMED(dataRAM_to_dataCache_Ready);
 
     // Instruction Cache
     // CPU -> Cache
-    sc_core::sc_signal<bool> SC_NAMED(validInstrRequestSignal);
-    sc_core::sc_signal<std::uint32_t> SC_NAMED(pcSignal);
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(CPU_to_instrCache_PC);
+    sc_core::sc_signal<bool> SC_NAMED(CPU_to_instrCache_Valid_Request);
 
     // Cache -> CPU
-    sc_core::sc_signal<Request> SC_NAMED(instructionSignal);
-    sc_core::sc_signal<bool> SC_NAMED(instrReadySignal);
+    sc_core::sc_signal<Request> SC_NAMED(instrCache_to_CPU_Instruction);
+    sc_core::sc_signal<bool> SC_NAMED(instrCache_to_CPU_Ready);
 
     // Cache -> RAM
-    sc_core::sc_signal<std::uint32_t> SC_NAMED(instrRamAddressSignal);
-    sc_core::sc_signal<bool> SC_NAMED(instrRamWeBus);
-    sc_core::sc_signal<bool> SC_NAMED(instrRamValidRequestBus);
-    sc_core::sc_signal<std::uint32_t> SC_NAMED(instrRamDataInBus);
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(instrCache_to_instrRAM_Address);
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(instrCache_to_instrRAM_Data);
+    sc_core::sc_signal<bool> SC_NAMED(instrCache_to_instrRAM_WE);
+    sc_core::sc_signal<bool> SC_NAMED(instrCache_to_instrRAM_Valid_Request);
 
     // RAM -> Cache
-    sc_core::sc_signal<sc_dt::sc_bv<128>> SC_NAMED(instrRamDataOutSignal);
-    sc_core::sc_signal<bool> SC_NAMED(instrRamReadySignal);
+    sc_core::sc_signal<sc_dt::sc_bv<128>> SC_NAMED(instrRAM_to_instrCache_Data);
+    sc_core::sc_signal<bool> SC_NAMED(instrRAM_to_instrCache_Ready);
 };
 
 template <MappingType mappingType>
@@ -60,73 +60,73 @@ inline std::unique_ptr<Connections> connectComponents(CPU& cpu, RAM& dataRam, RA
 
     // Data Cache
     // CPU -> Cache
-    cpu.weBus(connections->cpuWeSignal);
-    cpu.addressBus(connections->cpuAddressSignal);
-    cpu.dataOutBus(connections->cpuDataOutSignal);
-    cpu.validDataRequestBus(connections->cpuValidDataRequestSignal);
+    cpu.addressBus(connections->CPU_to_dataCache_Address);
+    cpu.dataOutBus(connections->CPU_to_dataCache_Data);
+    cpu.weBus(connections->CPU_to_dataCache_WE);
+    cpu.validDataRequestBus(connections->CPU_to_dataCache_Vaid_Request);
 
-    dataCache.cpuWeBus(connections->cpuWeSignal);
-    dataCache.cpuAddrBus(connections->cpuAddressSignal);
-    dataCache.cpuDataInBus(connections->cpuDataOutSignal);
-    dataCache.cpuValidRequest(connections->cpuValidDataRequestSignal);
+    dataCache.cpuAddrBus(connections->CPU_to_dataCache_Address);
+    dataCache.cpuDataInBus(connections->CPU_to_dataCache_Data);
+    dataCache.cpuWeBus(connections->CPU_to_dataCache_WE);
+    dataCache.cpuValidRequest(connections->CPU_to_dataCache_Vaid_Request);
 
     // Cache -> CPU
-    cpu.dataInBus(connections->cpuDataInSignal);
-    cpu.dataReadyBus(connections->cpuDataReadySignal);
+    cpu.dataInBus(connections->dataCache_to_CPU_Data);
+    cpu.dataReadyBus(connections->dataCache_to_CPU_Ready);
 
-    dataCache.cpuDataOutBus(connections->cpuDataInSignal);
-    dataCache.ready(connections->cpuDataReadySignal);
+    dataCache.cpuDataOutBus(connections->dataCache_to_CPU_Data);
+    dataCache.ready(connections->dataCache_to_CPU_Ready);
 
     // Cache -> RAM
-    dataRam.weBus(connections->ramWeSignal);
-    dataRam.addressBus(connections->ramAddressSignal);
-    dataRam.validRequestBus(connections->ramValidRequestSignal);
-    dataRam.dataInBus(connections->ramDataInSignal);
+    dataRam.addressBus(connections->dataCache_to_dataRAM_Address);
+    dataRam.dataInBus(connections->dataCache_to_dataRAM_Data);
+    dataRam.weBus(connections->dataCache_to_dataRAM_WE);
+    dataRam.validRequestBus(connections->dataCache_to_dataRAM_WE);
 
-    dataCache.memoryWeBus(connections->ramWeSignal);
-    dataCache.memoryAddrBus(connections->ramAddressSignal);
-    dataCache.memoryValidRequestBus(connections->ramValidRequestSignal);
-    dataCache.memoryDataOutBus(connections->ramDataInSignal);
+    dataCache.memoryAddrBus(connections->dataCache_to_dataRAM_Address);
+    dataCache.memoryDataOutBus(connections->dataCache_to_dataRAM_Data);
+    dataCache.memoryWeBus(connections->dataCache_to_dataRAM_WE);
+    dataCache.memoryValidRequestBus(connections->dataCache_to_dataRAM_WE);
 
     // RAM -> Cache
-    dataRam.readyBus(connections->ramReadySignal);
-    dataRam.dataOutBus(connections->ramDataOutSignal);
+    dataRam.dataOutBus(connections->dataRAM_to_dataCache_Data);
+    dataRam.readyBus(connections->dataRAM_to_dataCache_Ready);
 
-    dataCache.memoryReadyBus(connections->ramReadySignal);
-    dataCache.memoryDataInBus(connections->ramDataOutSignal);
+    dataCache.memoryDataInBus(connections->dataRAM_to_dataCache_Data);
+    dataCache.memoryReadyBus(connections->dataRAM_to_dataCache_Ready);
 
     // Instruction Cache
     // CPU -> Cache
-    cpu.validInstrRequestBus(connections->validInstrRequestSignal);
-    cpu.pcBus(connections->pcSignal);
+    cpu.pcBus(connections->CPU_to_instrCache_PC);
+    cpu.validInstrRequestBus(connections->CPU_to_instrCache_Valid_Request);
 
-    instructionCache.validInstrRequestBus(connections->validInstrRequestSignal);
-    instructionCache.pcBus(connections->pcSignal);
+    instructionCache.pcBus(connections->CPU_to_instrCache_PC);
+    instructionCache.validInstrRequestBus(connections->CPU_to_instrCache_Valid_Request);
 
     // Cache -> CPU
-    cpu.instrBus(connections->instructionSignal);
-    cpu.instrReadyBus(connections->instrReadySignal);
+    cpu.instrBus(connections->instrCache_to_CPU_Instruction);
+    cpu.instrReadyBus(connections->instrCache_to_CPU_Ready);
 
-    instructionCache.instructionBus(connections->instructionSignal);
-    instructionCache.instrReadyBus(connections->instrReadySignal);
+    instructionCache.instructionBus(connections->instrCache_to_CPU_Instruction);
+    instructionCache.instrReadyBus(connections->instrCache_to_CPU_Ready);
 
     // Cache -> RAM
-    instructionRam.addressBus(connections->instrRamAddressSignal);
-    instructionRam.weBus(connections->instrRamWeBus);
-    instructionRam.validRequestBus(connections->instrRamValidRequestBus);
-    instructionRam.dataInBus(connections->instrRamDataInBus);
+    instructionRam.addressBus(connections->instrCache_to_instrRAM_Address);
+    instructionRam.dataInBus(connections->instrCache_to_instrRAM_Data);
+    instructionRam.weBus(connections->instrCache_to_instrRAM_WE);
+    instructionRam.validRequestBus(connections->instrCache_to_instrRAM_Valid_Request);
 
-    instructionCache.memoryAddrBus(connections->instrRamAddressSignal);
-    instructionCache.memoryWeBus(connections->instrRamWeBus);
-    instructionCache.memoryValidRequestBus(connections->instrRamValidRequestBus);
-    instructionCache.memoryDataOutBus(connections->instrRamDataInBus);
+    instructionCache.memoryAddrBus(connections->instrCache_to_instrRAM_Address);
+    instructionCache.memoryDataOutBus(connections->instrCache_to_instrRAM_Address);
+    instructionCache.memoryWeBus(connections->instrCache_to_instrRAM_WE);
+    instructionCache.memoryValidRequestBus(connections->instrCache_to_instrRAM_Valid_Request);
 
     // RAM -> Cache
-    instructionRam.readyBus(connections->instrRamReadySignal);
-    instructionRam.dataOutBus(connections->instrRamDataOutSignal);
+    instructionRam.dataOutBus(connections->instrRAM_to_instrCache_Data);
+    instructionRam.readyBus(connections->instrRAM_to_instrCache_Ready);
 
-    instructionCache.memoryReadyBus(connections->instrRamReadySignal);
-    instructionCache.memoryDataInBus(connections->instrRamDataOutSignal);
+    instructionCache.memoryDataInBus(connections->instrRAM_to_instrCache_Data);
+    instructionCache.memoryReadyBus(connections->instrRAM_to_instrCache_Ready);
 
     cpu.clock(connections->clk);
     dataCache.clock(connections->clk);
