@@ -1,6 +1,7 @@
 #pragma once
 #include "../RingQueue.h"
 #include "ReplacementPolicy.h"
+
 #include <unordered_set>
 
 template <typename T> class FIFOPolicy : public ReplacementPolicy<T> {

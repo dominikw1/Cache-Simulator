@@ -1,8 +1,11 @@
 #pragma once
 #include "RingQueue.h"
+
 #include <cassert>
 #include <cstdint>
+
 #include <systemc>
+
 /**
  * This module represents a buffer for the cache. All RAM-memory accesses go through this buffer.
  *

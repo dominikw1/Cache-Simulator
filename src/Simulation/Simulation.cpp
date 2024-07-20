@@ -17,9 +17,20 @@
 using namespace sc_core;
 
 std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheReplacementPolicy replacementPolicy,
-                                                                       int cacheSize);
+                                                                       std::uint32_t cacheSize) {
+    switch (replacementPolicy) {
+    case POLICY_LRU:
+        return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
+    case POLICY_FIFO:
+        return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
+    case POLICY_RANDOM:
+        return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
+    default:
+        throw std::runtime_error("Encountered unknown policy type");
+    }
+}
 
-constexpr std::uint8_t instructionCacheLineSize = 64;
+constexpr std::uint8_t instructionCacheLineSize = 128;
 constexpr std::uint8_t instructionCacheNumLines = 16;
 
 template <MappingType mappingType>
@@ -28,8 +39,8 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
                                struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
                                int usingCache) {
     CPU cpu{"CPU", requests, numRequests};
-    RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / 16};
-    RAM instructionRam{"Instruction_RAM", memoryLatency, instructionCacheLineSize};
+    RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE};
+    RAM instructionRam{"Instruction_RAM", memoryLatency, cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE};
 
     Cache<mappingType> dataCache{"Data_cache", cacheLines, cacheLineSize, cacheLatency,
                                  (mappingType == MappingType::Direct) ? nullptr
@@ -113,20 +124,6 @@ struct Result run_simulation(int cycles, int directMapped, unsigned cacheLines, 
                              struct Request requests[], const char* tracefile) {
     return run_simulation_extended(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
                                    numRequests, requests, tracefile, POLICY_LRU, true);
-}
-
-std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheReplacementPolicy replacementPolicy,
-                                                                       int cacheSize) {
-    switch (replacementPolicy) {
-    case POLICY_LRU:
-        return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
-    case POLICY_FIFO:
-        return std::make_unique<FIFOPolicy<std::uint32_t>>(cacheSize);
-    case POLICY_RANDOM:
-        return std::make_unique<RandomPolicy<std::uint32_t>>(cacheSize);
-    default:
-        throw std::runtime_error("Encountered unknown policy type");
-    }
 }
 
 int sc_main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
