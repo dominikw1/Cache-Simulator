@@ -33,7 +33,6 @@ Cache<MappingType::Direct>::chooseWhichCachelineToFillFromRAM(DecomposedAddress 
 template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(DecomposedAddress decomposedAddr) {
-    std::cout << cachelineLookupTable.numCacheLinesUsed << std::endl;
     auto firstUnusedCacheline = cacheInternal.end();
     if (cachelineLookupTable.numCacheLinesUsed != numCacheLines) {
         firstUnusedCacheline = cacheInternal.begin() + cachelineLookupTable.numCacheLinesUsed;
