@@ -148,7 +148,7 @@ template <MappingType mappingType>
 std::vector<Cacheline>::iterator
 Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) noexcept {
     auto cachelineToWriteInto = chooseWhichCachelineToFillFromRAM(decomposedAddr);
-
+    writeBufferValidRequest.write(false);
     // we do not allow any inputs violating this rule in the C-part
     assert(cachelineToWriteInto->data.size() % RAM_READ_BUS_SIZE_IN_BYTE == 0);
     sc_dt::sc_bv<RAM_READ_BUS_SIZE_IN_BYTE * BITS_IN_BYTE> dataRead;
@@ -165,7 +165,6 @@ Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) 
             wait();
     }
 
-    writeBufferValidRequest.write(false);
     cachelineToWriteInto->isValid = true;
     cachelineToWriteInto->tag = decomposedAddr.tag;
 
@@ -208,6 +207,7 @@ void Cache<mappingType>::handleSubRequest(SubRequest subRequest, std::uint32_t& 
     registerUsage(cacheline);
 
     if (subRequest.we) {
+        std::cout << "Passing on write for " << subRequest.addr << std::endl;
         doWrite(*cacheline, decomposedAddr, subRequest.data, subRequest.size);
         passWriteOnToRAM(*cacheline, decomposedAddr, addr);
     } else {
@@ -235,7 +235,7 @@ template <MappingType mappingType> void Cache<mappingType>::handleRequest() noex
 
         if (!cpuValidRequest.read())
             continue;
-
+        std::cout << "got request for " << cpuAddrBus.read() << std::endl;
         auto request = constructRequestFromBusses();
         auto subRequests = splitRequestIntoSubRequests(request, cacheLineSize);
 
@@ -255,8 +255,6 @@ template <MappingType mappingType> void Cache<mappingType>::handleRequest() noex
         // he gets this signal. To not still read the valid request signal from the previous cycle we sleep for one and
         // only then start checking again
         ready.write(true);
-
-        wait();
     }
 }
 
@@ -288,10 +286,13 @@ void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddres
     writeBufferDataIn.write(data);
     writeBufferWE.write(true);
     writeBufferValidRequest.write(true);
-    do {
-        wait();
-    } while (!writeBufferReady);
+    wait();
     writeBufferValidRequest.write(false);
+    
+    while (!writeBufferReady) {
+        wait();
+    }
+    std::cout << "cache got ready" << sc_core::sc_time_stamp() << "\n";
 
 #ifdef STRICT_INSTRUCTION_ORDER
     for (std::uint32_t waited = 0; waited < memoryLatency; ++waited) {

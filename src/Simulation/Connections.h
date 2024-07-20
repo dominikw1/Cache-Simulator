@@ -16,7 +16,7 @@ struct Connections {
     sc_core::sc_signal<bool> SC_NAMED(cpuWeSignal);
     sc_core::sc_signal<std::uint32_t> SC_NAMED(cpuAddressSignal);
     sc_core::sc_signal<std::uint32_t> SC_NAMED(cpuDataOutSignal);
-    sc_core::sc_signal<bool> SC_NAMED(cpuValidDataRequestSignal);
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(cpuValidDataRequestSignal);
 
     // Cache -> CPU
     sc_core::sc_signal<std::uint32_t> SC_NAMED(cpuDataInSignal);

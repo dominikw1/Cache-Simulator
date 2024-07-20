@@ -59,6 +59,7 @@ template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
 
     RingQueue<WriteBufferEntry> buffer{SIZE};
     State state = State::Idle;
+    bool pending = false;
 
     void writeToRAM() noexcept;
     void passReadAlong() noexcept;
@@ -131,7 +132,7 @@ template <std::uint8_t SIZE> constexpr bool WriteBuffer<SIZE>::weCanAcceptRead()
 }
 
 template <std::uint8_t SIZE> bool WriteBuffer<SIZE>::thereIsAWrite() noexcept {
-    return cacheValidRequest.read() && cacheWeBus.read();
+    return (cacheValidRequest.read() && cacheWeBus.read()) || pending;
 }
 template <std::uint8_t SIZE> bool WriteBuffer<SIZE>::thereIsARead() noexcept {
     return cacheValidRequest.read() && !cacheWeBus.read();
@@ -142,9 +143,15 @@ template <std::uint8_t SIZE> void WriteBuffer<SIZE>::acceptWriteRequest() noexce
         buffer.push(WriteBufferEntry{cacheAddrBus.read(), cacheDataInBus.read()});
         ready.write(true);
         state = State::Write;
-        wait(); // otherwise we will add it twice ig?
+        pending = false;
+        std::cout << "accepted write " << cacheAddrBus.read() << std::endl;
+        // wait(); // otherwise we will add it twice ig?
     } else {
+        ready.write(false);
+        std::cout << "waiting out write " << cacheAddrBus.read() << std::endl;
+        std::cout << "wB " << sc_core::sc_time_stamp() << "\n";
         state = State::Write;
+        pending = true;
     }
 }
 
