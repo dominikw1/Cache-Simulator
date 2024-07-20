@@ -7,9 +7,9 @@ template <typename T> class FIFOPolicy : public ReplacementPolicy<T> {
   public:
     void logUse(T usage) override;
     T pop() override;
-    std::size_t getSize() { return contents.getSize(); }
+    std::size_t getSize() const { return contents.getSize(); }
     FIFOPolicy(std::size_t size) : contents{size} {}
-    constexpr std::size_t calcBasicGates() noexcept override;
+    constexpr std::size_t calcBasicGates() const noexcept override;
 
   private:
     RingQueue<T> contents;
@@ -29,8 +29,8 @@ template <typename T> inline T FIFOPolicy<T>::pop() {
     return popped;
 }
 
-template <typename T> inline constexpr std::size_t FIFOPolicy<T>::calcBasicGates() noexcept {
-    // per register 10 gates and we have about 8* SIZE registers
+template <typename T> inline constexpr std::size_t FIFOPolicy<T>::calcBasicGates() const noexcept {
+    // per register 4 gates and we have about 8* SIZE registers
     // for comparison whether already in we need SIZE comparators and then an or chain
     // an adder for incrementing
     return 10 * getSize() + 1;

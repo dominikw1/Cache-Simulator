@@ -32,7 +32,6 @@ SC_MODULE(CPU) {
     std::uint64_t program_counter = 0;
 
     std::uint64_t lastCycleWhereWorkWasDone = 0;
-    std::uint64_t currCycle = 0;
 
     bool instructionReady = false;
     sc_core::sc_event triggerNextInstructionRead;
@@ -50,9 +49,6 @@ SC_MODULE(CPU) {
 
         SC_THREAD(readInstruction);
         sensitive << clock.pos();
-
-        SC_THREAD(countCycles);
-        sensitive << clock.neg();
     }
 
     constexpr std::uint64_t getElapsedCycleCount() const noexcept { return lastCycleWhereWorkWasDone; };
@@ -81,7 +77,7 @@ SC_MODULE(CPU) {
 
                 waitForInstructionProcessing();
 
-                lastCycleWhereWorkWasDone = currCycle;
+                lastCycleWhereWorkWasDone = sc_core::sc_time_stamp().value() / 1000;;
 
                 if (!currentRequest.we) {
                     instructions[program_counter - 1].data = dataInBus;
@@ -101,13 +97,6 @@ SC_MODULE(CPU) {
 
             wait(triggerNextInstructionRead);
             ++program_counter;
-        }
-    }
-
-    void countCycles() {
-        while (true) {
-            wait();
-            ++currCycle;
         }
     }
 

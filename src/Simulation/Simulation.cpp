@@ -10,6 +10,7 @@
 #include "Policy/RandomPolicy.h"
 
 #include <exception>
+#include <memory>
 
 #include <systemc>
 
@@ -26,8 +27,6 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
                                unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
                                struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
                                int usingCache) {
-    std::cout << "Starting Simulation...\n";
-
     CPU cpu{"CPU", requests, numRequests};
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / 16};
     RAM instructionRam{"Instruction_RAM", memoryLatency, instructionCacheLineSize};
@@ -46,52 +45,51 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
     auto connections = connectComponents(cpu, dataRam, instructionRam, dataCache, instructionCache);
 
     // Create tracefile if option is set
-    sc_trace_file* trace;
-    if (tracefile != NULL) {
-        trace = sc_create_vcd_trace_file(tracefile);
-        trace->set_time_unit(100, SC_PS);
-        sc_trace(trace, connections.get()->clk, "clock");
+    if (tracefile != nullptr) {
+        auto traceCloser = [](sc_core::sc_trace_file* trace) { sc_close_vcd_trace_file(trace); };
+        std::unique_ptr<sc_core::sc_trace_file, decltype(traceCloser)> trace{sc_create_vcd_trace_file(tracefile),
+                                                                             std::move(traceCloser)};
+        trace->set_time_unit(100, SC_PS); // not 1 NS because write buffer does some things at falling edge
+        sc_trace(trace.get(), connections.get()->clk, "clock");
 
         // Data Cache signals
-        sc_trace(trace, connections.get()->cpuWeSignal, "CPU_Cache_WE");
-        sc_trace(trace, connections.get()->cpuAddressSignal, "CPU_Cache_Address");
-        sc_trace(trace, connections.get()->cpuDataOutSignal, "CPU_Cache_Data_Out");
-        sc_trace(trace, connections.get()->cpuValidDataRequestSignal, "CPU_Cache_Valid_Request");
-        sc_trace(trace, connections.get()->cpuDataInSignal, "Cache_CPU_Data_In");
-        sc_trace(trace, connections.get()->cpuDataReadySignal, "Cache_CPU_Ready");
+        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_Address, "CPU_to_dataCache_Address");
+        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_Data, "CPU_to_dataCache_Data");
+        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_WE, "CPU_to_dataCache_WE");
+        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_Vaid_Request, "CPU_to_dataCache_Vaid_Request");
+        sc_trace(trace.get(), connections.get()->dataCache_to_CPU_Data, "dataCache_to_CPU_Data");
+        sc_trace(trace.get(), connections.get()->dataCache_to_CPU_Ready, "dataCache_to_CPU_Ready");
 
-        sc_trace(trace, connections.get()->ramWeSignal, "Cache_RAM_WE");
-        sc_trace(trace, connections.get()->ramAddressSignal, "Cache_RAM_Address");
-        sc_trace(trace, connections.get()->ramDataInSignal, "Cache_RAM_Data_In");
-        sc_trace(trace, connections.get()->ramValidRequestSignal, "Cache_RAM_Valid_Request");
-        sc_trace(trace, connections.get()->ramDataOutSignal, "RAM_Cache_Data_Out");
-        sc_trace(trace, connections.get()->ramReadySignal, "RAM_Cache_Ready");
+        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Address, "dataCache_to_dataRAM_Address");
+        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Data, "dataCache_to_dataRAM_Data");
+        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_WE, "dataCache_to_dataRAM_WE");
+        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Valid_Request,
+                 "dataCache_to_dataRAM_Valid_Request");
+        sc_trace(trace.get(), connections.get()->dataRAM_to_dataCache_Data, "dataRAM_to_dataCache_Data");
+        sc_trace(trace.get(), connections.get()->dataRAM_to_dataCache_Ready, "dataRAM_to_dataCache_Ready");
 
         // Instruction Cache signals
-        sc_trace(trace, connections.get()->validInstrRequestSignal, "Instr_CPU_Cache_Valid_Request");
-        sc_trace(trace, connections.get()->pcSignal, "Instr_CPU_Cache_PC");
-        sc_trace(trace, connections.get()->instructionSignal, "Instr_Cache_CPU_Instruction");
-        sc_trace(trace, connections.get()->instrReadySignal, "Instr_Cache_CPU_Ready");
+        sc_trace(trace.get(), connections.get()->CPU_to_instrCache_PC, "CPU_to_instrCache_PC");
+        sc_trace(trace.get(), connections.get()->CPU_to_instrCache_Valid_Request, "CPU_to_instrCache_Valid_Request");
+        sc_trace(trace.get(), connections.get()->instrCache_to_CPU_Instruction, "instrCache_to_CPU_Instruction");
+        sc_trace(trace.get(), connections.get()->instrCache_to_CPU_Ready, "instrCache_to_CPU_Ready");
 
-        sc_trace(trace, connections.get()->instrRamAddressSignal, "Instr_Cache_RAM_Address");
-        sc_trace(trace, connections.get()->instrRamWeBus, "Instr_Cache_RAM_WE");
-        sc_trace(trace, connections.get()->instrRamValidRequestBus, "Instr_Cache_RAM_Valid_Request");
-        sc_trace(trace, connections.get()->instrRamDataInBus, "Instr_Cache_RAM_Data_In");
-        sc_trace(trace, connections.get()->instrRamDataOutSignal, "Instr_RAM_Cache_Data_out");
-        sc_trace(trace, connections.get()->instrRamReadySignal, "Instr_RAM_Cache_Ready");
-        dataCache.traceInternalSignals(trace);
+        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_Address, "instrCache_to_instrRAM_Address");
+        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_Data, "instrCache_to_instrRAM_Data");
+        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_WE, "instrCache_to_instrRAM_WE");
+        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_Valid_Request,
+                 "instrCache_to_instrRAM_Valid_Request");
+        sc_trace(trace.get(), connections.get()->instrRAM_to_instrCache_Data, "instrRAM_to_instrCache_Data");
+        sc_trace(trace.get(), connections.get()->instrRAM_to_instrCache_Ready, "instrRAM_to_instrCache_Ready");
+        dataCache.traceInternalSignals(trace.get());
     }
 
     sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
 
-    if (tracefile != NULL) {
-        sc_close_vcd_trace_file(trace);
-    }
-
     return Result{
-        connections.get()->pcSignal >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX, dataCache.missCount,
-        dataCache.hitCount,
-        1 // TODO: primitiveGateCount
+        connections.get()->CPU_to_instrCache_PC >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX,
+        dataCache.missCount, dataCache.hitCount,
+        dataCache.calculateGateCount() // TODO: primitiveGateCount
     };
 }
 
@@ -132,6 +130,6 @@ std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheRepl
 }
 
 int sc_main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
-    std::cout << "ERROR: Call to sc_main method!\n";
+    std::cerr << "ERROR: Call to sc_main method!\n";
     return 1;
 }

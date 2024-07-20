@@ -32,15 +32,15 @@ constexpr std::uint16_t WRITE_BUFFER_SIZE{4}; // chosen by fair dice roll. guara
  *
  * Communication happens through a variation of the Ready/Valid Protocol. In our implementation, the requesting party
  * sets the corresponding valid-request signal to true. The responding party then performs the operation and once it is
- * ready to transmit sets its ready signal to true. There is no seperate "ready to receive" from te receiving party as
+ * ready to transmit sets its ready signal to true. There is no seperate "ready to receive" from the receiving party as
  * in our simplified simulation we always are waiting just for the ready-to-send signal.
  *
  * All operations happen on rising clock edge.
  *
  * This cache uses a write buffer able to buffer WRITE_BUFFER_SIZE writes at once. See its documentation for more
- * detail.
+ * detail. Its optimisation can be turned off by compiling with definition STRICT_INSTRUCTION_ORDER.
+ *
  */
-
 template <MappingType mappingType> SC_MODULE(Cache) {
   public:
     // ====================================== External Ports  ======================================
@@ -128,12 +128,12 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      *
      */
     Cache(sc_core::sc_module_name name, std::uint32_t numCacheLines, std::uint32_t cacheLineSize,
-          std::uint32_t cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy = nullptr) noexcept;
+          std::uint32_t cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy = nullptr);
     /**
      * Approximates the primitive gate count used to construct this cache
      * @returns An approximation of the amount of primitive gates within this caches
      */
-    std::size_t calculateGateCount() const;
+    std::size_t calculateGateCount() const noexcept;
 
     /**
      * Adds internal signals to and from write buffer to the trace file
@@ -203,13 +203,13 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] decomposedAddr  The address decomposed into tag, index, offset
      * @returns an iterator to the cacheline we own. Returns end() iterator if none found
      */
-    std::vector<Cacheline>::iterator getCachelineOwnedByAddr(DecomposedAddress decomposedAddr) noexcept;
+    std::vector<Cacheline>::iterator getCachelineOwnedByAddr(const DecomposedAddress& decomposedAddr) noexcept;
     /**
      * Determine which cacheline the read from RAM shall be read into. How this is chosen depends on the MappingType
      * @param[in] decomposedAddr  The address decomposed into tag, index, offset
      * @returns an iterator to the cacheline to be read into. Always a valid iterator
      */
-    std::vector<Cacheline>::iterator chooseWhichCachelineToFillFromRAM(DecomposedAddress decomposedAddr);
+    std::vector<Cacheline>::iterator chooseWhichCachelineToFillFromRAM(const DecomposedAddress& decomposedAddr);
     /**
      * If this is a fully associative cache with a stateful policy (e.g. LRU), this updates the aforementioned state. If
      * direct mapped, this is a NOP
@@ -224,7 +224,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] decomposedAddr  The address pre-decomposed into tag, index and offset
      * @returns an iterator to the cacheline (now) populated with the correct data corresponding to the address
      */
-    std::vector<Cacheline>::iterator fetchIfNotPresent(std::uint32_t addr, DecomposedAddress decomposedAddr) noexcept;
+    std::vector<Cacheline>::iterator fetchIfNotPresent(std::uint32_t addr, const DecomposedAddress& decomposedAddr) noexcept;
     /**
      * Sends request to RAM through Write Buffer to read in cacheline.
      * @param[in] addr  Cacheline-size aligned addr for the first byte to be read
@@ -237,11 +237,11 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] numBytes  The amount of bytes we want to read
      * @returns the data segment just read in the lowest numBytes bytes of the uint32_t
      * */
-    std::uint32_t doRead(DecomposedAddress decomposedAddr, Cacheline & cacheline, std::uint32_t numBytes) noexcept;
+    std::uint32_t doRead(const DecomposedAddress& decomposedAddr, Cacheline & cacheline, std::uint32_t numBytes) noexcept;
     /**
      * Reads data from bus written to by RAM and copies it into the corresponding cacheline
      * */
-    std::vector<Cacheline>::iterator writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) noexcept;
+    std::vector<Cacheline>::iterator writeRAMReadIntoCacheline(const DecomposedAddress& decomposedAddr) noexcept;
 
     // ====================================== Writing to Cache ======================================
     /**
@@ -251,7 +251,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] data The data to be written
      * @param[in] numBytes The number of bytes of data to be written
      */
-    void doWrite(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t data,
+    void doWrite(Cacheline & cacheline, const DecomposedAddress& decomposedAddr, std::uint32_t data,
                  std::uint32_t numBytes) noexcept;
     /**
      * Passes the write request to the RAM through the write buffer
@@ -259,7 +259,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] decomposedAddr The address decomposed into tag, index and offset
      * @param[in] addr The actual address in RAM we want to write to
      */
-    void passWriteOnToRAM(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t addr) noexcept;
+    void passWriteOnToRAM(Cacheline & cacheline, const DecomposedAddress& decomposedAddr, std::uint32_t addr) noexcept;
 
     // ====================================== Waiting Helpers ======================================
     /**

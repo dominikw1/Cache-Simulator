@@ -1,4 +1,5 @@
 #pragma once
+#include "../Saturating_Arithmetic.h"
 #include "ReplacementPolicy.h"
 
 #include <assert.h>
@@ -15,9 +16,9 @@ template <typename T> class LRUPolicy : public ReplacementPolicy<T> {
     void logUse(T usage) override;
     // Return by value since T is small
     T pop() override;
-    std::size_t getSize() { return cache.size(); }
+    std::size_t getSize() const { return cache.size(); }
     LRUPolicy(std::size_t size) : size{size} {}
-    constexpr std::size_t calcBasicGates() noexcept override;
+    constexpr std::size_t calcBasicGates() const noexcept override;
 
   private:
     const std::size_t size;
@@ -51,13 +52,11 @@ template <typename T> inline T LRUPolicy<T>::pop() {
     return retVal;
 }
 
-template <typename T> inline constexpr std::size_t LRUPolicy<T>::calcBasicGates() noexcept {
+template <typename T> inline constexpr std::size_t LRUPolicy<T>::calcBasicGates() const noexcept {
     // this is difficult to say as we are really not emulating hardware very well here (lots of dynamic memory
     // allocation). This is not really necessary, but as there is no requirement of making this synthesisable, we opted
     // for a more general amortized O(1) approach
-    // lets assume the linked list is an array of registers and we are storing about 8 bit in each T
-    // further assume the hashings are simple lookups of about again 8*n size
-    // To try to more accurately represent how expensive this actually is this number will then be multiplied by 16
-    // (fair dice roll (; )
-    return 16 * (8 + 8) * getSize();
+    // lets assume the linked list is an array of registers and we are storing about 32 bit in each T
+    // further assume the hashings use the same hash table as used in the main Cache => 2753000
+    return addSatUnsigned(mulSatUnsigned(static_cast<size_t>(32), getSize()), static_cast<size_t>(2753000));
 }
