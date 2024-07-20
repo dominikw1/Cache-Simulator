@@ -1,9 +1,12 @@
 #include <errno.h>
+#include <malloc.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "Argparsing.h"
 #include "FileProcessor.h"
@@ -88,26 +91,25 @@ int extract_file_data(const char* progname, FILE* file, struct Configuration* co
     int read_line;
     int character;  // Used to check right file format
     char *comma;
-    char *line;
-    line = malloc(14);    // Three commas, one char and max two numbers with 10 digits and '\n'
-    if (line == NULL) { perror("Error allocating memory buffer for line"); goto error; }
+    char line[file_info.st_size];
 
     do {
         char we;
         uint32_t addr;
         uint32_t data;
 
-        char* l = fgets(line, 14, file);
+        fgets(line, sizeof(line), file);
         read_line = sscanf(line, "%c,%i,%i\n", &we, &addr, &data);
         character = line[0];
+        char* l = line;
 
         if (read_line != 3) {
-            if (character != 'W' && character != 'R' && character != 'w' && character != 'r') {
-                fprintf(stderr, "Error: Wrong file format! First column is not set right!\n");
+            if (strchr(line, ',') == NULL) {
+                fprintf(stderr, "Error: Wrong file format! An error occured while reading from the file!\n");
                 goto error;
             }
-            if (l == NULL || strchr(line, ',') == NULL) {
-                fprintf(stderr, "Error: Wrong file format! An error occured while reading from the file!\n");
+            if (character != 'W' && character != 'R' && character != 'w' && character != 'r') {
+                fprintf(stderr, "Error: Wrong file format! First column is not set right!\n");
                 goto error;
             }
 
@@ -148,12 +150,10 @@ int extract_file_data(const char* progname, FILE* file, struct Configuration* co
 
     } while (!feof(file));
 
-    free(line);
     fclose(file);
     return EXIT_SUCCESS;
 
 error:
-    free(line);
     fclose(file);
     print_usage(progname);
     free(config->requests);

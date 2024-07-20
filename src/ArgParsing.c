@@ -123,7 +123,7 @@ char* get_option() {
 // Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
 int is_power_of_two(unsigned long n) { return n && !(n & (n - 1)); }
 
-int is_multiple_of_sixteen(unsigned long n) { return !(n & 0b1111); }
+int is_multiple_of_sixteen(unsigned long n) { return !(n & 15); }
 
 
 int parse_arguments(int argc, char** argv, struct Configuration* config) {
