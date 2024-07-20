@@ -30,24 +30,27 @@ int main(int argc, char** argv) {
                                 configuration.cacheLineSize, configuration.cacheLatency, configuration.memoryLatency,
                                 configuration.numRequests, configuration.requests, configuration.tracefile);
     }
-
     free(configuration.requests);
     configuration.requests = NULL;
 
+    // Check for
     if (result.cycles == 0 && result.misses == 0 && result.hits == 0 && result.primitiveGateCount == 0) {
         fprintf(stderr, "Result does not contain valid data.\n");
         print_usage(argv[0]);
         return EXIT_FAILURE;
     }
 
-    // Print Simulation results
-    // https://gist.github.com/ConnerWill/d4b6c776b509add763e17f9f113fd25b
+    // Used ANSI Escape Sequence from https://gist.github.com/ConnerWill/d4b6c776b509add763e17f9f113fd25b
     fprintf(stdout,
-            "--------------------------------------------------\n"
+            "\x1b[1m--------------------------------------------------\x1b[0m\n"
             "\x1b[1m\t\tSimulation Results\x1b[0m\n"
-            "--------------------------------------------------\n"
-            "\tCycles:\t%zu\n\tMisses:\t%zu\n\tHits:\t%zu\n\tPrimitive gate count:\t%zu\n"
-            "--------------------------------------------------\n",
+            "\x1b[1m--------------------------------------------------\x1b[0m\n"
+            "\tCycles:\t%zu\n"
+            "\tMisses:\t\x1b[31m%zu\t\t\x1b[0m\n"
+            "\tHits:\t\x1b[32m%zu\t\t\x1b[0m\n"
+            "\tPrimitive gate count:\t%zu\x1b[0m\n"
+            "\x1b[1m--------------------------------------------------\x1b[0m\n"
+            "\x1b[0m",
             result.cycles, result.misses, result.hits, result.primitiveGateCount);
 
     return EXIT_SUCCESS;
