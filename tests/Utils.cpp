@@ -26,17 +26,15 @@ std::vector<std::uint64_t> makeVectorUniqueNoOrderPreserve(std::vector<std::uint
     return input;
 }
 
-std::vector<Request> generateRandomRequests(std::uint64_t len) {
+Request* generateRandomRequests(std::uint64_t len) {
+    auto* requests = new Request[len];
     auto addresses = generateRandomVector(len, UINT32_MAX);
     auto data = generateRandomVector(len, UINT32_MAX);
     auto we = generateRandomVector(len, 1);
 
-    std::vector<Request> requests;
-
     for (int i = 0; i < len; ++i) {
-        requests.push_back(Request{static_cast<std::uint32_t>(addresses.at(i)),
-                                   static_cast<std::uint32_t>(data.at(i)),
-                                   static_cast<int>(we.at(i))});
+        requests[i] = Request{static_cast<std::uint32_t>(addresses.at(i)), static_cast<std::uint32_t>(data.at(i)),
+                              static_cast<int>(we.at(i))};
     }
 
     return requests;

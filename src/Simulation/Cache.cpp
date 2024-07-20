@@ -52,7 +52,7 @@ Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(Decompo
 }
 
 template <> DecomposedAddress Cache<MappingType::Direct>::decomposeAddress(std::uint32_t address) noexcept {
-    assert(addressOffsetBitMask > 0 && addressIndexBitMask > 0 && addressTagBitMask > 0);
+    assert(addressOffsetBitMask > 0 && addressIndexBitMask >= 0 && addressTagBitMask > 0);
     return DecomposedAddress{((address >> addressOffsetBits) >> addressIndexBits) & addressTagBitMask,
                              ((address >> addressOffsetBits) & addressIndexBitMask) % numCacheLines,
                              (address & addressOffsetBitMask) % cacheLineSize};
