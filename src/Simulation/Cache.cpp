@@ -323,6 +323,13 @@ static constexpr std::size_t calcGateCountForInternalTable(std::uint32_t numCach
                                          static_cast<size_t>(tagBits)));
 }
 
+static constexpr std::size_t calcGateCountForSubRequestSplitting() {
+    // there are max 2 subrequets per request (4 bytes and 16 byte min cacheline) so we just need a single bit storage
+    // for which one we are at and then some gates to extract the subrequest, so some shifts and some 32 bit adders.
+    // Let's approximate with 3 adders and 2 shifts and 4 AND Gates (very roughly)
+    return 3u * 150u + 2u + 4u;
+}
+
 static constexpr std::size_t
 calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t cacheLineSize, std::uint32_t tagBits,
                                    MappingType type, const ReplacementPolicy<std::uint32_t>& policy) noexcept {
@@ -345,16 +352,31 @@ calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t ca
         std::size_t FPGA = 2753000u;
         // a 32 bit register to store the amount of filled cachelines
         std::size_t validCachelineCntr = BITS_IN_BYTE * 32u;
-        return addSatUnsigned(FPGA, validCachelineCntr, decomposingAddr, selector);
+        std::size_t validCacheIncementer = 150u; // as in instructions
+        return addSatUnsigned(FPGA, validCachelineCntr, decomposingAddr, validCacheIncementer, selector,
+                              policy.calcBasicGates());
     } else {
         return addSatUnsigned(decomposingAddr, selector);
     }
 }
 
-template <MappingType mappingType> std::size_t Cache<mappingType>::calculateGateCount() const {
+static constexpr size_t calcGateCountForDoingReads(std::uint32_t cacheLineSize) noexcept {
+    // we need a register of size enought to store all wordsPerRead in cacheline and an incrementer
+    return addSatUnsigned(mulSatUnsigned(static_cast<size_t>(safeCeilLog2(cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE))),
+                          static_cast<size_t>(150));
+}
+
+static constexpr size_t calcGateCountForMisc() {
+    // random miscellanious parts not counted in other calculations
+    return 1000;
+}
+
+template <MappingType mappingType> std::size_t Cache<mappingType>::calculateGateCount() const noexcept {
     return addSatUnsigned(calcGateCountForCachelineSelection(numCacheLines, cacheLineSize, addressTagBits, mappingType,
                                                              *replacementPolicy),
-                          calcGateCountForInternalTable(numCacheLines, cacheLineSize, addressTagBits));
+                          calcGateCountForInternalTable(numCacheLines, cacheLineSize, addressTagBits),
+                          calcGateCountForDoingReads(cacheLineSize), calcGateCountForSubRequestSplitting(),
+                          calcGateCountForMisc());
 }
 #ifdef STRICT_INSTRUCTION_ORDER
 template <MappingType mappingType> void Cache<mappingType>::setMemoryLatency(std::uint32_t memoryLatency) {}

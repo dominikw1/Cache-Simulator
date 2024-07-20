@@ -7,7 +7,7 @@ template <typename T> class RandomPolicy : public ReplacementPolicy<T> {
     void logUse(T usage) override;
     T pop() override;
     std::size_t getSize() { return size; }
-    constexpr std::size_t calcBasicGates() noexcept override;
+    constexpr std::size_t calcBasicGates() const noexcept override;
     RandomPolicy(std::size_t size) : size{size} {
         std::random_device randomDevice{}; // for simpler but less performant code we could just use this
         generator = std::mt19937{randomDevice()};
@@ -27,7 +27,7 @@ template <typename T> void inline RandomPolicy<T>::logUse(__attribute__((unused)
 // Precondition: FULL Cache
 template <typename T> inline T RandomPolicy<T>::pop() { return randomDistr(generator); }
 
-template <typename T> inline constexpr std::size_t RandomPolicy<T>::calcBasicGates() noexcept {
+template <typename T> inline constexpr std::size_t RandomPolicy<T>::calcBasicGates() const noexcept {
     // assuming we have a hardware element generating random numbers we simply need to mod it
     return 1;
 }

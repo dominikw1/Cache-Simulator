@@ -133,7 +133,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * Approximates the primitive gate count used to construct this cache
      * @returns An approximation of the amount of primitive gates within this caches
      */
-    std::size_t calculateGateCount() const;
+    std::size_t calculateGateCount() const noexcept;
 
     /**
      * Adds internal signals to and from write buffer to the trace file

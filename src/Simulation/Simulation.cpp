@@ -88,10 +88,10 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
         sc_close_vcd_trace_file(trace);
     }
 
-    return Result{
+    return Result {
         connections.get()->pcSignal >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX, dataCache.missCount,
-        dataCache.hitCount,
-        1 // TODO: primitiveGateCount
+            dataCache.hitCount,
+            dataCache.calculateGateCount() // TODO: primitiveGateCount
     };
 }
 
