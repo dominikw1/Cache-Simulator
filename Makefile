@@ -1,22 +1,14 @@
-# ---------------------------------------
-# CONFIGURATION BEGIN
-# ---------------------------------------
-
-# entry point for the program and target name
 C_SRCS = src/main.c src/ArgParsing.c src/FileProcessor.c
 CPP_SRCS = src/Simulation/SubRequest.cpp src/Simulation/Simulation.cpp src/Simulation/Cache.cpp
 
-# Object files
 C_OBJS = $(C_SRCS:.c=.o)
 CPP_OBJS = $(CPP_SRCS:.cpp=.o)
 
-# target name
 TARGET := cache
 
-# Path to systemc installation
 SCPATH = $(SYSTEMC_HOME)
 
-# Additional flags for the compiler
+CFLAGS := -Wall   -Wextra -pedantic -std=c17
 CXXFLAGS := -Wall -Wextra -pedantic  -std=c++14  -I$(SCPATH)/include -L$(SCPATH)/lib -lsystemc -lm
 
 
@@ -58,16 +50,22 @@ $(TARGET): $(C_OBJS) $(CPP_OBJS)
 
 clean:
 	rm -f $(TARGET)
-	rm -rf src/*.o
+	rm -f src/*.o
 	rm -f src/Simulation/*.o
 
 test:
-	cmake -S . -B build  && cmake --build build  -j16 && cd build && ctest --output-on-failure --parallel 16
+	cmake -S . -B build
+	cmake --build build  -j16
+	cd build; ctest --output-on-failure --parallel 16
 
-buildWithRAMReadAfterWrite: CXXFLAGS += -g -DSTRICT_RAM_READ_AFTER_WRITES
+benchmarks:
+	cd tools; make; python3 BenchmarkRunner.py
+
+buildWithRAMReadAfterWrite: CXXFLAGS += -DSTRICT_RAM_READ_AFTER_WRITES
 buildWithRAMReadAfterWrite: $(TARGET)
 
-buildWithStrictInstrOrder: CXXFLAGS += -g -DSTRICT_RAM_READ_AFTER_WRITES -DSTRICT_INSTRUCTION_ORDER
+buildWithStrictInstrOrder: CXXFLAGS += -DSTRICT_RAM_READ_AFTER_WRITES -DSTRICT_INSTRUCTION_ORDER
 buildWithStrictInstrOrder: $(TARGET)
 
-.PHONY: all debug release clean test buildWithStrictInstrOrder buildWithRAMReadAfterWrite
+
+.PHONY: all debug release clean test buildWithStrictInstrOrder buildWithRAMReadAfterWrite benchmarks

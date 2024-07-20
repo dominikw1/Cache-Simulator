@@ -1,5 +1,8 @@
 all:
-	make -C RandomNumberGenerator; make -C MemoryAnalyser; make -C BenchmarkInputGenerator
+	make -C RandomNumberGenerator
+	# requires LLVM which is not installed on "Rechnerhalle"
+	# make -C MemoryAnalyser
+	make -C BenchmarkInputGenerator
 
 clean:
 	rm -rf */*.out
