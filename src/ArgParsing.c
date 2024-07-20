@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 
 #include "Argparsing.h"
@@ -26,12 +27,12 @@
 #define TRACEFILE 139
 #define USE_CACHE 140
 
-
+// Taken inspiration and adapted from exercises 'Nutzereingaben' and 'File IO' from GRA Week 3
 const char* help_msg = "Positional arguments:\n"
                        "   <filename>   The name of the file to be processed\n"
                        "\n"
                        "Optional arguments:\n"
-                       "   -c c / --cycles c       The number of cycles used for the simulation (default: c = 1000)\n"
+                       "   -c c / --cycles c       The number of cycles used for the simulation (default: c = 100000)\n"
                        "   --lcycles               If set input for cycles of up to 2^32-1 are allowed\n"
                        "   --directmapped          Simulates a direct-mapped cache\n"
                        "   --fullassociative       Simulates a fully associative cache (Set as default)\n"
@@ -45,10 +46,10 @@ const char* help_msg = "Positional arguments:\n"
                        "   --use-cache=<Y,n>       Simulates a system with cache or no cache (default: Y)\n"
                        "   --tf=<filename>         The name for a trace file containing all signals. If not set, no "
                        "trace file will be created\n"
-                       "   --extended              Calls extended run_simulation-method with additional parameters\n"
+                       "   --extended              Calls extended run_simulation-method with additional parameters "
+                       "\'policy' and \'use-cache'\n"
                        "   -h / --help             Show this help message and exit\n";
 
-// Taken and adapted from GRA Week 3 "Nutzereingaben" and "File IO"
 void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, progname, progname); }
 
 void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
@@ -67,7 +68,6 @@ FILE* check_file(const char* progname, const char* filename_1, const char* filen
         exit(EXIT_FAILURE);
     }
 
-    // Lines 71-81 taken and adapted from GRA Week 3 "File IO" files.c
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
         perror("Error determining file size");
@@ -81,9 +81,10 @@ FILE* check_file(const char* progname, const char* filename_1, const char* filen
         print_usage(progname);
         exit(EXIT_FAILURE);
     }
-    // Taken from https://stackoverflow.com/questions/5899497/how-can-i-check-the-extension-of-a-file
-    const char *dot = strrchr(filename, '.');
-    if (!dot || dot == filename) {
+
+    // Taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
+    const char *dot = strrchr(filename, '.');   // Check for valid file format
+    if (dot == NULL || dot == filename) {
         fprintf(stderr, "Error: %s is not a valid file\n", filename);
         fclose(file);
         print_usage(progname);
@@ -136,8 +137,8 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
     return (unsigned)n;
 }
 
-void check_cycle_size(int longCycles, uint32_t cycles, struct Request* requests, const char* progname) {
-    if (!longCycles && cycles > INT32_MAX) {
+void check_cycle_size(int longCycles, unsigned int cycles, struct Request* requests, const char* progname, struct Configuration* config) {
+    if ((!longCycles && !config->callExtended) && cycles > INT32_MAX) {
         fprintf(stderr, "Error: %d is too big to be converted to an int. "
                         "Set option --lcycles to increase range.\n", cycles);
         print_usage(progname);
@@ -162,7 +163,7 @@ char* get_option() {
     case USE_CACHE:
         return "--use-cache";
     case TRACEFILE:
-        return "--tf=";
+        return "--tf";
     default:
         return "invalid";
     }
@@ -171,8 +172,7 @@ char* get_option() {
 // Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
 int is_power_of_two(unsigned long n) { return n && !(n & (n - 1)); }
 
-int is_power_of_sixteen(unsigned long n) { return n && !(n & (n - 4)); }
-
+int is_multiple_of_sixteen(unsigned long n) { return !(n & 0b1111); }
 
 int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
@@ -196,26 +196,11 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
     config->usingCache = 1;         // Default: true
     config->callExtended = 0;       // Default: false
 
-    // Check input file and save file data to requests
+    // Check input file for valid file format
     FILE* file = check_file(progname, argv[argc - 1], argv[1], "input file");
-    struct stat file_info;
-    if (fstat(fileno(file), &file_info) != 0) {
-        perror("Error determining file size");
-        fclose(file);
-        print_usage(progname);
-        return EXIT_FAILURE;
-    }
 
-    config->requests = (struct Request*)malloc(sizeof(struct Request) * file_info.st_size);
-    config->numRequests = 0;
-    if (config->requests == NULL) {
-        perror("Error allocating memory buffer for file");
-        fclose(file);
-        print_usage(progname);
-        return EXIT_FAILURE;
-    }
-
-    extract_file_data(progname, file, config->requests, &config->numRequests); // Save data to requests
+    // Check file data and save data to requests
+    extract_file_data(progname, file, config);
 
     // Command line argument parsing
     int opt;
@@ -290,8 +275,12 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             error_msg = "Cacheline size should be at least 1.";
             unsigned long s = check_user_input(endptr, error_msg, progname, "--cacheline-size", config->requests);
 
-            if (!is_power_of_sixteen(s)) {
+            if (!is_multiple_of_sixteen(s)) {
                 fprintf(stderr, "Invalid Input: Cacheline size should be a multiple of 16 bytes!\n");
+                print_usage(progname);
+                return EXIT_FAILURE;
+            } else if (!is_power_of_two(s)) {
+                fprintf(stderr, "Invalid Input: Cacheline size should be a power of 2!\n");
                 print_usage(progname);
                 return EXIT_FAILURE;
             }
@@ -360,25 +349,25 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             config->policy = POLICY_RANDOM;
             break;
 
-        case USE_CACHE:
-            if ((strcmp(optarg, "n") == 0) || (strcmp(optarg, "N") == 0) || (strcmp(optarg, "no") == 0) ||
-                (strcmp(optarg, "No") == 0)) {
+        case USE_CACHE: // use-cache=n used for benchmarking
+            if (strlen(optarg) < 3 && (strncasecmp(optarg, "n", 2) == 0 || strncasecmp(optarg, "no", 2) == 0)) {
                 config->usingCache = 0;
                 break;
-            } else if ((strcmp(optarg, "y") == 0) || (strcmp(optarg, "Y") == 0) || (strcmp(optarg, "yes") == 0) ||
-                       (strcmp(optarg, "Yes") == 0)) {
+            } else if (strlen(optarg) < 4 && (strncasecmp(optarg, "y", 2) == 0 || strncasecmp(optarg, "yes", 2) == 0)) {
                 break;
             }
-            if (optarg == NULL) {
-                fprintf(stderr, "Warning: Option --use-cache is not set. Using default value 'Y'.");
+
+            if (*optarg == '\0') {
+                fprintf(stderr, "Error: Option --use-cache requires an argument.\n");
             } else {
-                fprintf(stderr, "Warning: Not a valid option for --use-cache. Using default value 'Y'.");
+                fprintf(stderr, "Error: '%s' is not a valid option for --use-cache.\n", optarg);
             }
-            break;
+            print_usage(progname);
+            return EXIT_FAILURE;
 
         case TRACEFILE:
-            if (optarg == NULL || *optarg == '\0') {
-                fprintf(stderr, "Error: Option --tf= requires an argument.\n");
+            if (*optarg == '\0') {
+                fprintf(stderr, "Error: Option --tf requires an argument.\n");
                 print_usage(progname);
                 return EXIT_FAILURE;
             }
@@ -394,8 +383,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             if (strcmp(option, "invalid") == 0) {
                 fprintf(stderr, "Error: Not a valid argument '%s'!\n", argv[optind - 1]);
             } else {
-                //fprintf(stderr, "%s", optarg);
-                fprintf(stderr, "Error: Option '%s' requires an argument.\n", option);
+                fprintf(stderr, "Error: Option %s requires an argument.\n", option);
             }
 
         default:
@@ -408,7 +396,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
         fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
     }
 
-    check_cycle_size(longCycles, config->cycles, config->requests, progname);
+    check_cycle_size(longCycles, config->cycles, config->requests, progname, config);
 
     return EXIT_SUCCESS;
 }

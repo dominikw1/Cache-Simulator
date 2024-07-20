@@ -11,9 +11,9 @@ valid_input = ["--cycles ", "-c ",
                "--directmapped ", "--fullassociative ",
                "--cacheline-size ", "--cachelines ",
                "--cache-latency ", "--memory-latency ",
-               # "-h ", "--help ",
-               "--tf=tests/validTracefile.trace "
-               "--lru ", "--fifo ", "--random ", "--use-cache=no "
+               "-h ", "--help ",
+               "--tf"
+               "--lru ", "--fifo ", "--random ", "--use-cache no "
                ]
 
 choices = [0, -1]
