@@ -29,7 +29,7 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
     std::cout << "Starting Simulation...\n";
 
     CPU cpu{"CPU", requests, numRequests};
-    RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize};
+    RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / 16};
     RAM instructionRam{"Instruction_RAM", memoryLatency, instructionCacheLineSize};
 
     Cache<mappingType> dataCache{"Data_cache", cacheLines, cacheLineSize, cacheLatency,
