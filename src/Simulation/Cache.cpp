@@ -74,7 +74,7 @@ void Cache<MappingType::Fully_Associative>::registerUsage(std::vector<Cacheline>
 
 template <MappingType mappingType> void Cache<mappingType>::waitForRAM() noexcept {
     do {
-        wait(clock.posedge_event());
+        wait();
     } while (!writeBufferReady.read());
 }
 
@@ -161,7 +161,7 @@ Cache<mappingType>::writeRAMReadIntoCacheline(DecomposedAddress decomposedAddr) 
         }
         //  if this is the last one we don't need to wait anymore
         if (i + 1 <= numReadEvents)
-            wait(clock.posedge_event());
+            wait();
     }
 
     writeBufferValidRequest.write(false);
@@ -293,7 +293,7 @@ void Cache<mappingType>::passWriteOnToRAM(Cacheline& cacheline, DecomposedAddres
     writeBufferWE.write(true);
     writeBufferValidRequest.write(true);
     do {
-        wait(clock.posedge_event());
+        wait();
     } while (!writeBufferReady);
     writeBufferValidRequest.write(false);
 
