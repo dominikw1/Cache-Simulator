@@ -8,8 +8,8 @@ std::vector<SubRequest> splitRequestIntoSubRequests(Request request, std::uint32
     while (currAlignedAddr < request.addr + 4ull) {
         std::uint32_t startPoint = std::max(request.addr, currAlignedAddr);
         std::uint8_t size =
-            std::min(request.addr + 4ull, currAlignedAddr + cacheLineSizeInByte) - startPoint;
-        std::uint64_t data = (request.data >> (32ull - remainingBits)) & ((1ull << size * 8ull) - 1ull);
+            std::min(request.addr + 4ull, 0ull+ currAlignedAddr + cacheLineSizeInByte) - startPoint;
+        std::uint32_t data = (request.data >> (32ull - remainingBits)) & ((1ull << size * 8ull) - 1ull);
         std::uint8_t bitsBefore = 32ull - remainingBits;
 
         remainingBits -= size * 8ull;
