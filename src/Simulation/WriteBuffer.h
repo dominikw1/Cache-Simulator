@@ -1,5 +1,6 @@
 #pragma once
 #include "RingQueue.h"
+#include <cassert>
 #include <cstdint>
 #include <systemc>
 
@@ -84,9 +85,9 @@ template <std::uint8_t SIZE> void WriteBuffer<SIZE>::writeToRAM() noexcept {
     memoryDataOutBus.write(next.data);
     memoryWeBus.write(true);
     memoryValidRequestBus.write(true);
-    do {
+    while (!memoryReadyBus.read()) {
         wait();
-    } while ((!memoryReadyBus.read()));
+    }
     memoryValidRequestBus.write(false);
 }
 
@@ -95,9 +96,9 @@ template <std::uint8_t SIZE> void WriteBuffer<SIZE>::passReadAlong() noexcept {
     memoryWeBus.write(false);
     memoryValidRequestBus.write(true);
 
-    do {
+    while (!memoryReadyBus.read()) {
         wait();
-    } while (!memoryReadyBus.read());
+    }
     memoryValidRequestBus.write(false);
 
     ready.write(true);
@@ -144,12 +145,8 @@ template <std::uint8_t SIZE> void WriteBuffer<SIZE>::acceptWriteRequest() noexce
         ready.write(true);
         state = State::Write;
         pending = false;
-        std::cout << "accepted write " << cacheAddrBus.read() << std::endl;
-        // wait(); // otherwise we will add it twice ig?
     } else {
         ready.write(false);
-        std::cout << "waiting out write " << cacheAddrBus.read() << std::endl;
-        std::cout << "wB " << sc_core::sc_time_stamp() << "\n";
         state = State::Write;
         pending = true;
     }

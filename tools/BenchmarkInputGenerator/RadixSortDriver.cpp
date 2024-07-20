@@ -1,6 +1,6 @@
 #include "../MemoryAnalyser/include/MemoryAnalyserSupport.h"
-#include "Sort.h"
 #include "FileReader.h"
+#include "Sort.h"
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
@@ -13,8 +13,9 @@ int main(int argc, char* argv[]) {
     std::vector<std::int64_t> values = readInValues(filename, valueCount);
 
     radixSort(&(values[0]), valueCount - 1);
-    for (auto& v: values) {
-        printf("%lld ", v); // to ensure compiler cant optimise sort away
+    volatile long out = 0;
+    for (auto& v : values) {
+        out = v;
     }
     return 0;
 }

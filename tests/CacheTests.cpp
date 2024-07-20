@@ -2,6 +2,7 @@
 #include "../src/Simulation/Cache.h"
 #include "../src/Simulation/Policy/LRUPolicy.h"
 #include "../src/Simulation/Policy/RandomPolicy.h"
+#include "../src/Simulation/Saturating_Arithmetic.h"
 #include "Utils.h"
 #include <cassert>
 #include <exception>
@@ -131,8 +132,9 @@ SC_MODULE(RAMMock) {
             for (std::size_t cycles = 0; cycles < latency; ++cycles) {
                 wait(clock.posedge_event());
             }
-            std::cout << "RAM: done with latency at " << sc_core::sc_time_stamp() <<"performing " << weBus.read()<< "\n";
-            std::cout<<"at "<<addressBus.read()<<std::endl;
+            std::cout << "RAM: done with latency at " << sc_core::sc_time_stamp() << "performing " << weBus.read()
+                      << "\n";
+            std::cout << "at " << addressBus.read() << std::endl;
             if (weBus.read()) {
                 // Writing happens in one cycle -> one able to write 32 bits
                 dataMemory[addressBus.read()] = (dataInBus.read() & ((1 << 8) - 1));
@@ -140,7 +142,6 @@ SC_MODULE(RAMMock) {
                 dataMemory[addressBus.read() + 2] = (dataInBus.read() >> 16) & ((1 << 8) - 1);
                 dataMemory[addressBus.read() + 3] = (dataInBus.read() >> 24) & ((1 << 8) - 1);
                 readyBus.write(true);
-                wait(clock.posedge_event());
             } else {
                 // Reading takes wordsPerRead cycles
                 sc_dt::sc_bv<128> readData;
@@ -153,7 +154,10 @@ SC_MODULE(RAMMock) {
 
                     // Next word is ready and then wait for next cycle to continue reading
                     readyBus.write(true);
-                    wait(clock.posedge_event());
+
+                    if (i != wordsPerRead - 1) {
+                        wait(clock.posedge_event());
+                    }
                 }
             }
             //  std::cout << "RAM done with request at " << sc_core::sc_time_stamp() << "\n";
@@ -622,4 +626,16 @@ TEST_F(CacheTests, CacheReadsResultInSameValuesAsManuallyRecorded) {
         ASSERT_EQ(memRecord[addrRead + 2], (dataRead >> 16) & ((1 << 8) - 1));
         ASSERT_EQ(memRecord[addrRead + 3], (dataRead >> 24) & ((1 << 8) - 1));
     }
+}
+TEST(HelperTest, SaturatingAddWorks) {
+    ASSERT_EQ(addSatUnsigned(UINT32_MAX, (uint32_t)9499), UINT32_MAX);
+    ASSERT_EQ(addSatUnsigned(4u, 5u), 9u);
+}
+TEST(HelperTest, SaturatingMulWorks) {
+    ASSERT_EQ(mulSatUnsigned(UINT32_MAX, (uint32_t)9499), UINT32_MAX);
+    ASSERT_EQ(mulSatUnsigned(4u, 5u), 20u);
+}
+TEST(HelperTest, SaturatingPowWorks) {
+    ASSERT_EQ(powSatUnsigned(UINT32_MAX, (uint32_t)9499), UINT32_MAX);
+    ASSERT_EQ(powSatUnsigned(2u, 8u), 1u << 8u);
 }

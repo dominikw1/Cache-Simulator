@@ -1,5 +1,5 @@
 #include "Cache.h"
-
+#include "Saturating_Arithmetic.h"
 using namespace sc_core;
 
 template <>
@@ -16,6 +16,9 @@ Cache<MappingType::Direct>::getCachelineOwnedByAddr(DecomposedAddress decomposed
 template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Fully_Associative>::getCachelineOwnedByAddr(DecomposedAddress decomposedAddr) noexcept {
+    wait(); // reference hash table implementation has a frequency of 370MHz, we run at 1GHz. To compensate for this
+    wait(); // dicreptancy, we wait 2 extra cycles.  (source: https://ar5iv.labs.arxiv.org/html/2108.03390v2)
+
     if (cachelineLookupTable.count(decomposedAddr.tag)) {
         // isValid is true by virtue of the tag being in there
         return cacheInternal.begin() + cachelineLookupTable[decomposedAddr.tag];
@@ -82,7 +85,6 @@ void Cache<MappingType::Fully_Associative>::registerUsage(std::vector<Cacheline>
 }
 
 template <MappingType mappingType> void Cache<mappingType>::waitForRAM() noexcept {
-    // maybe this should be a while?
     do {
         wait();
     } while (!writeBufferReady.read());
@@ -312,26 +314,27 @@ template <MappingType mappingType> Request Cache<mappingType>::constructRequestF
     return Request{cpuAddrBus.read(), cpuDataInBus.read(), cpuWeBus.read()};
 }
 
-
-
-
-static std::size_t calcGateCountForInternalTable(std::uint32_t numCachelines, std::uint32_t cachelineSize,
+static constexpr std::size_t calcGateCountForInternalTable(std::uint32_t numCachelines, std::uint32_t cachelineSize,
                                                  std::uint32_t tagBits) noexcept {
     // each bit register takes 4 gates
     // we have 8 bits in a byte and numCachelines * cachelinesize bytes + tag bits
-    return 4ull * numCachelines * (8ull * cachelineSize + tagBits);
+    return mulSatUnsigned(static_cast<size_t>(4), static_cast<size_t>(numCachelines),
+                          addSatUnsigned(mulSatUnsigned(static_cast<size_t>(8), static_cast<size_t>(cachelineSize)),
+                                         static_cast<size_t>(tagBits)));
 }
 
-static std::size_t calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t tagBits,
+static constexpr std::size_t calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t tagBits,
                                                       MappingType type,
                                                       ReplacementPolicy<std::uint32_t>* policy) noexcept {
     if (type == MappingType::Fully_Associative) {
-        // for performance reasons we would have a binary tree of ors atop of comparators, but to prevent overflow
-        // let's say we have #cachelines ones comparing in sequence where Comparator := 1 basic gate, a selector as
-        // wide as #cachelines := 1 basic gate
-        auto comparator = tagBits * numCachelines;
-        auto propagation = numCachelines;
-        return comparator + propagation + 1 + policy->calcBasicGates(); // i don't think this can overflow
+        // we use a hashtable to find out which cacheline a given tag belongs to. As shown in this paper:
+        // https://ar5iv.labs.arxiv.org/html/2108.03390v2 such a hashtable can be implemented on a Intel Stratix 10
+        // GX1800 FPGA. As shown here:
+        // https://www.intel.com/content/www/us/en/products/sku/210291/intel-stratix-10-gx-2800-fpga/specifications.html
+        // such an FPGA has 2753000 "logic elements", which we eqaute to primitive gates here.
+        std::size_t FPGA = 2753000u;
+        //return comparator + propagation + 1 + policy->calcBasicGates(); // i don't think this can overflow
+        return FPGA;
     } else {
         // just a simple selector
         return 1;

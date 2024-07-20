@@ -14,8 +14,9 @@ int main(int argc, char* argv[]) {
     std::vector<std::int64_t> values = readInValues(filename, valueCount);
 
     mergeSort(&(values[0]), 0, valueCount - 1);
+    volatile long out =0;
     for (auto& v: values) {
-        printf("%lld ", v); // to ensure compiler cant optimise sort away
+       out = v;
     }
     return 0;
 }
