@@ -22,38 +22,21 @@ void extract_file_data(const char* progname, FILE* file, struct Request* request
 
         if (read_line < 3 && !feof(file)) {
             if (read_line == -1) {
-                fprintf(stderr, "Wrong file format! An Error occurred while reading from the file.\n");
-                fclose(file);
-                print_usage(progname);
-                free(requests);
-                requests = NULL;
-                exit(EXIT_FAILURE);
+                fprintf(stderr, "Wrong file format! An error occurred while reading from the file.\n");
             }
             if (read_line < 2) { // Address was not read from file
                 fprintf(stderr, "Wrong file format! No address given.\n");
-                fclose(file);
-                print_usage(progname);
-                free(requests);
-                requests = NULL;
-                exit(EXIT_FAILURE);
+                goto error;
             }
         }
 
         if ((we == 'W' || we == 'w') && read_line < 3) { // Write should have data written in the file
             fprintf(stderr, "Wrong file format! No data saved.\n");
-            fclose(file);
-            print_usage(progname);
-            free(requests);
-            requests = NULL;
-            exit(EXIT_FAILURE);
+            goto error;
         }
         if ((we == 'R' || we == 'r') && read_line == 3) { // Read should not have data written in the file
             fprintf(stderr, "Wrong file format! When reading from a file, data should be empty.\n");
-            fclose(file);
-            print_usage(progname);
-            free(requests);
-            requests = NULL;
-            exit(EXIT_FAILURE);
+            goto error;
         }
 
         requests[*numRequests].addr = addr;
@@ -65,25 +48,25 @@ void extract_file_data(const char* progname, FILE* file, struct Request* request
             requests[*numRequests].we = 1;
         } else {
             fprintf(stderr, "'%c' is not a valid operation\n", we);
-            fclose(file);
-            print_usage(progname);
-            free(requests);
-            requests = NULL;
-            exit(EXIT_FAILURE);
+            goto error;
         }
 
         (*numRequests)++;
 
         if (ferror(file)) {
-            fprintf(stderr, "Error reading from file.\n");
-            fclose(file);
-            print_usage(progname);
-            free(requests);
-            requests = NULL;
-            exit(EXIT_FAILURE);
+            fprintf(stderr, "Error reading from file. Error code: %d\n", ferror(file));
+            goto error;
         }
 
     } while (!feof(file));
 
     fclose(file);
+    return EXIT_SUCCESS;
+
+error:
+    fclose(file);
+    print_usage(progname);
+    free(requests);
+    requests = NULL;
+    exit(EXIT_FAILURE);
 }
