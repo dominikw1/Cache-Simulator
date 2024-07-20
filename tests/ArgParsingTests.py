@@ -4,7 +4,6 @@ import os
 
 CACHE_PATH = os.path.abspath(os.path.join('..', './cache'))
 FILE_PATH = ' ' + os.path.abspath(os.path.join('..', 'examples', 'merge_sort_10.csv'))
-INVALID_FILE_PATH = os.path.abspath(os.path.join('..', 'tests'))
 
 
 def capture_stderr(cmdline_args):
@@ -105,6 +104,14 @@ class TestInvalidInput(unittest.TestCase):
         self.assertEqual(expected_output, output)
 
     # TODO tracefile tests
+
+    def test_validate_file_format_2(self):  # TODO
+        args = ' /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/src/cache '
+        expected_output = ("Error: /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/src/cache is not a "
+                           "valid file\n") + print_usage
+        output = capture_stderr(args).decode()
+        self.assertEqual(expected_output, output)
+
     def test_missing_argument_cycles(self):
         args = FILE_PATH + ' --cycles '
         expected_output = "Error: Option -c/--cycles requires an argument.\n" + print_usage
@@ -112,7 +119,7 @@ class TestInvalidInput(unittest.TestCase):
         self.assertEqual(expected_output, output)
 
     def test_missing_argument_cacheline_size(self):
-        args =  FILE_PATH + ' --cacheline-size '
+        args = FILE_PATH + ' --cacheline-size '
         expected_output = "Error: Option --cacheline-size requires an argument.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)

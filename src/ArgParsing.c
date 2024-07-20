@@ -65,12 +65,18 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
     }
 
     if (n <= 0 || errno != 0 || n > UINT32_MAX) {
-        if (errno == 0 && n <= 0) { // Negative input and 0 not useful for simulation
-            if (n == 0 && strcmp(option, "--cachelines") == 0) {
-                fprintf(stderr, "Warning: --cachelines must be at least 1. Setting use-cache=n.\n");
-                return 0;
+        if (errno == 0) {
+            if (n == 0) {   // Allow certain options with value 0
+                if (strncmp(option, "--cachelines", 12) == 0) {
+                    fprintf(stderr, "Warning: --cachelines must be at least 1. Setting use-cache=n.\n");
+                    return 0;
+                } else if (strncmp(option, "--cache-latency", 15) == 0 || strncmp(option, "--memory", 8) == 0) {
+                    fprintf(stderr, "Warning: A value of 0 for %s is not realistic!\n", option);
+                    return 0;
+                }
+            } else if (n < 0) {  // Negative input not useful for simulation
+                fprintf(stderr, "Invalid input: %s\n", message);
             }
-            fprintf(stderr, "Invalid input: %s\n", message);    // n <= 0
         } else if (n > UINT32_MAX) { // Input needs to fit into predefined datatypes for run_simulation method
             fprintf(stderr, "Invalid input: %ld is too big to be converted to an unsigned int.\n", n);
         } else {    // Print errno error message
@@ -110,7 +116,7 @@ char* get_option() {
     case TRACEFILE:
         return "--tf";
     default:
-        return "invalid";
+        return "string_data";
     }
 }
 
@@ -243,13 +249,13 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             break;
 
         case CACHE_LATENCY:
-            error_msg = "Cache-latency cannot be zero or negativ.";
+            error_msg = "Cache-latency cannot be negativ.";
             unsigned long l = check_user_input(endptr, error_msg, progname, "--cache-latency");
             config->cacheLatency = l;
             break;
 
         case MEMORY_LATENCY:
-            error_msg = "Memory-latency cannot be zero or negativ.";
+            error_msg = "Memory-latency cannot be negativ.";
             unsigned long m = check_user_input(endptr, error_msg, progname, "--memory-latency");
             config->memoryLatency = m;
             break;
@@ -319,7 +325,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
 
         case '?':
             option = get_option();
-            if (strcmp(option, "invalid") != 0) { // Check if optarg is positional argument
+            if (strcmp(option, "string_data") != 0) { // Check if optarg is positional argument
                 fprintf(stderr, "Error: Option %s requires an argument.\n", option);
             } else if (argv[optind - 1] != NULL) {
                 fprintf(stderr, "Error: Not a valid option '%s'.\n", argv[optind - 1]);

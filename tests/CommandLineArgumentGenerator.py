@@ -6,7 +6,7 @@ lines = 50
 debug_option = "valgrind -s "   # --leak-check=summary --show-leak-kinds=definite --track-origins=no
 
 progname = "./cache "
-pos_argument = "examples/ex/example.csv "  # valid file
+pos_argument = "examples/merge_sort_10.csv "  # valid file
 valid_input = ["--cycles ", "-c ",
                "--directmapped ", "--fullassociative ",
                "--cacheline-size ", "--cachelines ",

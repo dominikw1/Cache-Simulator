@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
     free(configuration.requests);
     configuration.requests = NULL;
 
-    // Check for invalid results
+    // Check for string_data results
     if (result.cycles == 0 && result.misses == 0 && result.hits == 0 && result.primitiveGateCount == 0) {
         fprintf(stderr, "Result does not contain valid data.\n");
         print_usage(argv[0]);
