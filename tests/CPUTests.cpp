@@ -163,7 +163,7 @@ TEST_F(CPUTests, CPUDispatchesSameInstructionAsInput) {
     instrMock.instructionMemory[0] = req;
     dataMock.dataMemory[1] = 10;
 
-    CPU cpu{"cpu", requests, 1};
+    CPU cpu{"cpu", requests};
     createConnectionsToCPU(cpu);
 
     sc_start(1, SC_SEC);
@@ -183,7 +183,7 @@ TEST_F(CPUTests, CPUDispatchesSameMultipleInstructionsAsInput) {
 
     dataMock.dataMemory[1] = 10;
 
-    CPU cpu{"cpu", requests, 3};
+    CPU cpu{"cpu", requests};
     createConnectionsToCPU(cpu);
 
     sc_start(1, SC_SEC);
@@ -199,7 +199,7 @@ TEST_F(CPUTests, CPUWritesMemoryCorrectlySingleRequest) {
 
     instrMock.instructionMemory[0] = reqW;
 
-    CPU cpu{"cpu", requests, 1};
+    CPU cpu{"cpu", requests};
     createConnectionsToCPU(cpu);
 
     sc_start(1, SC_SEC);
@@ -219,7 +219,7 @@ TEST_F(CPUTests, CPUWritesMemoryCorrectlyMultipleRequests) {
     instrMock.instructionMemory[1] = reqW2;
     instrMock.instructionMemory[2] = reqW3;
 
-    CPU cpu{"cpu", requests, 3};
+    CPU cpu{"cpu", requests};
     createConnectionsToCPU(cpu);
 
     sc_start(1, SC_SEC);
@@ -245,7 +245,7 @@ TEST_F(CPUTests, CPUHandlesRandomInputWithoutThrowing) {
         instrMock.instructionMemory[i] = req;
     }
 
-    CPU cpu{"cpu", requests, numRequests};
+    CPU cpu{"cpu", requests};
     createConnectionsToCPU(cpu);
 
     sc_start(5, SC_SEC);

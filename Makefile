@@ -1,5 +1,5 @@
 C_SRCS = src/main.c src/ArgParsing.c src/FileProcessor.c
-CPP_SRCS = src/Simulation/SubRequest.cpp src/Simulation/Simulation.cpp src/Simulation/Cache.cpp
+CPP_SRCS = src/Simulation/SubRequest.cpp src/Simulation/Simulation.cpp src/Simulation/Cache.cpp src/Simulation/CPU.cpp
 
 C_OBJS = $(C_SRCS:.c=.o)
 CPP_OBJS = $(CPP_SRCS:.cpp=.o)

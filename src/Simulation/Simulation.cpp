@@ -38,7 +38,7 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
                                unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
                                struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
                                int usingCache) {
-    CPU cpu{"CPU", requests, numRequests};
+    CPU cpu{"CPU", requests};
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE};
     RAM instructionRam{"Instruction_RAM", memoryLatency, cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE};
 

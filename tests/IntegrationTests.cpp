@@ -25,7 +25,7 @@ class IntegrationTests
     Request* requests = std::get<5>(GetParam()).first;
     size_t requestsSize = std::get<5>(GetParam()).second;
 
-    CPU cpu{"CPU", requests, requestsSize};
+    CPU cpu{"CPU", requests};
 
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / 16};
     RAM instructionRam{"Instruction_RAM", memoryLatency, cacheLineSize / 16};

@@ -7,14 +7,15 @@
 
 SC_MODULE(CPU) {
   public:
+    // ====================================== External Ports  ======================================
     // Global Clock
     sc_core::sc_in<bool> SC_NAMED(clock);
 
     // CPU -> Cache
-    sc_core::sc_out<bool> SC_NAMED(weBus);
-    sc_core::sc_out<bool> SC_NAMED(validDataRequestBus);
     sc_core::sc_out<std::uint32_t> SC_NAMED(addressBus);
     sc_core::sc_out<std::uint32_t> SC_NAMED(dataOutBus);
+    sc_core::sc_out<bool> SC_NAMED(weBus);
+    sc_core::sc_out<bool> SC_NAMED(validDataRequestBus);
 
     // Cache -> CPU
     sc_core::sc_in<std::uint32_t> SC_NAMED(dataInBus);
@@ -29,90 +30,50 @@ SC_MODULE(CPU) {
     sc_core::sc_out<std::uint32_t> SC_NAMED(pcBus);
 
   private:
-    std::uint64_t program_counter = 0;
+    Request* instructions;
 
+    std::uint64_t program_counter = 0;
     std::uint64_t lastCycleWhereWorkWasDone = 0;
 
+    // needed to handle a parallel instruction read and instruction processing
     bool instructionReady = false;
     sc_core::sc_event triggerNextInstructionRead;
 
-    Request* instructions;
-    const std::uint64_t numInstructions;
-
-    SC_CTOR(CPU);
-
-  public:
-    CPU(sc_core::sc_module_name name, Request * instructions, std::uint64_t numInstructions)
-        : sc_module{name}, instructions{instructions}, numInstructions{numInstructions} {
-        SC_THREAD(handleInstruction);
-        sensitive << clock.pos();
-
-        SC_THREAD(readInstruction);
-        sensitive << clock.pos();
-    }
-
-    constexpr std::uint64_t getElapsedCycleCount() const noexcept { return lastCycleWhereWorkWasDone; };
-
-  private:
     // this is for when we have just waited for an instruction to be done so we don't need to wait any longer
     bool skipAhead = false;
-    void handleInstruction() {
-        while (true) {
-            if (!skipAhead) {
-                wait();
-            } else {
-                skipAhead = false;
-            }
-            if (instructionReady) {
-                instructionReady = false;
 
-                Request currentRequest = instrBus.read();
-                addressBus.write(currentRequest.addr);
-                dataOutBus.write(currentRequest.data);
-                weBus.write(currentRequest.we);
+  public:
+    CPU(sc_core::sc_module_name name, Request * instructions);
 
-                validDataRequestBus.write(true);
+    /**
+     * Returns the cycle in which the last instruction was completed
+     * @return cycle in which the last instruction was completed
+     */
+    constexpr std::uint64_t getElapsedCycleCount() const noexcept { return lastCycleWhereWorkWasDone; }
 
-                triggerNextInstructionRead.notify();
+  private:
+    SC_CTOR(CPU); // private since this is never to be called, just to get systemc typedef
 
-                waitForInstructionProcessing();
+    // ========== Main Handling ==============
+    /**
+     * The main point of the CPU, which sleeps until we received a instruction and then sets all signals needed
+     * for the data cache to process the request. In case of a read the data returned from the cache is set to the data
+     * field of the instruction.
+     */
+    void handleInstruction() noexcept;
+    /**
+     * For the first instruction this sets all needed signals for the instruction cache to read the next instruction.
+     * Afterwards the event triggerNextInstructionRead has to be notified to read the next instruction.
+     */
+    void readInstruction() noexcept;
 
-                lastCycleWhereWorkWasDone = sc_core::sc_time_stamp().value() / 1000;;
-
-                if (!currentRequest.we) {
-                    instructions[program_counter - 1].data = dataInBus;
-                }
-            }
-        }
-    }
-
-    void readInstruction() {
-        while (true) {
-            wait();
-            pcBus.write(program_counter);
-
-            validInstrRequestBus.write(true);
-            waitForInstruction();
-            instructionReady = true;
-
-            wait(triggerNextInstructionRead);
-            ++program_counter;
-        }
-    }
-
-    void waitForInstruction() {
-        wait();
-        validInstrRequestBus.write(false);
-        while (!instrReadyBus)
-            wait();
-    }
-
-    void waitForInstructionProcessing() {
-        wait();
-        validDataRequestBus.write(false);
-        while (!dataReadyBus) {
-            wait();
-        }
-        skipAhead = true;
-    }
+    // ====================================== Waiting Helpers ======================================
+    /**
+     * Sleeps until we get a ready signal from instruction cache
+     */
+    void waitForInstruction() noexcept;
+    /**
+     * Sleeps until we get a ready signal from data cache
+     */
+    void waitForInstructionProcessing() noexcept;
 };

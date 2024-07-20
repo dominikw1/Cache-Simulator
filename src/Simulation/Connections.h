@@ -81,12 +81,12 @@ inline std::unique_ptr<Connections> connectComponents(CPU& cpu, RAM& dataRam, RA
     dataRam.addressBus(connections->dataCache_to_dataRAM_Address);
     dataRam.dataInBus(connections->dataCache_to_dataRAM_Data);
     dataRam.weBus(connections->dataCache_to_dataRAM_WE);
-    dataRam.validRequestBus(connections->dataCache_to_dataRAM_WE);
+    dataRam.validRequestBus(connections->dataCache_to_dataRAM_Valid_Request);
 
     dataCache.memoryAddrBus(connections->dataCache_to_dataRAM_Address);
     dataCache.memoryDataOutBus(connections->dataCache_to_dataRAM_Data);
     dataCache.memoryWeBus(connections->dataCache_to_dataRAM_WE);
-    dataCache.memoryValidRequestBus(connections->dataCache_to_dataRAM_WE);
+    dataCache.memoryValidRequestBus(connections->dataCache_to_dataRAM_Valid_Request);
 
     // RAM -> Cache
     dataRam.dataOutBus(connections->dataRAM_to_dataCache_Data);
