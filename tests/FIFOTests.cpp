@@ -7,8 +7,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <numeric>
-#include <set>
-#include <unordered_set>
 #include <vector>
 
 TEST(FIFOPolicyTests, FIFOPolicyAddingSingleValueReturnsSameValue) {
@@ -55,7 +53,7 @@ TEST(FIFOPolicyTests, FIFOCorrectOrderOfUniqueAfterLotsOfRandomInputs) {
         popped.push_back(fifoPolicy.pop());
 
     ASSERT_EQ(popped.size(), toTestInputList.size());
-    for (int i = 0; i < popped.size(); ++i) {
+    for (std::size_t i = 0; i < popped.size(); ++i) {
         ASSERT_EQ(popped[i], toTestInputList[i]);
     }
 }

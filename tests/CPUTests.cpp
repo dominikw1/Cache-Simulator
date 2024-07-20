@@ -9,8 +9,6 @@
 using namespace sc_core;
 
 SC_MODULE(InstrMemoryMock) {
-    std::vector<uint32_t> instructionsProvided;
-
     sc_in<bool> clock;
     sc_in<bool> validInstrRequest;
     sc_in<std::uint32_t> pcBus;
@@ -36,20 +34,14 @@ SC_MODULE(InstrMemoryMock) {
             }
 
             auto pc = pcBus.read();
-            std::cout << "Providing instruction at " << pc << std::endl;
             if (instructionMemory.find(pc) == instructionMemory.end()) {
-                std::cout << "Ending simulation" << std::endl;
                 sc_stop();
                 return;
             }
 
             auto requestToWrite = instructionMemory.at(pc);
-            std::cout << "Located request to write" << std::endl;
             instrBus.write(requestToWrite);
             instrReadyBus.write(true);
-            std::cout << "Recording instruction..." << std::endl;
-            instructionsProvided.push_back(pc);
-            std::cout << "Done providing instruction" << std::endl;
         }
     }
 };
@@ -82,7 +74,6 @@ SC_MODULE(DataMemoryMock) {
                 wait(clock.posedge_event());
             }
 
-            // std::cout << "Providing/writing data at " << addressBus.read() << std::endl;
             if (weBus.read() == 0) {
                 dataOutBus.write(dataMemory[addressBus.read()]);
             } else {
@@ -91,7 +82,6 @@ SC_MODULE(DataMemoryMock) {
             dataReadyBus.write(true);
 
             dataProvided.push_back(Request{addressBus.read(), dataInBus.read(), weBus.read()});
-            std::cout << "Done providing/writing data" << std::endl;
         }
     }
 };
@@ -119,7 +109,7 @@ class CPUTests : public testing::Test {
 
     sc_clock clock{"clk", sc_time(1, SC_NS)};
 
-    void SetUp() {
+    void SetUp() override {
         instrMock.clock.bind(clock);
         instrMock.pcBus.bind(pcSignal);
         instrMock.instrBus.bind(instrSignal);
@@ -232,7 +222,7 @@ TEST_F(CPUTests, CPUWritesMemoryCorrectlyMultipleRequests) {
 
 TEST_F(CPUTests, CPUHandlesRandomInputWithoutThrowing) {
     std::uint32_t numRequests = 100000;
-    Request requests[numRequests];
+    Request requests[100000];
 
     auto randomAddresses = generateRandomVector(numRequests, UINT32_MAX);
     auto randomData = generateRandomVector(numRequests, UINT32_MAX);
