@@ -30,6 +30,55 @@ std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheRepl
     }
 }
 
+template <typename CacheType>
+auto setUpTracefile(const char* traceFile, Connections& connections, CacheType& dataCache) {
+    auto traceCloser = [](sc_core::sc_trace_file* trace) {
+        if (trace != nullptr)
+            sc_close_vcd_trace_file(trace);
+    };
+    if (traceFile == nullptr) // an admittedly inelegant solution to avoid having to specify the exact type
+        return std::unique_ptr<sc_trace_file, decltype(traceCloser)>(nullptr, std::move(traceCloser));
+
+    std::unique_ptr<sc_trace_file, decltype(traceCloser)> trace{sc_create_vcd_trace_file(traceFile),
+                                                                std::move(traceCloser)};
+
+    trace->set_time_unit(100, SC_PS); // not 1 NS because write buffer does some things at falling edge
+    sc_trace(trace.get(), connections.clk, "clock");
+
+    // Data Cache signals
+    sc_trace(trace.get(), connections.CPU_to_dataCache_Address, "CPU_to_dataCache_Address");
+    sc_trace(trace.get(), connections.CPU_to_dataCache_Data, "CPU_to_dataCache_Data");
+    sc_trace(trace.get(), connections.CPU_to_dataCache_WE, "CPU_to_dataCache_WE");
+    sc_trace(trace.get(), connections.CPU_to_dataCache_Vaid_Request, "CPU_to_dataCache_Vaid_Request");
+    sc_trace(trace.get(), connections.dataCache_to_CPU_Data, "dataCache_to_CPU_Data");
+    sc_trace(trace.get(), connections.dataCache_to_CPU_Ready, "dataCache_to_CPU_Ready");
+
+    sc_trace(trace.get(), connections.dataCache_to_dataRAM_Address, "dataCache_to_dataRAM_Address");
+    sc_trace(trace.get(), connections.dataCache_to_dataRAM_Data, "dataCache_to_dataRAM_Data");
+    sc_trace(trace.get(), connections.dataCache_to_dataRAM_WE, "dataCache_to_dataRAM_WE");
+    sc_trace(trace.get(), connections.dataCache_to_dataRAM_Valid_Request, "dataCache_to_dataRAM_Valid_Request");
+    sc_trace(trace.get(), connections.dataRAM_to_dataCache_Data, "dataRAM_to_dataCache_Data");
+    sc_trace(trace.get(), connections.dataRAM_to_dataCache_Ready, "dataRAM_to_dataCache_Ready");
+
+    // Instruction Cache signals
+    sc_trace(trace.get(), connections.CPU_to_instrCache_PC, "CPU_to_instrCache_PC");
+    sc_trace(trace.get(), connections.CPU_to_instrCache_Valid_Request, "CPU_to_instrCache_Valid_Request");
+    sc_trace(trace.get(), connections.instrCache_to_CPU_Instruction, "instrCache_to_CPU_Instruction");
+    sc_trace(trace.get(), connections.instrCache_to_CPU_Ready, "instrCache_to_CPU_Ready");
+
+    sc_trace(trace.get(), connections.instrCache_to_instrRAM_Address, "instrCache_to_instrRAM_Address");
+    sc_trace(trace.get(), connections.instrCache_to_instrRAM_Data, "instrCache_to_instrRAM_Data");
+    sc_trace(trace.get(), connections.instrCache_to_instrRAM_WE, "instrCache_to_instrRAM_WE");
+    sc_trace(trace.get(), connections.instrCache_to_instrRAM_Valid_Request, "instrCache_to_instrRAM_Valid_Request");
+    sc_trace(trace.get(), connections.instrRAM_to_instrCache_Data, "instrRAM_to_instrCache_Data");
+    sc_trace(trace.get(), connections.instrRAM_to_instrCache_Ready, "instrRAM_to_instrCache_Ready");
+
+    // trace Write Buffer signals too
+    dataCache.traceInternalSignals(trace.get());
+
+    return trace;
+}
+
 constexpr std::uint8_t instructionCacheLineSize = 128;
 constexpr std::uint8_t instructionCacheNumLines = 16;
 
@@ -54,49 +103,7 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
 #endif
 
     auto connections = connectComponents(cpu, dataRam, instructionRam, dataCache, instructionCache);
-
-    // Create tracefile if option is set
-    if (tracefile != nullptr) {
-        auto traceCloser = [](sc_core::sc_trace_file* trace) { sc_close_vcd_trace_file(trace); };
-        std::unique_ptr<sc_core::sc_trace_file, decltype(traceCloser)> trace{sc_create_vcd_trace_file(tracefile),
-                                                                             std::move(traceCloser)};
-        trace->set_time_unit(100, SC_PS); // not 1 NS because write buffer does some things at falling edge
-        sc_trace(trace.get(), connections.get()->clk, "clock");
-
-        // Data Cache signals
-        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_Address, "CPU_to_dataCache_Address");
-        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_Data, "CPU_to_dataCache_Data");
-        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_WE, "CPU_to_dataCache_WE");
-        sc_trace(trace.get(), connections.get()->CPU_to_dataCache_Vaid_Request, "CPU_to_dataCache_Vaid_Request");
-        sc_trace(trace.get(), connections.get()->dataCache_to_CPU_Data, "dataCache_to_CPU_Data");
-        sc_trace(trace.get(), connections.get()->dataCache_to_CPU_Ready, "dataCache_to_CPU_Ready");
-
-        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Address, "dataCache_to_dataRAM_Address");
-        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Data, "dataCache_to_dataRAM_Data");
-        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_WE, "dataCache_to_dataRAM_WE");
-        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Valid_Request,
-                 "dataCache_to_dataRAM_Valid_Request");
-        sc_trace(trace.get(), connections.get()->dataRAM_to_dataCache_Data, "dataRAM_to_dataCache_Data");
-        sc_trace(trace.get(), connections.get()->dataRAM_to_dataCache_Ready, "dataRAM_to_dataCache_Ready");
-
-        // Instruction Cache signals
-        sc_trace(trace.get(), connections.get()->CPU_to_instrCache_PC, "CPU_to_instrCache_PC");
-        sc_trace(trace.get(), connections.get()->CPU_to_instrCache_Valid_Request, "CPU_to_instrCache_Valid_Request");
-        sc_trace(trace.get(), connections.get()->instrCache_to_CPU_Instruction, "instrCache_to_CPU_Instruction");
-        sc_trace(trace.get(), connections.get()->instrCache_to_CPU_Ready, "instrCache_to_CPU_Ready");
-
-        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_Address, "instrCache_to_instrRAM_Address");
-        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_Data, "instrCache_to_instrRAM_Data");
-        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_WE, "instrCache_to_instrRAM_WE");
-        sc_trace(trace.get(), connections.get()->instrCache_to_instrRAM_Valid_Request,
-                 "instrCache_to_instrRAM_Valid_Request");
-        sc_trace(trace.get(), connections.get()->instrRAM_to_instrCache_Data, "instrRAM_to_instrCache_Data");
-        sc_trace(trace.get(), connections.get()->instrRAM_to_instrCache_Ready, "instrRAM_to_instrCache_Ready");
-
-        // trace Write Buffer signals too
-        dataCache.traceInternalSignals(trace.get());
-    }
-
+    auto tracer = setUpTracefile(tracefile, *connections, dataCache);
     sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
 
     return Result{connections.get()->CPU_to_instrCache_PC >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX,
