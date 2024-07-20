@@ -7,6 +7,7 @@
 
 SC_MODULE(CPU) {
   public:
+    // Global Clock
     sc_core::sc_in<bool> SC_NAMED(clock);
 
     // CPU -> Cache
@@ -57,6 +58,7 @@ SC_MODULE(CPU) {
     constexpr std::uint64_t getElapsedCycleCount() const noexcept { return lastCycleWhereWorkWasDone; };
 
   private:
+    // this is for when we have just waited for an instruction to be done so we don't need to wait any longer
     bool skipAhead = false;
     void handleInstruction() {
         while (true) {

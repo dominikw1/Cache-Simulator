@@ -1,6 +1,7 @@
 #pragma once
 #include "RingQueue.h"
 #include <cstdint>
+#include <cassert>
 #include <systemc>
 
 template <std::uint8_t SIZE> SC_MODULE(WriteBuffer) {
@@ -144,12 +145,8 @@ template <std::uint8_t SIZE> void WriteBuffer<SIZE>::acceptWriteRequest() noexce
         ready.write(true);
         state = State::Write;
         pending = false;
-        std::cout << "accepted write " << cacheAddrBus.read() << std::endl;
-        // wait(); // otherwise we will add it twice ig?
     } else {
         ready.write(false);
-        std::cout << "waiting out write " << cacheAddrBus.read() << std::endl;
-        std::cout << "wB " << sc_core::sc_time_stamp() << "\n";
         state = State::Write;
         pending = true;
     }

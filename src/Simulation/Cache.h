@@ -1,5 +1,12 @@
 #pragma once
 
+#include "../Request.h"
+#include "Cacheline.h"
+#include "DecomposedAddress.h"
+#include "Policy/ReplacementPolicy.h"
+#include "SubRequest.h"
+#include "WriteBuffer.h"
+
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
@@ -9,14 +16,6 @@
 #include <unordered_map>
 
 #include <systemc>
-
-#include "../Request.h"
-#include "../Result.h"
-#include "Cacheline.h"
-#include "DecomposedAddress.h"
-#include "Policy/ReplacementPolicy.h"
-#include "SubRequest.h"
-#include "WriteBuffer.h"
 
 enum class MappingType { Direct, Fully_Associative };
 

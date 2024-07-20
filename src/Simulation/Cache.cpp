@@ -1,5 +1,5 @@
 #include "Cache.h"
-
+#include "Saturating_Arithmetic.h"
 using namespace sc_core;
 
 template <>
@@ -311,9 +311,6 @@ template <MappingType mappingType> void Cache<mappingType>::startReadFromRAM(std
 template <MappingType mappingType> Request Cache<mappingType>::constructRequestFromBusses() const noexcept {
     return Request{cpuAddrBus.read(), cpuDataInBus.read(), cpuWeBus.read()};
 }
-
-
-
 
 static std::size_t calcGateCountForInternalTable(std::uint32_t numCachelines, std::uint32_t cachelineSize,
                                                  std::uint32_t tagBits) noexcept {
