@@ -341,8 +341,8 @@ static constexpr std::size_t calcGateCountForSubRequestSplitting() {
 }
 
 static constexpr std::size_t
-calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t cacheLineSize, std::uint32_t tagBits,
-                                   MappingType type, const ReplacementPolicy<std::uint32_t>& policy) noexcept {
+calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t cacheLineSize, MappingType type,
+                                   const ReplacementPolicy<std::uint32_t>& policy) noexcept {
     // a selector built like shown here. https://learn.sparkfun.com/tutorials/how-does-an-fpga-work/multiplexers
     // making it numCachelines*cacheLineSize*8 AND Gates and cacheLineSize*8 Or GAtes with numCachelines Inputs (:=
     // 1 primitive gate)
@@ -382,11 +382,10 @@ static constexpr size_t calcGateCountForMisc() {
 }
 
 template <MappingType mappingType> std::size_t Cache<mappingType>::calculateGateCount() const noexcept {
-    return addSatUnsigned(calcGateCountForCachelineSelection(numCacheLines, cacheLineSize, addressTagBits, mappingType,
-                                                             *replacementPolicy),
-                          calcGateCountForInternalTable(numCacheLines, cacheLineSize, addressTagBits),
-                          calcGateCountForDoingReads(cacheLineSize), calcGateCountForSubRequestSplitting(),
-                          calcGateCountForMisc());
+    return addSatUnsigned(
+        calcGateCountForCachelineSelection(numCacheLines, cacheLineSize, mappingType, *replacementPolicy),
+        calcGateCountForInternalTable(numCacheLines, cacheLineSize, addressTagBits),
+        calcGateCountForDoingReads(cacheLineSize), calcGateCountForSubRequestSplitting(), calcGateCountForMisc());
 }
 #pragma endregion
 

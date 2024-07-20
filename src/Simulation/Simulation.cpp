@@ -27,8 +27,6 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
                                unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
                                struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
                                int usingCache) {
-    std::cout << "Starting Simulation...\n";
-
     CPU cpu{"CPU", requests, numRequests};
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / 16};
     RAM instructionRam{"Instruction_RAM", memoryLatency, instructionCacheLineSize};
@@ -65,7 +63,8 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
         sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Address, "dataCache_to_dataRAM_Address");
         sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Data, "dataCache_to_dataRAM_Data");
         sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_WE, "dataCache_to_dataRAM_WE");
-        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Valid_Request, "dataCache_to_dataRAM_Valid_Request");
+        sc_trace(trace.get(), connections.get()->dataCache_to_dataRAM_Valid_Request,
+                 "dataCache_to_dataRAM_Valid_Request");
         sc_trace(trace.get(), connections.get()->dataRAM_to_dataCache_Data, "dataRAM_to_dataCache_Data");
         sc_trace(trace.get(), connections.get()->dataRAM_to_dataCache_Ready, "dataRAM_to_dataCache_Ready");
 
@@ -86,7 +85,6 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
     }
 
     sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
-
 
     return Result{
         connections.get()->CPU_to_instrCache_PC >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX,
@@ -132,6 +130,6 @@ std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheRepl
 }
 
 int sc_main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {
-    std::cout << "ERROR: Call to sc_main method!\n";
+    std::cerr << "ERROR: Call to sc_main method!\n";
     return 1;
 }
