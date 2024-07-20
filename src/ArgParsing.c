@@ -136,8 +136,8 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
     return (unsigned)n;
 }
 
-void check_cycle_size(int longCycles, uint32_t cycles, struct Request* requests, const char* progname) {
-    if (!longCycles && cycles > INT32_MAX) {
+void check_cycle_size(int longCycles, unsigned int cycles, struct Request* requests, const char* progname, struct Configuration* config) {
+    if ((!longCycles && !config->callExtended) && cycles > INT32_MAX) {
         fprintf(stderr, "Error: %d is too big to be converted to an int. "
                         "Set option --lcycles to increase range.\n", cycles);
         print_usage(progname);
@@ -408,7 +408,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
         fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
     }
 
-    check_cycle_size(longCycles, config->cycles, config->requests, progname);
+    check_cycle_size(longCycles, config->cycles, config->requests, progname, config);
 
     return EXIT_SUCCESS;
 }

@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    // Call run_simulation method depending on
+    // Call run_simulation method depending on user input for extended method
     struct Result result;
     if (configuration.callExtended) {
         result = run_simulation_extended(configuration.cycles, configuration.directMapped, configuration.cacheLines,

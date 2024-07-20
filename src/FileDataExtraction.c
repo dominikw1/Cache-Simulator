@@ -3,14 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "Request.h"
 #include "Argparsing.h"
 #include "FileDataExtraction.h"
+#include "Request.h"
 
 
+// Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
 void extract_file_data(const char* progname, FILE* file, struct Request* requests, size_t* numRequests) {
     // Check input file and save file data to requests
-    // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
     int read_line;
 
     do {
@@ -87,4 +87,3 @@ void extract_file_data(const char* progname, FILE* file, struct Request* request
 
     fclose(file);
 }
-
