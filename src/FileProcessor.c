@@ -4,26 +4,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "Argparsing.h"
 #include "FileProcessor.h"
 #include "Request.h"
 
-void validate_file_format(const char* progname, FILE* file, const char* filename, const char* filetype) {
+int validate_file_format(const char* filename, const char* filetype) {
     // Taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
     const char *dot = strrchr(filename, '.');   // Check for valid file format
     if (dot == NULL || dot == filename) {
         fprintf(stderr, "Error: %s is not a valid file\n", filename);
-        fclose(file);
-        print_usage(progname);
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     } else if (strcmp(dot + 1, filetype) != 0) {
         fprintf(stderr, "Error: %s is not a valid %s file!\n", filename, filetype);
-        fclose(file);
-        print_usage(progname);
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
+    return EXIT_SUCCESS;
 }
 
 FILE* check_file(const char* progname, const char* filename) {
@@ -42,7 +38,7 @@ FILE* check_file(const char* progname, const char* filename) {
     }
 
     if (S_ISDIR(file_info.st_mode)) {
-        fprintf(stderr, "Filename should not be a directory.\n");
+        fprintf(stderr, "Error: Filename should not be a directory.\n");
         goto error;
     }
     if (file_info.st_size == 0) {
@@ -50,7 +46,11 @@ FILE* check_file(const char* progname, const char* filename) {
         goto error;
     }
 
-    validate_file_format(progname, file, filename, "csv"); // Check if file is csv file
+    // Check if file is csv file
+    int notValid = validate_file_format(filename, "csv");
+    if (notValid) {
+        goto error;
+    }
 
     if (filename != NULL && !S_ISREG(file_info.st_mode)) {
         fprintf(stderr, "Error: %s is not a regular file\n", filename);
@@ -66,7 +66,7 @@ error:
 }
 
 // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
-void extract_file_data(const char* progname, FILE* file, struct Configuration* config) {
+int extract_file_data(const char* progname, FILE* file, struct Configuration* config) {
     struct stat file_info;
     if (fstat(fileno(file), &file_info) != 0) {
         perror("Error determining file size");
@@ -86,35 +86,44 @@ void extract_file_data(const char* progname, FILE* file, struct Configuration* c
 
     // Check input file and save file data to requests
     int read_line;
+    int character;  // Used to check right file format
+    char *comma;
+    char *line;
+    line = malloc(14);    // Three commas, one char and max two numbers with 10 digits and '\n'
+    if (line == NULL) { perror("Error allocating memory buffer for line"); goto error; }
 
     do {
         char we;
         uint32_t addr;
         uint32_t data;
 
-        read_line = fscanf(file, "%c,%i,%i\n", &we, &addr, &data);
+        char* l = fgets(line, 14, file);
+        read_line = sscanf(line, "%c,%i,%i\n", &we, &addr, &data);
+        character = line[0];
 
-        if ((read_line < 3 || read_line > 3) && !feof(file)) {
-            if (read_line == -1) {
-                fprintf(stderr, "Wrong file format! An error occurred while reading from the file.\n");
+        if (read_line != 3) {
+            if (character != 'W' && character != 'R' && character != 'w' && character != 'r') {
+                fprintf(stderr, "Error: Wrong file format! First column is not set right!\n");
                 goto error;
             }
-            if (read_line == 1 && !we) { // Address was not read from file
-                fprintf(stderr, "Wrong file format!\n");
+            if (l == NULL || strchr(line, ',') == NULL) {
+                fprintf(stderr, "Error: Wrong file format! An error occured while reading from the file!\n");
                 goto error;
             }
-            if (read_line < 2) { // Address was not read from file
-                fprintf(stderr, "Wrong file format! No address given.\n");
+
+            comma = strchr(line, ','); // Check if address is given
+            if (strncmp(comma + 1, "\0", 1) == 0) {
+                fprintf(stderr, "Error: Wrong file format! No address given.\n");
                 goto error;
             }
         }
 
         if ((we == 'W' || we == 'w') && read_line < 3) { // Write should have data written in the file
-            fprintf(stderr, "Wrong file format! No data saved.\n");
+            fprintf(stderr, "Error: Wrong file format! No data saved.\n");
             goto error;
         }
         if ((we == 'R' || we == 'r') && read_line == 3) { // Read should not have data written in the file
-            fprintf(stderr, "Wrong file format! When reading from a file, data should be empty.\n");
+            fprintf(stderr, "Error: Wrong file format! When reading from a file, data should be empty.\n");
             goto error;
         }
 
@@ -126,7 +135,7 @@ void extract_file_data(const char* progname, FILE* file, struct Configuration* c
         } else if (we == 'W' || we == 'w') {
             config->requests[config->numRequests].we = 1;
         } else {
-            fprintf(stderr, "Error:'%c' is not a valid operation in input file\n", we);
+            fprintf(stderr, "Error: '%c' is not a valid operation in input file\n", we);
             goto error;
         }
 
@@ -139,10 +148,12 @@ void extract_file_data(const char* progname, FILE* file, struct Configuration* c
 
     } while (!feof(file));
 
+    free(line);
     fclose(file);
-    return;
+    return EXIT_SUCCESS;
 
 error:
+    free(line);
     fclose(file);
     print_usage(progname);
     free(config->requests);
