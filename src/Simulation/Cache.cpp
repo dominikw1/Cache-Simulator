@@ -315,7 +315,7 @@ template <MappingType mappingType> Request Cache<mappingType>::constructRequestF
 }
 
 static constexpr std::size_t calcGateCountForInternalTable(std::uint32_t numCachelines, std::uint32_t cachelineSize,
-                                                 std::uint32_t tagBits) noexcept {
+                                                           std::uint32_t tagBits) noexcept {
     // each bit register takes 4 gates
     // we have 8 bits in a byte and numCachelines * cachelinesize bytes + tag bits
     return mulSatUnsigned(static_cast<size_t>(4), static_cast<size_t>(numCachelines),
@@ -323,9 +323,19 @@ static constexpr std::size_t calcGateCountForInternalTable(std::uint32_t numCach
                                          static_cast<size_t>(tagBits)));
 }
 
-static constexpr std::size_t calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t tagBits,
-                                                      MappingType type,
-                                                      ReplacementPolicy<std::uint32_t>* policy) noexcept {
+static constexpr std::size_t
+calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t cacheLineSize, std::uint32_t tagBits,
+                                   MappingType type, const ReplacementPolicy<std::uint32_t>& policy) noexcept {
+    // a selector built like shown here. https://learn.sparkfun.com/tutorials/how-does-an-fpga-work/multiplexers
+    // making it numCachelines*cacheLineSize*8 AND Gates and cacheLineSize*8 Or GAtes with numCachelines Inputs (:=
+    // 1 primitive gate)
+    std::size_t selector =
+        addSatUnsigned(mulSatUnsigned(static_cast<size_t>(numCachelines), static_cast<size_t>(cacheLineSize),
+                                      static_cast<size_t>(BITS_IN_BYTE)),
+                       mulSatUnsigned(static_cast<size_t>(BITS_IN_BYTE), static_cast<size_t>(cacheLineSize)));
+    // decomposing addr := 1
+    std::size_t decomposingAddr = 1;
+
     if (type == MappingType::Fully_Associative) {
         // we use a hashtable to find out which cacheline a given tag belongs to. As shown in this paper:
         // https://ar5iv.labs.arxiv.org/html/2108.03390v2 such a hashtable can be implemented on a Intel Stratix 10
@@ -333,15 +343,19 @@ static constexpr std::size_t calcGateCountForCachelineSelection(std::uint32_t nu
         // https://www.intel.com/content/www/us/en/products/sku/210291/intel-stratix-10-gx-2800-fpga/specifications.html
         // such an FPGA has 2753000 "logic elements", which we eqaute to primitive gates here.
         std::size_t FPGA = 2753000u;
-        //return comparator + propagation + 1 + policy->calcBasicGates(); // i don't think this can overflow
-        return FPGA;
+        // a 32 bit register to store the amount of filled cachelines
+        std::size_t validCachelineCntr = BITS_IN_BYTE * 32u;
+        return addSatUnsigned(FPGA, validCachelineCntr, decomposingAddr, selector);
     } else {
-        // just a simple selector
-        return 1;
+        return addSatUnsigned(decomposingAddr, selector);
     }
 }
 
-template <MappingType mappingType> std::size_t Cache<mappingType>::calculateGateCount() const { return 0; }
+template <MappingType mappingType> std::size_t Cache<mappingType>::calculateGateCount() const {
+    return addSatUnsigned(calcGateCountForCachelineSelection(numCacheLines, cacheLineSize, addressTagBits, mappingType,
+                                                             *replacementPolicy),
+                          calcGateCountForInternalTable(numCacheLines, cacheLineSize, addressTagBits));
+}
 #ifdef STRICT_INSTRUCTION_ORDER
 template <MappingType mappingType> void Cache<mappingType>::setMemoryLatency(std::uint32_t memoryLatency) {}
 #endif

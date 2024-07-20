@@ -9,9 +9,10 @@ template <typename T> constexpr inline auto addSatUnsigned(T a, T b) noexcept {
         return c;
     return std::numeric_limits<T>::max();
 }
+template <typename T> constexpr inline auto addSatUnsigned(T a) noexcept { return a; }
 
-template <typename T, typename... U> constexpr inline auto addSatUnsignedMany(T a, U... nums) {
-    return addSatUnsigned(a, addSatUnsignedMany(nums...));
+template <typename T, typename... U> constexpr inline auto addSatUnsigned(T a, U... nums) noexcept {
+    return addSatUnsigned(a, addSatUnsigned(nums...));
 }
 
 template <typename T> constexpr inline auto mulSatUnsigned(T a, T b) noexcept {
