@@ -2,6 +2,7 @@ from pathlib import Path
 import subprocess
 from dataclasses import dataclass
 import re
+from typing import List
 
 pathToCacheExe=  "../cache"
 
@@ -25,6 +26,13 @@ class BenchmarkResult:
     memLatency: int
     result: RawResult
 
+
+def printAsCSV(headers: List[str], values, name) -> None:
+    output: str = ",".join(headers)+ "\n"
+    for i in range(len(values[0])):
+        output += ",".join([str(v[i]) for v in values])+str('\n')
+    with open(name, "w") as file:
+          file.write(output)
 
 
 def extractRawRes(res: str) -> RawResult:
@@ -55,7 +63,7 @@ def runBenchmarkForAlg(alg: str, *, cacheLineSize: int, cacheLineNum: int, memLa
 
 def runBenchmarkForCacheSize(*,  cacheLineNum: int, memLatency: int, cacheLatency: int)-> str:
     bs = []
-    for cacheLineSize  in {16, 64, 128}:
+    for cacheLineSize  in {16,32,64, 128, 256, 512}:
         r = runBenchmark(f"BenchmarkInputGenerator/Benchmarks/merge_sort_100.csv", cacheLineNum=cacheLineNum, memLatency=memLatency, cacheLatency=cacheLatency, cacheSize=cacheLineSize) 
         bs.append(BenchmarkResult(100, "merge", cacheLatency=cacheLatency, memLatency=memLatency, result=r, cacheLineNum=cacheLineNum, cacheLineSize=cacheLineSize, direct_mapped=False, policy="lru"))             
     return bs
@@ -86,6 +94,8 @@ for b in benches:
     print(f"Hit-%: {100*b.result.hits / (b.result.hits+b.result.misses)}%, Miss-%: {100*b.result.misses / (b.result.misses+b.result.hits)}%")
     print(f"Cycles/Memory Access: {b.result.cyclesNeeded  / ((b.result.hits+b.result.misses))}")
     
+printAsCSV(["Algorithm", "Size", "Hit-%", "Cycles/M.A."], [[b.alg for b in benches] ,[b.inputSize for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "algBenchmarks.csv")
+
 print("===== Increasing Cache-Line size =====")
 benches: list[BenchmarkResult] = runBenchmarkForCacheSize(cacheLineNum=8, memLatency=100, cacheLatency=5)
 for b in benches:
@@ -94,7 +104,21 @@ for b in benches:
     print(f"Hit-%: {100*b.result.hits / (b.result.hits+b.result.misses)}%, Miss-%: {100*b.result.misses / (b.result.misses+b.result.hits)}%")
     print(f"Cycles/Memory Access: {b.result.cyclesNeeded  / ((b.result.hits+b.result.misses))}")
     print(f"Gates: {b.result.gates}\n")
-    
+
+printAsCSV(["Cacheline-Size", "Hit-%", "Cycles/M.A."], [[b.cacheLineSize for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "cacheLineSizeBenchmarksFastMem.csv")
+
+
+benches: list[BenchmarkResult] = runBenchmarkForCacheSize(cacheLineNum=8, memLatency=500, cacheLatency=5)
+for b in benches:
+    print(f"Cache-Line size: {b.cacheLineSize}")
+    print(f"Cycles: {b.result.cyclesNeeded}, Total memory accesses: {b.result.misses + b.result.hits}")
+    print(f"Hit-%: {100*b.result.hits / (b.result.hits+b.result.misses)}%, Miss-%: {100*b.result.misses / (b.result.misses+b.result.hits)}%")
+    print(f"Cycles/Memory Access: {b.result.cyclesNeeded  / ((b.result.hits+b.result.misses))}")
+    print(f"Gates: {b.result.gates}\n")
+
+printAsCSV(["Cacheline-Size", "Hit-%", "Cycles/M.A."], [[b.cacheLineSize for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "cacheLineSizeBenchmarksSlowMem.csv")
+
+
 
 print("===== Replacement Policy =====")
 benches: list[BenchmarkResult] = runBenchmarkForPolicy(cacheLineNum=8, cacheLineSize=16, memLatency=100, cacheLatency=5)
@@ -104,6 +128,9 @@ for b in benches:
     print(f"Hit-%: {100*b.result.hits / (b.result.hits+b.result.misses)}%, Miss-%: {100*b.result.misses / (b.result.misses+b.result.hits)}%")
     print(f"Cycles/Memory Access: {b.result.cyclesNeeded  / ((b.result.hits+b.result.misses))}")
     print(f"Gates: {b.result.gates}\n")
+
+printAsCSV(["Replacement-Policy", "Hit-%", "Cycles/M.A."], [[b.policy for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "policyBenchmarks.csv")
+
     
     
 print("===== Mapping Type =====")
@@ -117,4 +144,7 @@ for b in benches:
     print(f"Hit-%: {100*b.result.hits / (b.result.hits+b.result.misses)}%, Miss-%: {100*b.result.misses / (b.result.misses+b.result.hits)}%")
     print(f"Cycles/Memory Access: {b.result.cyclesNeeded  / ((b.result.hits+b.result.misses))}")
     print(f"Gates: {b.result.gates}\n")
+    
+printAsCSV(["Mapping-Type", "Hit-%", "Cycles/M.A."], [["Direct" if b else "Fully-Associative"  for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "mappingBenchmarks.csv")
+
     

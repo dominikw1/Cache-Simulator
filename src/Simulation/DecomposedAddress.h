@@ -16,4 +16,4 @@ constexpr inline std::uint32_t safeCeilLog2(std::uint32_t val) noexcept {
     return highestSetBit + 1;
 }
 
-constexpr inline std::uint32_t generateBitmaskForLowestNBits(std::uint8_t bits) noexcept { return (1ull << bits) - 1; }
+constexpr inline std::uint32_t generateBitmaskForLowestNBits(std::uint32_t bits) noexcept { return (1ull << bits) - 1; }

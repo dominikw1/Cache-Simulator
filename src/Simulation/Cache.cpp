@@ -1,5 +1,7 @@
 #include "Cache.h"
 
+using namespace sc_core;
+
 template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Direct>::getCachelineOwnedByAddr(DecomposedAddress decomposedAddr) noexcept {
@@ -53,12 +55,13 @@ template <> DecomposedAddress Cache<MappingType::Direct>::decomposeAddress(std::
     assert(addressOffsetBitMask > 0 && addressIndexBitMask > 0 && addressTagBitMask > 0);
     return DecomposedAddress{((address >> addressOffsetBits) >> addressIndexBits) & addressTagBitMask,
                              ((address >> addressOffsetBits) & addressIndexBitMask) % numCacheLines,
-                             address & addressOffsetBitMask};
+                             (address & addressOffsetBitMask) % cacheLineSize};
 }
 
 template <> DecomposedAddress Cache<MappingType::Fully_Associative>::decomposeAddress(std::uint32_t address) noexcept {
     assert(addressOffsetBitMask > 0 && addressIndexBitMask == 0 && addressTagBitMask > 0);
-    return DecomposedAddress{(address >> addressOffsetBits) & addressTagBitMask, 0, address & addressOffsetBitMask};
+    return DecomposedAddress{(address >> addressOffsetBits) & addressTagBitMask, 0,
+                             (address & addressOffsetBitMask) % cacheLineSize};
 }
 
 template <>
@@ -124,13 +127,11 @@ template <MappingType mappingType> void Cache<mappingType>::zeroInitialiseCachel
 }
 
 template <MappingType mappingType>
-Cache<mappingType>::Cache(sc_core::sc_module_name name, unsigned int numCacheLines, unsigned int cacheLineSize,
-                          unsigned int cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy) noexcept
+Cache<mappingType>::Cache(sc_module_name name, std::uint32_t numCacheLines, std::uint32_t cacheLineSize,
+                          std::uint32_t cacheLatency, std::unique_ptr<ReplacementPolicy<std::uint32_t>> policy) noexcept
     : sc_module{name}, numCacheLines{numCacheLines}, cacheLineSize{cacheLineSize}, cacheLatency{cacheLatency},
       replacementPolicy{std::move(policy)}, cacheInternal{numCacheLines},
       writeBuffer{"writeBuffer", cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE, cacheLineSize} {
-
-    using namespace sc_core; // in scope as to not pollute global namespace
     if (replacementPolicy != nullptr && mappingType == MappingType::Direct) {
         std::cerr << "Replacement Policy is set on a direct mapped cache - this has no effect.\n";
     }
@@ -181,14 +182,12 @@ template <MappingType mappingType>
 std::vector<Cacheline>::iterator Cache<mappingType>::fetchIfNotPresent(std::uint32_t addr,
                                                                        DecomposedAddress decomposedAddr) noexcept {
     waitOutCacheLatency();
-
     auto cacheline = getCachelineOwnedByAddr(decomposedAddr);
     if (cacheline != cacheInternal.end()) {
         ++hitCount;
         return cacheline;
     }
     ++missCount;
-
     startReadFromRAM(addr);
     waitForRAM();
     return writeRAMReadIntoCacheline(decomposedAddr);
@@ -199,7 +198,8 @@ void Cache<mappingType>::handleSubRequest(SubRequest subRequest, std::uint32_t& 
     auto addr = subRequest.addr;
 
     // split into tag - index - offset
-    auto decomposedAddr = decomposeAddress(addr);
+    const auto decomposedAddr = decomposeAddress(addr);
+
     // check if in cache (waits for #cycles specified by cacheLatency) - if not read from RAM
     auto cacheline = fetchIfNotPresent(addr, decomposedAddr);
 
@@ -218,7 +218,7 @@ void Cache<mappingType>::handleSubRequest(SubRequest subRequest, std::uint32_t& 
 
 template <MappingType mappingType>
 std::uint32_t Cache<mappingType>::doRead(DecomposedAddress decomposedAddr, Cacheline& cacheline,
-                                         std::uint8_t numBytes) noexcept {
+                                         std::uint32_t numBytes) noexcept {
     assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
 
     std::uint32_t retVal = 0;
@@ -262,16 +262,12 @@ template <MappingType mappingType> void Cache<mappingType>::handleRequest() noex
 
 template <MappingType mappingType>
 void Cache<mappingType>::doWrite(Cacheline& cacheline, DecomposedAddress decomposedAddr, std::uint32_t data,
-                                 std::uint8_t numBytes) noexcept {
-    //  std::cout << unsigned(numBytes) << " " << decomposedAddr.offset << std::endl;
-
+                                 std::uint32_t numBytes) noexcept {
     assert((numBytes + decomposedAddr.offset - 1) < cacheLineSize);
-    //   std::cout << "Attempting to write " << data << std::endl;
     for (std::size_t byteNr = 0; byteNr < numBytes; ++byteNr) {
         cacheline.data[(decomposedAddr.offset + byteNr)] =
             (data >> BITS_IN_BYTE * byteNr) & generateBitmaskForLowestNBits(BITS_IN_BYTE);
     }
-    //  std::cout << "Done writing into cacheline" << std::endl;
 }
 
 template <MappingType mappingType>
@@ -316,13 +312,13 @@ template <MappingType mappingType> Request Cache<mappingType>::constructRequestF
 }
 
 static std::size_t calcGateCountForInternalTable(std::uint32_t numCachelines, std::uint32_t cachelineSize,
-                                                 std::uint8_t tagBits) noexcept {
+                                                 std::uint32_t tagBits) noexcept {
     // each bit is an edge triggered D Flipflop á la ~10 gates.
     // we have 8 bits in a byte and numCachelines * cachelinesize bytes + tag bits
     return 10ull * numCachelines * (8ull * cachelineSize + tagBits);
 }
 
-static std::size_t calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint8_t tagBits,
+static std::size_t calcGateCountForCachelineSelection(std::uint32_t numCachelines, std::uint32_t tagBits,
                                                       MappingType type,
                                                       ReplacementPolicy<std::uint32_t>* policy) noexcept {
     if (type == MappingType::Fully_Associative) {
@@ -342,6 +338,15 @@ template <MappingType mappingType> std::size_t Cache<mappingType>::calculateGate
 #ifdef STRICT_INSTRUCTION_ORDER
 template <MappingType mappingType> void Cache<mappingType>::setMemoryLatency(std::uint32_t memoryLatency) {}
 #endif
+
+template <MappingType mappingType> void Cache<mappingType>::traceInternalSignals(sc_trace_file* const traceFile) const {
+    sc_trace(traceFile, writeBufferReady, "WriteBuffer_Cache_Ready");
+    sc_trace(traceFile, writeBufferDataOut, "WriteBuffer_Cache_Data_Out");
+    sc_trace(traceFile, writeBufferAddr, "Cache_WriteBuffer_Addr");
+    sc_trace(traceFile, writeBufferDataIn, "Cache_WriteBuffer_Data_in");
+    sc_trace(traceFile, writeBufferWE, "Cache_WriteBuffer_WE");
+    sc_trace(traceFile, writeBufferValidRequest, "Cache_WriteBuffer_Valid_Request");
+}
 
 template struct Cache<MappingType::Direct>;
 template struct Cache<MappingType::Fully_Associative>;

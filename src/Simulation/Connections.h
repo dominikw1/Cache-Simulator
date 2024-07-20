@@ -3,10 +3,10 @@
 #include <systemc>
 
 #include "../Request.h"
-#include "Cache.h"
 #include "CPU.h"
-#include "Memory.h"
+#include "Cache.h"
 #include "InstructionCache.h"
+#include "Memory.h"
 
 struct Connections {
     sc_core::sc_clock clk{"Clock", sc_core::sc_time(1, sc_core::SC_NS)};
@@ -52,10 +52,10 @@ struct Connections {
     sc_core::sc_signal<bool> SC_NAMED(instrRamReadySignal);
 };
 
-template<MappingType mappingType>
-std::unique_ptr<Connections> connectComponents(CPU& cpu,
-                                         RAM& dataRam, RAM& instructionRam,
-                                         Cache<mappingType>& dataCache, InstructionCache& instructionCache) {
+template <MappingType mappingType>
+inline std::unique_ptr<Connections> connectComponents(CPU& cpu, RAM& dataRam, RAM& instructionRam,
+                                                      Cache<mappingType>& dataCache,
+                                                      InstructionCache& instructionCache) {
     auto connections = std::make_unique<Connections>();
 
     // Data Cache

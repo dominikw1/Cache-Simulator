@@ -68,6 +68,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     sc_core::sc_out<bool> SC_NAMED(ready);
     sc_core::sc_out<std::uint32_t> SC_NAMED(cpuDataOutBus);
 
+  private:
     // ====================================== Internal Signals  ======================================
     // Buffer -> Cache
     sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(writeBufferReady);
@@ -79,6 +80,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     sc_core::sc_signal<bool> SC_NAMED(writeBufferWE);
     sc_core::sc_signal<bool> SC_NAMED(writeBufferValidRequest);
 
+  public:
     // ====================================== Hit/Miss Bookkeeping  ======================================
     std::uint64_t hitCount{0};
     std::uint64_t missCount{0};
@@ -104,9 +106,9 @@ template <MappingType mappingType> SC_MODULE(Cache) {
     } cachelineLookupTable;
 
     // ====================================== Precomputation ======================================
-    std::uint8_t addressOffsetBits{0};
-    std::uint8_t addressIndexBits{0};
-    std::uint8_t addressTagBits{0};
+    std::uint32_t addressOffsetBits{0};
+    std::uint32_t addressIndexBits{0};
+    std::uint32_t addressTagBits{0};
     std::uint32_t addressOffsetBitMask{0};
     std::uint32_t addressIndexBitMask{0};
     std::uint32_t addressTagBitMask{0};
@@ -133,6 +135,12 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @returns An approximation of the amount of primitive gates within this caches
      */
     std::size_t calculateGateCount() const;
+
+    /**
+     * Adds internal signals to and from write buffer to the trace file
+     * @param[in] traceFile The trace file the signals shall be added to
+     */
+    void traceInternalSignals(sc_core::sc_trace_file* const traceFile) const;
 
 #ifdef STRICT_INSTRUCTION_ORDER
     /**
@@ -230,7 +238,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] numBytes  The amount of bytes we want to read
      * @returns the data segment just read in the lowest numBytes bytes of the uint32_t
      * */
-    std::uint32_t doRead(DecomposedAddress decomposedAddr, Cacheline & cacheline, std::uint8_t numBytes) noexcept;
+    std::uint32_t doRead(DecomposedAddress decomposedAddr, Cacheline & cacheline, std::uint32_t numBytes) noexcept;
     /**
      * Reads data from bus written to by RAM and copies it into the corresponding cacheline
      * */
@@ -245,7 +253,7 @@ template <MappingType mappingType> SC_MODULE(Cache) {
      * @param[in] numBytes The number of bytes of data to be written
      */
     void doWrite(Cacheline & cacheline, DecomposedAddress decomposedAddr, std::uint32_t data,
-                 std::uint8_t numBytes) noexcept;
+                 std::uint32_t numBytes) noexcept;
     /**
      * Passes the write request to the RAM through the write buffer
      * @param[in] cacheline The cacheline the data is taken from
