@@ -10,9 +10,10 @@
 #include "FileProcessor.h"
 #include "Request.h"
 
-// Lines 15-19 & 174-178 taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
-
-// TODO: Methodenbeschreibung
+/**
+ * Checks if the file given has the extension 'filetype'
+ * Lines 18-22 taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
+ */
 int validate_file_format(const char* filename, const char* filetype) {
     const char *dot = strrchr(filename, '.');
     if (dot == NULL || dot == filename) {
@@ -25,6 +26,9 @@ int validate_file_format(const char* filename, const char* filetype) {
     return EXIT_SUCCESS;
 }
 
+/**
+ * Opens and checks the validity of a file.
+ */
 FILE* check_file(const char* progname, const char* filename) {
     struct stat file_info;
     FILE* file = fopen(filename, "r");
@@ -68,7 +72,10 @@ error:
     exit(EXIT_FAILURE);
 }
 
-// Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
+/**
+ * Extracts and validates data from a file and saves it in a 'Request structure'
+ * Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
+ */
 int extract_file_data(const char* progname, const char* filename, FILE* file, struct Configuration* config) {
     struct stat file_info;
     if (stat(filename, &file_info) != 0) {
@@ -88,7 +95,6 @@ int extract_file_data(const char* progname, const char* filename, FILE* file, st
         exit(EXIT_FAILURE);
     }
 
-    // Check input file and save file data to requests
     int read_line;
     int character;  // Used to check right file format
     char *comma;
@@ -162,6 +168,11 @@ error:
     exit(EXIT_FAILURE);
 }
 
+
+/**
+ * Validates trace file name and displays an error message if the file is invalid and exits the program.
+ * Lines 190-193 taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
+*/
 void check_trace_file(const char* progname, const char* optarg) {
     struct stat file_info;
     if (stat(optarg, &file_info) == 0) {    // Filepath already exists
