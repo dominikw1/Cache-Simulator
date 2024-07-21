@@ -17,6 +17,7 @@ template <typename T> class LRUPolicy : public ReplacementPolicy<T> {
     // Return by value since T is small
     T pop() override;
     std::size_t getSize() const { return cache.size(); }
+    std::size_t getCapacity() const { return size; }
     LRUPolicy(std::size_t size) : size{size} {}
     constexpr std::size_t calcBasicGates() const noexcept override;
 
@@ -58,5 +59,5 @@ template <typename T> inline constexpr std::size_t LRUPolicy<T>::calcBasicGates(
     // for a more general amortized O(1) approach
     // lets assume the linked list is an array of registers and we are storing about 32 bit in each T
     // further assume the hashings use the same hash table as used in the main Cache => 2753000
-    return addSatUnsigned(mulSatUnsigned(static_cast<size_t>(32), getSize()), static_cast<size_t>(2753000));
+    return addSatUnsigned(mulSatUnsigned(static_cast<size_t>(32), getCapacity()), static_cast<size_t>(2753000));
 }
