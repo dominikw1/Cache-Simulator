@@ -7,6 +7,15 @@
 #include <memory>
 #include <systemc>
 
+/**
+ * This instruction cache is the provider of instructions in our model. Since defining an encoding for the instructions
+ * was out of scope for this project, the instruction cache simply reads a dummy 1 byte from RAM / its internal
+ * cacheline and subsequently "decodes it" by using its internal instruction store to look up the corresponding
+ * instruction.
+ *
+ * For more information on how the internal cache works see Cache.cpp
+ */
+
 SC_MODULE(InstructionCache) {
   private:
     const std::uint32_t cacheLineNum;
