@@ -339,7 +339,7 @@ struct Configuration parse_arguments(int argc, char** argv) {
     if ((config.cacheLineSize > 0 && config.cacheLines > UINT32_MAX / config.cacheLineSize) ||
         config.cacheLineSize * config.cacheLines > (1 << 20)) { // either overflow or simply too large
         fprintf(stderr, "Error: Cache of %d %d byte long cache lines is too big. Max total size is 2^20\n",
-                config.cacheLineSize, config.cacheLines);
+                config.cacheLines, config.cacheLineSize);
         print_usage(progname);
         exit(EXIT_FAILURE);
     }
