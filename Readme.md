@@ -16,11 +16,12 @@ Wir untersuchen im Folgenden die Speicherzugriffsmuster der Algorithmen Merge- u
 
 ## Methodik & Messumgebung
 
-Das Speicherzugriffsmuster der Algorithmen wurden mithilfe eines LLVM-Passes für verschiedene Eingabegrößen analysiert und aufgezeichnet. Der LLVM-Pass instrumentiert während des Kompilierprozesses jede Instruktion, die einen Speicherzugriff darstellt, mit einem Aufruf zu einer Log-Funktion, die diesen Zugriff im richtigen Format an ein erstelltes Log-File anfügt.
+Das Speicherzugriffsmuster der Algorithmen wurden mithilfe eines [LLVM-Passes](tools/MemoryAnalyser/MemoryAnalyser.cpp) für verschiedene Eingabegrößen analysiert und [aufgezeichnet](examples/merge_sort_10.csv). Der LLVM-Pass instrumentiert während des Kompilierprozesses jede Instruktion, die einen Speicherzugriff darstellt, mit einem Aufruf zu einer Log-Funktion, die diesen Zugriff im richtigen Format an ein erstelltes Log-File anfügt.
 
 Diese Algorithmen werden zur Vereinfachung auf einem System in reiner Harvard-Architektur simuliert, in welchem ein CPU über je einen Cache mit Instruktions- und Daten-RAM verbunden ist. Variierbare Parameter an diesem System sind die Cachelatenz, Memorylatenz, Cacheline-Größe, Cacheline-Zahl, der Mapping-Typ und die Replacement-Policy des Caches.
 ## Implementierung
 
+Das Design dieses [Caches](src/Simulation/Cache.h) ist angelehnt an das, das in Computer Organization and Design, Sixth Edition, von David A. Patterson and John L. Hennessy. 2020, vorgestellt wird. Kommt es zu einem Cache Miss wird, egal ob Lese- oder Schreibzugriff, erst die Cacheline in den Cache geladen und dann entweder ein 32 Bit Wort an den RAM gesandt oder das gelesene Wort an die CPU. Um durch Writes weniger Zeit zu verlieren, gibt es einen [Write-Buffer](src/Simulation/WriteBuffer.h), wodurch die CPU bereits nach einlesen der Zeile in den Cache den nächsten Befehl ausführen kann. Dieses Verhalten ist ausschaltbar über die Definition von STRICT_INSTRUCTION_ORDER. Das bei der Messung simulierte System besteht aus in Harvard-Architektur organisierten [CPU](src/Simulation/CPU.h), [Instruktion](src/Simulation/InstructionCache.h)- und Datencache sowie Instruktions- und Daten-[RAM](src/Simulation/RAM.h).
 
 ## Ergebnisse
 Diagramme

@@ -123,7 +123,7 @@ def runBenchmarkForMappingTypeVaryingAlg(*, memLatency:int, cacheLineSize:int, c
     return bs
 
 benches: list[BenchmarkResult] = runBenchmarkForPolicyAndCacheLineNum(memLatency=100, cacheLatency=5, cacheLineSize=16)
-printAsCSV(["Policy", "Cacheline-Num" "Gates"], [[b.policy for b in benches], [b.cacheLineNum for b in benches], [b.cacheLineSize for b in benches], [b.result.gates for b in benches]], "../BenchmarkResults/mappingBenchmarkPolicyGates.csv")
+printAsCSV(["Policy", "Cacheline-Num", "Gates"], [[b.policy for b in benches], [b.cacheLineNum for b in benches],[b.result.gates for b in benches]], "../BenchmarkResults/mappingBenchmarkPolicyGates.csv")
 
 mergeBenches: list[BenchmarkResult] = runBenchmarkForAlg("merge", cacheLineSize=16, cacheLineNum=8, memLatency=100, cacheLatency=20)
 #print("done with merge benchess")
