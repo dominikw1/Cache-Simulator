@@ -107,6 +107,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
 
     return (unsigned)n;
 }
+
 /**
  * This function ensures that the cycle size provided by the user does not exceed
  * the maximum allowed value (int), unless the extended cycle option is enabled.
@@ -121,7 +122,6 @@ int check_cycle_size(int longCycles, const char* progname, struct Configuration*
     }
     return EXIT_SUCCESS;
 }
-
 
 /**
  * Retrieves the option string corresponding to the given option code.
