@@ -82,14 +82,14 @@ class TestCheckTraceFile(unittest.TestCase):
     def test_existing_file_tf(self):
         args = FILE_PATH + ' --tf ' + FILE_PATH + '/src/main.c'
         expected_output = "Error: File '" + FILE_PATH + '/src/main.c' + ("' already exists. Please choose a different "
-                                                         "filename for the tracefile.\n") + print_usage
+                                                                         "filename for the tracefile.\n") + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
     def test_invalid_file_path_tf(self):
         args = FILE_PATH + ' --tf ' + FILE_PATH + '/scr'
         expected_output = "Error: Filepath '" + FILE_PATH + '/scr' + ("' does not exist. Please choose a different "
-                                                             "filename for the tracefile.\n") + print_usage
+                                                                      "filename for the tracefile.\n") + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
