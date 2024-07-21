@@ -10,9 +10,9 @@
 #include "FileProcessor.h"
 #include "Request.h"
 
+// Lines 15-19 & 174-178 taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
 
 int validate_file_format(const char* filename, const char* filetype) {
-    // Taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
     const char *dot = strrchr(filename, '.');   // Check for valid file format
     if (dot == NULL || dot == filename) {
         fprintf(stderr, "Error: %s is not a valid file\n", filename);
@@ -161,9 +161,9 @@ error:
     exit(EXIT_FAILURE);
 }
 
-int check_trace_file(const char* progname, const char* optarg) {
+void check_trace_file(const char* progname, const char* optarg) {
     struct stat file_info;
-    if (stat(optarg, &file_info) == 0) {
+    if (stat(optarg, &file_info) == 0) {    // Filepath already exists
         if (S_ISDIR(file_info.st_mode)) {
             fprintf(stderr, "Error: Filename '%s' is a directory name. "
                             "Please choose a different filename for the tracefile.\n", optarg);
@@ -171,15 +171,29 @@ int check_trace_file(const char* progname, const char* optarg) {
             fprintf(stderr,"Error: File '%s' already exists. "
                             "Please choose a different filename for the tracefile.\n", optarg);
         }
-    } else {
-        const char *slash = strrchr(optarg, '/');   // Check for invalid directory
+        print_usage(progname);
+        exit(EXIT_FAILURE);
+    } else {    // Check for invalid filepath
+        const char *slash = strrchr(optarg, '/');
         if (slash == NULL || slash == optarg) {
-            return EXIT_SUCCESS;
+            return;    // No '/' found
+        } else if (*(slash + 1) == '\0') {
+            fprintf(stderr, "Error: Filepath '%s' does not exist and is a directory name. "
+                            "Please choose a different filename for the tracefile.\n", optarg);
         } else {
+            // Validate filepath before '/'
+            size_t path_length = slash - optarg;
+            char path[path_length + 1];
+            strncpy(path, optarg, path_length);
+            path[path_length] = '\0';
+
+            if (stat(path, &file_info) == 0) {  // Filepath exists
+                return;
+            }
             fprintf(stderr, "Error: Filepath '%s' does not exist. "
                             "Please choose a different filename for the tracefile.\n", optarg);
         }
+        print_usage(progname);
+        exit(EXIT_FAILURE);
     }
-    print_usage(progname);
-    exit(EXIT_FAILURE);
 }

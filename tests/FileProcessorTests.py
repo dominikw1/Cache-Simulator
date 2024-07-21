@@ -3,6 +3,7 @@ import subprocess
 import os
 
 CACHE_PATH = os.path.abspath(os.path.join('..', './cache')) + ' '
+POS_ARG = ' ' + os.path.abspath(os.path.join('..', 'examples', 'merge_sort_10.csv'))
 FILE_PATH = os.path.abspath('..')
 INVALID_FILE_PATH = os.path.abspath('InvalidFiles')
 
@@ -73,23 +74,32 @@ class TestExtractFileData(unittest.TestCase):
 
 class TestCheckTraceFile(unittest.TestCase):
     def test_existing_directory_tf(self):
-        args = FILE_PATH + ' --tf ' + INVALID_FILE_PATH
+        args = POS_ARG + ' --tf ' + INVALID_FILE_PATH
         expected_output = "Error: Filename '" + INVALID_FILE_PATH + ("' is a directory name. Please choose a different"
                                                                      " filename for the tracefile.\n") + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
     def test_existing_file_tf(self):
-        args = FILE_PATH + ' --tf ' + FILE_PATH + '/src/main.c'
+        args = POS_ARG + ' --tf ' + FILE_PATH + '/src/main.c'
         expected_output = "Error: File '" + FILE_PATH + '/src/main.c' + ("' already exists. Please choose a different "
                                                                          "filename for the tracefile.\n") + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
+    def test_invalid_directory_tf(self):
+        args = POS_ARG + ' --tf ' + FILE_PATH + '/scr/'
+        expected_output = "Error: Filepath '" + FILE_PATH + '/scr/' + ("' does not exist and is a directory name. "
+                                                                       "Please choose a different "
+                                                                       "filename for the tracefile.\n") + print_usage
+        output = capture_stderr(args).decode()
+        self.assertEqual(expected_output, output)
+
     def test_invalid_file_path_tf(self):
-        args = FILE_PATH + ' --tf ' + FILE_PATH + '/scr'
-        expected_output = "Error: Filepath '" + FILE_PATH + '/scr' + ("' does not exist. Please choose a different "
-                                                                      "filename for the tracefile.\n") + print_usage
+        args = POS_ARG + ' --tf ' + FILE_PATH + '/bli/bla/blub'
+        expected_output = "Error: Filepath '" + FILE_PATH + '/bli/bla/blub' + ("' does not exist. Please choose a "
+                                                                               "different filename for the "
+                                                                               "tracefile.\n") + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
