@@ -59,7 +59,7 @@ inline std::unique_ptr<Connections> connectComponentsNoCache(CPU& cpu, RAM& data
     cpu.addressBus(connections->CPU_to_dataCache_Address);
     cpu.dataOutBus(connections->CPU_to_dataCache_Data);
     cpu.weBus(connections->CPU_to_dataCache_WE);
-    cpu.validDataRequestBus(connections->CPU_to_dataCache_Vaid_Request);
+    cpu.validDataRequestBus(connections->CPU_to_dataCache_Valid_Request);
 
     cpu.dataInBus(connections->dataCache_to_CPU_Data);
     cpu.dataReadyBus(connections->dataCache_to_CPU_Ready);
@@ -67,7 +67,7 @@ inline std::unique_ptr<Connections> connectComponentsNoCache(CPU& cpu, RAM& data
     dataRam.addressBus(connections->CPU_to_dataCache_Address);
     dataRam.dataInBus(connections->CPU_to_dataCache_Data);
     dataRam.weBus(connections->CPU_to_dataCache_WE);
-    dataRam.validRequestBus(connections->CPU_to_dataCache_Vaid_Request);
+    dataRam.validRequestBus(connections->CPU_to_dataCache_Valid_Request);
 
     dataRam.readyBus(connections->dataCache_to_CPU_Ready);
     dataRam.dataOutBus(connections->dataRAM_to_dataCache_Data);
