@@ -109,8 +109,8 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
     sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
 
     return Result{connections.get()->CPU_to_instrCache_PC >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX,
-                  useCache ? dataCache.missCount : numRequests, useCache ? dataCache.hitCount : 0,
-                  useCache ? dataCache.calculateGateCount() : 0};
+                  usingCache ? dataCache.missCount : numRequests, usingCache ? dataCache.hitCount : 0,
+                  usingCache ? dataCache.calculateGateCount() : 0};
 }
 
 struct Result run_simulation_extended(unsigned int cycles, int directMapped, unsigned int cacheLines,
