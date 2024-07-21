@@ -53,7 +53,8 @@ struct Connections {
     sc_core::sc_signal<bool> SC_NAMED(instrRAM_to_instrCache_Ready);
 };
 
-inline std::unique_ptr<Connections> connectComponentsNoCache(CPU& cpu, RAM& dataRam, RAM& instructionRam) {
+inline std::unique_ptr<Connections> connectComponentsNoCache(CPU& cpu, RAM& dataRam, RAM& instructionRam,
+                                                             InstructionCache& instructionCache) {
     auto connections = std::make_unique<Connections>();
     // we reuse the signals meant to be between cpu and cache
     cpu.addressBus(connections->CPU_to_dataCache_Address);
@@ -76,6 +77,44 @@ inline std::unique_ptr<Connections> connectComponentsNoCache(CPU& cpu, RAM& data
     PortAdapter<128, std::uint32_t, 32> SC_NAMED(adapter);
     adapter.in(connections->dataRAM_to_dataCache_Data);
     adapter.out(connections->dataCache_to_CPU_Data);
+
+    // Instruction Cache - we need that for decoding
+    // CPU -> Cache
+    cpu.pcBus(connections->CPU_to_instrCache_PC);
+    cpu.validInstrRequestBus(connections->CPU_to_instrCache_Valid_Request);
+
+    instructionCache.pcBus(connections->CPU_to_instrCache_PC);
+    instructionCache.validInstrRequestBus(connections->CPU_to_instrCache_Valid_Request);
+
+    // Cache -> CPU
+    cpu.instrBus(connections->instrCache_to_CPU_Instruction);
+    cpu.instrReadyBus(connections->instrCache_to_CPU_Ready);
+
+    instructionCache.instructionBus(connections->instrCache_to_CPU_Instruction);
+    instructionCache.instrReadyBus(connections->instrCache_to_CPU_Ready);
+
+    // Cache -> RAM
+    instructionRam.addressBus(connections->instrCache_to_instrRAM_Address);
+    instructionRam.dataInBus(connections->instrCache_to_instrRAM_Data);
+    instructionRam.weBus(connections->instrCache_to_instrRAM_WE);
+    instructionRam.validRequestBus(connections->instrCache_to_instrRAM_Valid_Request);
+
+    instructionCache.memoryAddrBus(connections->instrCache_to_instrRAM_Address);
+    instructionCache.memoryDataOutBus(connections->instrCache_to_instrRAM_Data);
+    instructionCache.memoryWeBus(connections->instrCache_to_instrRAM_WE);
+    instructionCache.memoryValidRequestBus(connections->instrCache_to_instrRAM_Valid_Request);
+
+    // RAM -> Cache
+    instructionRam.dataOutBus(connections->instrRAM_to_instrCache_Data);
+    instructionRam.readyBus(connections->instrRAM_to_instrCache_Ready);
+
+    instructionCache.memoryDataInBus(connections->instrRAM_to_instrCache_Data);
+    instructionCache.memoryReadyBus(connections->instrRAM_to_instrCache_Ready);
+
+    cpu.clock(connections->clk);
+    instructionCache.clock(connections->clk);
+    dataRam.clock(connections->clk);
+    instructionRam.clock(connections->clk);
 }
 
 template <MappingType mappingType>
