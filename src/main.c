@@ -10,8 +10,7 @@
 int main(int argc, char** argv) {
 
     // Parse command line arguments
-    struct Configuration config;
-    parse_arguments(argc, argv, &config);
+    struct Configuration config = parse_arguments(argc, argv);
 
     // Call run_simulation by default or run_simulation_extended depending on additional flags
     struct Result result;
@@ -27,7 +26,7 @@ int main(int argc, char** argv) {
     free(config.requests);
     config.requests = NULL;
 
-    // Check for string_data results
+    // Check for invalid results
     if (result.cycles == 0 && result.misses == 0 && result.hits == 0 && result.primitiveGateCount == 0) {
         fprintf(stderr, "Result does not contain valid data.\n");
         print_usage(argv[0]);

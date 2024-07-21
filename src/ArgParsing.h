@@ -22,4 +22,4 @@ struct Configuration {
 
 void print_usage(const char* progname);
 
-int parse_arguments(int argc, char** argv, struct Configuration* config);
+struct Configuration parse_arguments(int argc, char** argv);
