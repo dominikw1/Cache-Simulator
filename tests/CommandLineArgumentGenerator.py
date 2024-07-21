@@ -3,7 +3,7 @@ import random
 # Parameters to change command line argument size and line count
 flags = 10
 lines = 50
-debug_option = "valgrind -s "   # --leak-check=summary --show-leak-kinds=definite --track-origins=no
+debug_option = "valgrind -s --leak-check=summary "  # --show-leak-kinds=definite --track-origins=no"
 
 progname = "./cache "
 pos_argument = "examples/merge_sort_10.csv "  # valid file

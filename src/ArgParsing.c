@@ -27,6 +27,7 @@
 
 
 // Taken inspiration and adapted from exercises 'Nutzereingaben' and 'File IO' from GRA Week 3
+
 const char* usage_msg =
     "usage: %s [-c c/--cycles c] [--lcycles] [--directmapped] [--fullassociative] "
     "[--cacheline-size s] [--cachelines n] [--cache-latency l] [--memorylatency m] "
@@ -84,6 +85,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
         exit(EXIT_FAILURE);
     }
 
+    // Check possible error conditions
     if (n <= 0 || errno != 0 || n > UINT32_MAX) {
         if (errno == 0 && n <= 0) {
             if (n == 0) {   // Allow certain options with value 0
@@ -95,7 +97,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
                     fprintf(stderr, "Warning: A value of 0 for %s is not realistic!\n", option);
                     return 0;
                 }
-            } else {  // Negative input not useful for simulation
+            } else {  // Negative input
                 fprintf(stderr, "Invalid input: %s\n", message);
             }
         } else if (n > UINT32_MAX) { // Input needs to fit into predefined datatypes for run_simulation method
