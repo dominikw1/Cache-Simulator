@@ -24,7 +24,36 @@ Diese Algorithmen werden zur Vereinfachung auf einem System in reiner Harvard-Ar
 Das Design dieses [Caches](src/Simulation/Cache.h) ist angelehnt an das, das in Computer Organization and Design, Sixth Edition, von David A. Patterson and John L. Hennessy. 2020, vorgestellt wird. Kommt es zu einem Cache Miss wird, egal ob Lese- oder Schreibzugriff, erst die Cacheline in den Cache geladen und dann entweder ein 32 Bit Wort an den RAM gesandt oder das gelesene Wort an die CPU. Um durch Writes weniger Zeit zu verlieren, gibt es einen [Write-Buffer](src/Simulation/WriteBuffer.h), wodurch die CPU bereits nach einlesen der Zeile in den Cache den nächsten Befehl ausführen kann. Dieses Verhalten ist ausschaltbar über die Definition von STRICT_INSTRUCTION_ORDER. Das bei der Messung simulierte System besteht aus in Harvard-Architektur organisierten [CPU](src/Simulation/CPU.h), [Instruktion](src/Simulation/InstructionCache.h)- und Datencache sowie Instruktions- und Daten-[RAM](src/Simulation/RAM.h).
 
 ## Ergebnisse
-Diagramme
+
+![](BenchmarkResults/MergeVSRadix.jpeg.jpg)
+
+![](BenchmarkResults/CacheLineplot.jpeg.jpg)
+
+
+![](BenchmarkResults/Policies.jpeg.jpg)
+
+![](BenchmarkResults/Mappingplot.jpeg.jpg)
+
+![](BenchmarkResults/MapCacheNum.jpeg.jpg)
+
+![](BenchmarkResults/MapCacheLineSize.jpeg.jpg)
+
+![](BenchmarkResults/MapMemLatency.jpeg.jpg)
+
+
+![](BenchmarkResults/MapAlg.jpeg.jpg)
+
+![](BenchmarkResults/MapGatesLineNum.jpeg.jpg)
+
+![](BenchmarkResults/MapPolicyGates.jpeg.jpg)
+
+
+
+
+
+
+
+
 
 
 ## Persönliche Beiträge
