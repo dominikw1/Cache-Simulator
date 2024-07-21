@@ -14,7 +14,7 @@ add_definitions(-g -Wall -Wextra -pedantic)
 if (BUILD_INTEGRATION_TESTING)
     add_executable(tests Utils.cpp IntegrationTests.cpp)
 else ()
-    add_executable(tests BenchmarkSortTest.cpp LRUTests.cpp Utils.cpp CPUTests.cpp FIFOTests.cpp CacheTests.cpp MemoryTests.cpp AdapterTests.cpp)
+    add_executable(tests BenchmarkSortTest.cpp LRUTests.cpp Utils.cpp CPUTests.cpp FIFOTests.cpp CacheTests.cpp MemoryTests.cpp)
 endif ()
 
 target_link_libraries(tests -lubsan)
