@@ -6,7 +6,7 @@
 #include "CPU.h"
 #include "Cache.h"
 #include "InstructionCache.h"
-#include "Memory.h"
+#include "RAM.h"
 #include "PortAdapter.h"
 
 struct Connections {

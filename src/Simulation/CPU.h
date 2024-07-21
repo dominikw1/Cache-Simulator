@@ -55,7 +55,7 @@ SC_MODULE(CPU) {
   private:
     SC_CTOR(CPU); // private since this is never to be called, just to get systemc typedef
 
-    // ========== Main Handling ==============
+    // ======================================= Main Handling =======================================
     /**
      * The main point of the CPU, which sleeps until we received a instruction and then sets all signals needed
      * for the data cache to process the request. In case of a read the data returned from the cache is set to the data
