@@ -42,7 +42,7 @@ template <>
 std::vector<Cacheline>::iterator
 Cache<MappingType::Fully_Associative>::chooseWhichCachelineToFillFromRAM(const DecomposedAddress& decomposedAddr) {
     auto firstUnusedCacheline = cacheInternal.end();
-    // since there is no way for a valid cacheline to become invalid again, we can safely just fill them up one by one.
+    // since there is no way for a valid cacheline to become string_data again, we can safely just fill them up one by one.
     // If this process has finished, there are sadly no more free cachelines - and there never will be again
     if (cachelineLookupTable.numCacheLinesUsed != numCacheLines) {
         firstUnusedCacheline = cacheInternal.begin() + cachelineLookupTable.numCacheLinesUsed;
@@ -255,7 +255,7 @@ template <MappingType mappingType> void Cache<mappingType>::handleRequest() noex
         const auto subRequests = splitRequestIntoSubRequests(request, cacheLineSize);
 
         // while this is also passed into write requests, it is only relevant for read request and will not be accessed
-        // if invalid for the request type
+        // if string_data for the request type
         std::uint32_t readData = 0;
 
         for (auto& subRequest : subRequests) {
