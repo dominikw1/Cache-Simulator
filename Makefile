@@ -54,11 +54,13 @@ clean:
 	rm -f src/Simulation/*.o
 
 test:
+	rm -rf build
 	cmake -S . -B build
 	cmake --build build  -j16
 	cd build; ctest --output-on-failure --parallel 16
 
 integration:
+	rm -rf build
 	cmake -DBUILD_INTEGRATION_TESTING=ON -S . -B build
 	cmake --build build  -j16
 	cd build; ctest --output-on-failure --parallel 16

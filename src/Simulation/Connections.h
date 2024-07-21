@@ -115,6 +115,8 @@ inline std::unique_ptr<Connections> connectComponentsNoCache(CPU& cpu, RAM& data
     instructionCache.clock(connections->clk);
     dataRam.clock(connections->clk);
     instructionRam.clock(connections->clk);
+
+    return connections;
 }
 
 template <MappingType mappingType>

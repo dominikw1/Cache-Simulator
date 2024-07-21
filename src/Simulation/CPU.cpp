@@ -33,6 +33,12 @@ void CPU::handleInstruction() noexcept {
 
             lastCycleWhereWorkWasDone = sc_core::sc_time_stamp().value() / 1000;
 
+#ifndef DEBUG_RUN_TILL_END
+            if (program_counter == numRequests) {
+                sc_core::sc_stop();
+            }
+#endif
+
             if (!currentRequest.we) {
                 instructions[program_counter - 1].data = dataInBus;
             }
@@ -53,11 +59,6 @@ void CPU::readInstruction() noexcept {
 
         wait(triggerNextInstructionRead);
         ++program_counter; // Increase PC after the event has been triggered to reflect a correct state of the PC
-#ifndef DEBUG_RUN_TILL_END
-        if (program_counter == numRequests) {
-            sc_core::sc_stop();
-        }
-#endif
     }
 }
 

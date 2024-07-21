@@ -38,7 +38,7 @@ class IntegrationTests : public TestWithParam<std::tuple<unsigned int, unsigned 
     int requestsSize = std::get<5>(GetParam()).second;
     std::vector<Request> requestsAsVector = std::vector<Request>(requests, requests + requestsSize);
 
-    CPU cpu{"CPU", requests};
+    CPU cpu{"CPU", requests, requestsSize};
 
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / 16};
     RAM instructionRam{"Instruction_RAM", memoryLatency, cacheLineSize / 16};

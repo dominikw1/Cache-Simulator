@@ -35,6 +35,7 @@ SC_MODULE(CPU) {
     std::uint64_t program_counter = 0;
     std::uint64_t lastCycleWhereWorkWasDone = 0;
     std::size_t numRequests = 0;
+
     // needed to handle a parallel instruction read and instruction processing
     bool instructionReady = false;
     sc_core::sc_event triggerNextInstructionRead;

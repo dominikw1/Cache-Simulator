@@ -87,7 +87,7 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
                                struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
                                int usingCache) {
 
-    CPU cpu{"CPU", requests};
+    CPU cpu{"CPU", requests, numRequests};
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE};
     RAM instructionRam{"Instruction_RAM", memoryLatency, cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE};
 
@@ -103,7 +103,7 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
 #endif
 
     auto connections = (usingCache) ? connectComponents(cpu, dataRam, instructionRam, dataCache, instructionCache)
-                                    : connectComponentsNoCache(cpu, dataRam, instructionRam);
+                                    : connectComponentsNoCache(cpu, dataRam, instructionRam, instructionCache);
 
     auto tracer = setUpTracefile(tracefile, *connections, dataCache);
     sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
