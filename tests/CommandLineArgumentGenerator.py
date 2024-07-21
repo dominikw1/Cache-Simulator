@@ -3,7 +3,7 @@ import random
 # Parameters to change command line argument size and line count
 flags = 10
 lines = 50
-debug_option = "valgrind -s --leak-check=summary "  # --show-leak-kinds=definite --track-origins=no"
+# debug_option = "valgrind -s --leak-check=summary "  # --show-leak-kinds=definite --track-origins=no"
 
 progname = "./cache "
 pos_argument = "examples/merge_sort_10.csv "  # valid file
@@ -39,6 +39,6 @@ for i in range(0, lines):
             arguments += str(random.choice(valid_input)) + " "
 
     line = progname + pos_argument + arguments
-    file.write("echo input: " + pos_argument + arguments + "\n" + debug_option + line + "\n")
+    file.write("echo input: " + pos_argument + arguments + "\n" + line + "\n")
 
 file.close()
