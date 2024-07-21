@@ -322,7 +322,8 @@ template <MappingType mappingType> Request Cache<mappingType>::constructRequestF
     return Request{cpuAddrBus.read(), cpuDataInBus.read(), cpuWeBus.read()};
 }
 
-#pragma region GateCount
+// ================== GATE COUNT ================
+
 
 static constexpr std::size_t calcGateCountForInternalTable(std::uint32_t numCachelines, std::uint32_t cachelineSize,
                                                            std::uint32_t tagBits) noexcept {
@@ -387,7 +388,7 @@ template <MappingType mappingType> std::size_t Cache<mappingType>::calculateGate
         calcGateCountForInternalTable(numCacheLines, cacheLineSize, addressTagBits),
         calcGateCountForDoingReads(cacheLineSize), calcGateCountForSubRequestSplitting(), calcGateCountForMisc());
 }
-#pragma endregion
+// ============ END GATE COUNT ========================
 
 #ifdef STRICT_INSTRUCTION_ORDER
 template <MappingType mappingType> void Cache<mappingType>::setMemoryLatency(std::uint32_t memoryLatency) {}
