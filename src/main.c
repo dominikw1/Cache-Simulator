@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
     if (config.callExtended) {
         result = run_simulation_extended(config.cycles, config.directMapped, config.cacheLines, config.cacheLineSize,
                                          config.cacheLatency, config.memoryLatency, config.numRequests, config.requests,
-                                         config.tracefile, config.policy, config.usingCache);
+                                         config.tracefile, config.policy);
     } else {
         result = run_simulation((int)config.cycles, config.directMapped, config.cacheLines, config.cacheLineSize,
                                 config.cacheLatency, config.memoryLatency, config.numRequests, config.requests,

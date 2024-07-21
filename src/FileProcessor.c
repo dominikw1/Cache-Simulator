@@ -12,8 +12,9 @@
 
 // Lines 15-19 & 174-178 taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
 
+// TODO: Methodenbeschreibung
 int validate_file_format(const char* filename, const char* filetype) {
-    const char *dot = strrchr(filename, '.');   // Check for valid file format
+    const char *dot = strrchr(filename, '.');
     if (dot == NULL || dot == filename) {
         fprintf(stderr, "Error: %s is not a valid file\n", filename);
         return EXIT_FAILURE;

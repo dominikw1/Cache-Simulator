@@ -113,7 +113,7 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
 struct Result run_simulation_extended(unsigned int cycles, int directMapped, unsigned int cacheLines,
                                       unsigned int cacheLineSize, unsigned int cacheLatency, unsigned int memoryLatency,
                                       size_t numRequests, struct Request requests[], const char* tracefile,
-                                      CacheReplacementPolicy policy, int usingCache) {
+                                      CacheReplacementPolicy policy) {
     if (directMapped == 0) {
         return run_simulation_extended<MappingType::Fully_Associative>(
             cycles, cacheLines, cacheLineSize, cacheLatency, memoryLatency, numRequests, requests, tracefile, policy);
@@ -127,7 +127,7 @@ struct Result run_simulation(int cycles, int directMapped, unsigned cacheLines, 
                              unsigned cacheLatency, unsigned memoryLatency, size_t numRequests,
                              struct Request requests[], const char* tracefile) {
     return run_simulation_extended(cycles, directMapped, cacheLines, cacheLineSize, cacheLatency, memoryLatency,
-                                   numRequests, requests, tracefile, POLICY_LRU, true);
+                                   numRequests, requests, tracefile, POLICY_LRU);
 }
 
 int sc_main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[]) {

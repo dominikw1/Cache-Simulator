@@ -87,18 +87,6 @@ class TestInvalidInput(unittest.TestCase):
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
-    def test_missing_argument_use_cache_1(self):
-        args = ' --use-cache= ' + FILE_PATH
-        expected_output = "Error: Option --use-cache requires an argument.\n" + print_usage
-        output = capture_stderr(args).decode()
-        self.assertEqual(expected_output, output)
-
-    def test_invalid_argument_use_cache(self):
-        args = ' --use-cache x ' + FILE_PATH
-        expected_output = "Error: 'x' is not a valid option for --use-cache.\n" + print_usage
-        output = capture_stderr(args).decode()
-        self.assertEqual(expected_output, output)
-
     def test_missing_argument_trace_file(self):
         args = ' --tf= ' + FILE_PATH
         expected_output = "Error: Option --tf requires an argument.\n" + print_usage
@@ -135,12 +123,6 @@ class TestInvalidInput(unittest.TestCase):
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
-    def test_missing_argument_use_cache_2(self):
-        args = FILE_PATH + ' --use-cache '
-        expected_output = "Error: Option --use-cache requires an argument.\n" + print_usage
-        output = capture_stderr(args).decode()
-        self.assertEqual(expected_output, output)
-
     def test_missing_argument_trace_file_2(self):
         args = FILE_PATH + ' --tf '
         expected_output = "Error: Option --tf requires an argument.\n" + print_usage
@@ -161,11 +143,6 @@ class TestInvalidInput(unittest.TestCase):
 
 
 class TestWarnings(unittest.TestCase):
-    def test_setting_useCache(self):
-        args = ' --cachelines 0 ' + FILE_PATH
-        expected_output = "Warning: --cachelines must be at least 1. Setting use-cache=n and --extended."
-        output = capture_stderr(args).decode()
-        self.assertIn(expected_output, output)
 
     def test_multiple_architecture_inputs(self):
         args = ' --directmapped --fullassociative ' + FILE_PATH
@@ -192,21 +169,9 @@ class TestWarnings(unittest.TestCase):
         output = capture_stderr(args).decode()
         self.assertIn(expected_output, output)
 
-    def test_usecache_not_set(self):
-        args = ' --use-cache= ' + FILE_PATH
-        expected_output = "Error: Option --use-cache requires an argument.\n" + print_usage
-        output = capture_stderr(args).decode()
-        self.assertIn(expected_output, output)
-
-    def test_usecache_invalid_option(self):
-        args = ' --use-cache=u ' + FILE_PATH
-        expected_output = "Error: 'u' is not a valid option for --use-cache.\n"
-        output = capture_stderr(args).decode()
-        self.assertIn(expected_output, output)
-
     def test_memorylatency_cachelatency(self):
         args = ' --memory-latency 5 --cache-latency 10 ' + FILE_PATH
-        expected_output = "Warning: Memory latency is less than cache latency."
+        expected_output = "Warning: Memory latency is less than cache latency.\n"
         output = capture_stderr(args).decode()
         self.assertIn(expected_output, output)
 
@@ -236,7 +201,7 @@ class TestOther(unittest.TestCase):
         args = ' --help ' + FILE_PATH
         expected_output = (print_usage + "\n"
                            + ("Positional arguments:\n"
-                              "   <filename>   The name of the file to be processed\n"
+                              "   <filename>   The name of the file to be processed (including .csv extension)\n"
                               "\n"
                               "Optional arguments:\n"
                               "   -c c / --cycles c       The number of cycles used for the simulation "
@@ -251,13 +216,11 @@ class TestOther(unittest.TestCase):
                               "   --lru                   Use LRU as cache-replacement policy (Set as default)\n"
                               "   --fifo                  Use FIFO as cache-replacement policy\n"
                               "   --random                Use random cache-replacement policy\n"
-                              "   --use-cache=<Y,n>       Simulates a system with cache or no cache (default: Y)\n"
-                              "   --tf=<filename>         The name for a trace file containing all signals. "
-                              "If not set, no "
-                              "trace file will be created\n"
+                              "   --tf=<filename>         The name for a trace file (without file extension) "
+                              "containing all "
+                              "signals. If not set, no trace file will be created\n"
                               "   --extended              Calls extended run_simulation-method with additional "
-                              "parameters "
-                              "\'policy' and \'use-cache'\n"
+                              "parameters \'policy' and \'lcycles'\n"
                               "   -h / --help             Show this help message and exit\n"))
         output = capture_stderr(args).decode()
         self.assertIn(expected_output, output)
@@ -266,14 +229,12 @@ class TestOther(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
-print_usage = ("usage: " + CACHE_PATH + " [-c c/--cycles c] [--lcycles] "
-                                        "[--directmapped] [--fullassociative] "
+print_usage = ("usage: " + CACHE_PATH + " [-c c/--cycles c] [--lcycles] [--directmapped] [--fullassociative] "
                                         "[--cacheline-size s] [--cachelines n] [--cache-latency l] [--memorylatency m] "
-                                        "[--lru] [--fifo] [--random] [--use-cache=<Y,n>] [--tf=<filename>] [--extended]"
-                                        " [-h/--help] <filename>\n"
+                                        "[--lru] [--fifo] [--random] [--tf=<filename>] [--extended] [-h/--help] "
+                                        "<filename>\n"
                                         "   -c c / --cycles c       Set the number of cycles to be simulated to c. "
-                                        "Allows inputs in range "
-                                        "[0,2^16-1]\n"
+                                        "Allows inputs in range [0,2^16-1]\n"
                                         "   --lcycles               Allow input of cycles of up to 2^32-1\n"
                                         "   --directmapped          Simulate a direct-mapped cache\n"
                                         "   --fullassociative       Simulate a fully associative cache\n"
@@ -284,9 +245,8 @@ print_usage = ("usage: " + CACHE_PATH + " [-c c/--cycles c] [--lcycles] "
                                         "   --lru                   Use LRU as cache-replacement policy\n"
                                         "   --fifo                  Use FIFO as cache-replacement policy\n"
                                         "   --random                Use random cache-replacement policy\n"
-                                        "   --use-cache=<Y,n>       Simulates a system with cache or no cache\n"
                                         "   --extended              Call extended run_simulation-method\n"
-                                        "   --tf=<filename>         File name for a trace file containing all signals."
-                                        " If not set, no "
+                                        "   --tf=<filename>         File name for a trace (without file extension) "
+                                        "containing all signals. If not set, no "
                                         "trace file will be created\n"
                                         "   -h / --help             Show help message and exit\n")

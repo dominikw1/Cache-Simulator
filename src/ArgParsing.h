@@ -16,7 +16,6 @@ struct Configuration {
     struct Request* requests;
     const char* tracefile;
     enum CacheReplacementPolicy policy;
-    int usingCache;
     int callExtended;
 };
 

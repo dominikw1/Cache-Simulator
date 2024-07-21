@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <strings.h>
 
 #include "ArgParsing.h"
 #include "FileProcessor.h"
@@ -23,15 +22,15 @@
 #define MEMORY_LATENCY 137
 #define RANDOM_CHOICE 138
 #define TRACEFILE 139
-#define USE_CACHE 140
 
+// TODO: Tests anpassen
 
 // Taken inspiration and adapted from exercises 'Nutzereingaben' and 'File IO' from GRA Week 3
 
 const char* usage_msg =
     "usage: %s [-c c/--cycles c] [--lcycles] [--directmapped] [--fullassociative] "
     "[--cacheline-size s] [--cachelines n] [--cache-latency l] [--memorylatency m] "
-    "[--lru] [--fifo] [--random] [--use-cache=<Y,n>] [--tf=<filename>] [--extended] [-h/--help] <filename>\n"
+    "[--lru] [--fifo] [--random] [--tf=<filename>] [--extended] [-h/--help] <filename>\n"
     "   -c c / --cycles c       Set the number of cycles to be simulated to c. Allows inputs in range [0,2^16-1]\n"
     "   --lcycles               Allow input of cycles of up to 2^32-1\n"
     "   --directmapped          Simulate a direct-mapped cache\n"
@@ -43,14 +42,13 @@ const char* usage_msg =
     "   --lru                   Use LRU as cache-replacement policy\n"
     "   --fifo                  Use FIFO as cache-replacement policy\n"
     "   --random                Use random cache-replacement policy\n"
-    "   --use-cache=<Y,n>       Simulates a system with cache or no cache\n"
     "   --extended              Call extended run_simulation-method\n"
-    "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
+    "   --tf=<filename>         File name for a trace (without file extension) containing all signals. If not set, no "
     "trace file will be created\n"
     "   -h / --help             Show help message and exit\n";
 
 const char* help_msg = "Positional arguments:\n"
-                       "   <filename>   The name of the file to be processed\n"
+                       "   <filename>   The name of the file to be processed (including .csv extension)\n"
                        "\n"
                        "Optional arguments:\n"
                        "   -c c / --cycles c       The number of cycles used for the simulation (default: c = 100000)\n"
@@ -64,11 +62,10 @@ const char* help_msg = "Positional arguments:\n"
                        "   --lru                   Use LRU as cache-replacement policy (Set as default)\n"
                        "   --fifo                  Use FIFO as cache-replacement policy\n"
                        "   --random                Use random cache-replacement policy\n"
-                       "   --use-cache=<Y,n>       Simulates a system with cache or no cache (default: Y)\n"
-                       "   --tf=<filename>         The name for a trace file containing all signals. If not set, no "
-                       "trace file will be created\n"
+                       "   --tf=<filename>         The name for a trace file (without file extension) containing all "
+                       "signals. If not set, no trace file will be created\n"
                        "   --extended              Calls extended run_simulation-method with additional parameters "
-                       "\'policy' and \'use-cache'\n"
+                       "\'policy' and \'lcycles'\n"
                        "   -h / --help             Show this help message and exit\n";
 
 
@@ -87,16 +84,10 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
 
     // Check possible error conditions
     if (n <= 0 || errno != 0 || n > UINT32_MAX) {
-        if (errno == 0 && n <= 0) {
-            if (n == 0) {   // Allow certain options with value 0
-                if (strncmp(option, "--cachelines", 12) == 0) {
-                    fprintf(stderr, "Warning: --cachelines must be at least 1. Setting use-cache=n and "
-                                    "--extended.\n");
-                    return 0;
-                } else if (strncmp(option, "--cache-latency", 15) == 0 || strncmp(option, "--memory", 8) == 0) {
-                    fprintf(stderr, "Warning: A value of 0 for %s is not realistic!\n", option);
-                    return 0;
-                }
+        if (errno == 0 && n <= 0) { // Allow certain options with value 0
+            if (n == 0 && (strncmp(option, "--cache-latency", 15) == 0 || strncmp(option, "--memory", 8) == 0)) {
+                fprintf(stderr, "Warning: A value of 0 for %s is not realistic!\n", option);
+                return 0;
             } else {  // Negative input
                 fprintf(stderr, "Invalid input: %s\n", message);
             }
@@ -135,8 +126,6 @@ char* get_option(int option) {
         return "--cache-latency";
     case MEMORY_LATENCY:
         return "--memory-latency";
-    case USE_CACHE:
-        return "--use-cache";
     case TRACEFILE:
         return "--tf";
     default:
@@ -170,7 +159,6 @@ struct Configuration parse_arguments(int argc, char** argv) {
     config.tracefile = NULL;
 
     config.policy = POLICY_LRU;    // 0 => lru, 1 => fifo, 2 => random
-    config.usingCache = 1;         // Default: true
     config.callExtended = 0;       // Default: false
 
 
@@ -190,7 +178,6 @@ struct Configuration parse_arguments(int argc, char** argv) {
                                            {"lru", no_argument, 0, LEAST_RECENTLY_USED},
                                            {"fifo", no_argument, 0, FIRST_IN_FIRST_OUT},
                                            {"random", no_argument, 0, RANDOM_CHOICE},
-                                           {"use-cache", required_argument, 0, USE_CACHE},
                                            {"extended", no_argument, 0, CALL_EXTENDED},
                                            {"tf=", required_argument, 0, TRACEFILE},
                                            {"help", no_argument, 0, 'h'},
@@ -217,6 +204,7 @@ struct Configuration parse_arguments(int argc, char** argv) {
 
         case LONG_CYCLES:
             longCycles = 1;
+            // TODO: Message --extended set
             config.callExtended = 1;
             break;
 
@@ -261,11 +249,6 @@ struct Configuration parse_arguments(int argc, char** argv) {
         case CACHELINES:
             error_msg = "Number of cache-lines must be at least 1.";
             unsigned long n = check_user_input(endptr, error_msg, progname, "--cachelines");
-            if (n == 0) { // Use no cache for simulation due to user input --cachelines 0
-                config.usingCache = 0;
-                config.callExtended = 1;
-                break;
-            }
 
             if (!is_power_of_two(n)) {
                 fprintf(stderr, "Warning: Number of cachelines are usually a power of two!\n");
@@ -319,22 +302,6 @@ struct Configuration parse_arguments(int argc, char** argv) {
             config.policy = POLICY_RANDOM;
             break;
 
-        case USE_CACHE: // use-cache=n used for benchmarking
-            if (strlen(optarg) < 3 && (strncasecmp(optarg, "n", 2) == 0 || strncasecmp(optarg, "no", 2) == 0)) {
-                config.usingCache = 0;
-                break;
-            } else if (strlen(optarg) < 4 && (strncasecmp(optarg, "y", 2) == 0 || strncasecmp(optarg, "yes", 2) == 0)) {
-                break;
-            }
-
-            if (*optarg == '\0') {
-                fprintf(stderr, "Error: Option --use-cache requires an argument.\n");
-            } else {
-                fprintf(stderr, "Error: '%s' is not a valid option for --use-cache.\n", optarg);
-            }
-            print_usage(progname);
-            exit(EXIT_FAILURE);
-
         case TRACEFILE:
             if (*optarg == '\0') {
                 fprintf(stderr, "Error: Option --tf requires an argument.\n");
@@ -369,10 +336,6 @@ struct Configuration parse_arguments(int argc, char** argv) {
 
     if (config.memoryLatency < config.cacheLatency) {
         fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
-    } else if (!config.usingCache && !config.callExtended) {
-        fprintf(stderr, "Error: Please use --extended when not using a cache (use-cache=n).\n");
-        print_usage(progname);
-        exit(EXIT_FAILURE);
     }
 
     check_cycle_size(longCycles, progname, &config);
