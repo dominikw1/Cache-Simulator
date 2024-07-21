@@ -7,6 +7,7 @@
 #include "Cache.h"
 #include "InstructionCache.h"
 #include "Memory.h"
+#include "PortAdapter.h"
 
 struct Connections {
     sc_core::sc_clock SC_NAMED(clk, sc_core::sc_time(1, sc_core::SC_NS));
@@ -52,12 +53,36 @@ struct Connections {
     sc_core::sc_signal<bool> SC_NAMED(instrRAM_to_instrCache_Ready);
 };
 
+inline std::unique_ptr<Connections> connectComponentsNoCache(CPU& cpu, RAM& dataRam, RAM& instructionRam) {
+    auto connections = std::make_unique<Connections>();
+    // we reuse the signals meant to be between cpu and cache
+    cpu.addressBus(connections->CPU_to_dataCache_Address);
+    cpu.dataOutBus(connections->CPU_to_dataCache_Data);
+    cpu.weBus(connections->CPU_to_dataCache_WE);
+    cpu.validDataRequestBus(connections->CPU_to_dataCache_Vaid_Request);
+
+    cpu.dataInBus(connections->dataCache_to_CPU_Data);
+    cpu.dataReadyBus(connections->dataCache_to_CPU_Ready);
+
+    dataRam.addressBus(connections->CPU_to_dataCache_Address);
+    dataRam.dataInBus(connections->CPU_to_dataCache_Data);
+    dataRam.weBus(connections->CPU_to_dataCache_WE);
+    dataRam.validRequestBus(connections->CPU_to_dataCache_Vaid_Request);
+
+    dataRam.readyBus(connections->dataCache_to_CPU_Ready);
+    dataRam.dataOutBus(connections->dataRAM_to_dataCache_Data);
+
+    // use adapter
+    PortAdapter<128, std::uint32_t, 32> SC_NAMED(adapter);
+    adapter.in(connections->dataRAM_to_dataCache_Data);
+    adapter.out(connections->dataCache_to_CPU_Data);
+}
+
 template <MappingType mappingType>
 inline std::unique_ptr<Connections> connectComponents(CPU& cpu, RAM& dataRam, RAM& instructionRam,
                                                       Cache<mappingType>& dataCache,
                                                       InstructionCache& instructionCache) {
     auto connections = std::make_unique<Connections>();
-
     // Data Cache
     // CPU -> Cache
     cpu.addressBus(connections->CPU_to_dataCache_Address);
