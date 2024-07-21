@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <getopt.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,7 +9,6 @@
 
 #include "Argparsing.h"
 #include "FileProcessor.h"
-#include "Request.h"
 #include "Simulation/Policy/Policy.h"
 
 #define CACHE_LATENCY 128

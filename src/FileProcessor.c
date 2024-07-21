@@ -1,11 +1,15 @@
 #include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
 #include "Argparsing.h"
+#include "FileProcessor.h"
 #include "Request.h"
+
 
 int validate_file_format(const char* filename, const char* filetype) {
     // Taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c

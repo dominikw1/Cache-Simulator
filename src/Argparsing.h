@@ -1,7 +1,9 @@
 #pragma once
 
 #include "stddef.h"
+#include "Request.h"
 #include "Simulation/Policy/Policy.h"
+
 
 struct Configuration {
     unsigned int cycles;

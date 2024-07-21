@@ -1,5 +1,5 @@
 #pragma once
-#include "stddef.h"
+#include <stddef.h>
 
 struct Result {
     size_t cycles;
