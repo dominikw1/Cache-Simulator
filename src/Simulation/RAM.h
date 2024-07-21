@@ -3,6 +3,7 @@
 #include <map>
 #include <systemc>
 #include <unordered_map>
+#include <cstdint>
 
 SC_MODULE(RAM) {
   public:
