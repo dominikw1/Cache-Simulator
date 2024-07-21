@@ -103,7 +103,7 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
 #endif
 
     auto connections = (usingCache) ? connectComponents(cpu, dataRam, instructionRam, dataCache, instructionCache)
-                                    : connectComponentsNoCache(cpu, dataRam, instructionRam, instructionCache);
+                                    : connectComponentsNoCache(cpu, dataRam, instructionRam, instructionCache, dataCache);
 
     auto tracer = setUpTracefile(tracefile, *connections, dataCache);
     sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS

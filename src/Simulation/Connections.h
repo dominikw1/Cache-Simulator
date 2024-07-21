@@ -6,8 +6,8 @@
 #include "CPU.h"
 #include "Cache.h"
 #include "InstructionCache.h"
-#include "RAM.h"
 #include "PortAdapter.h"
+#include "RAM.h"
 
 struct Connections {
     sc_core::sc_clock SC_NAMED(clk, sc_core::sc_time(1, sc_core::SC_NS));
@@ -53,8 +53,10 @@ struct Connections {
     sc_core::sc_signal<bool> SC_NAMED(instrRAM_to_instrCache_Ready);
 };
 
+template <typename DataCacheType>
 inline std::unique_ptr<Connections> connectComponentsNoCache(CPU& cpu, RAM& dataRam, RAM& instructionRam,
-                                                             InstructionCache& instructionCache) {
+                                                             InstructionCache& instructionCache,
+                                                             DataCacheType& dataCache) {
     auto connections = std::make_unique<Connections>();
     // we reuse the signals meant to be between cpu and cache
     cpu.addressBus(connections->CPU_to_dataCache_Address);
@@ -115,6 +117,34 @@ inline std::unique_ptr<Connections> connectComponentsNoCache(CPU& cpu, RAM& data
     instructionCache.clock(connections->clk);
     dataRam.clock(connections->clk);
     instructionRam.clock(connections->clk);
+
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(DUMMY_dataCache_Address);
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(DUMMY_dataCache_Data_IN);
+    sc_core::sc_signal<bool> SC_NAMED(DUMMY_dataCache_WE);
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(DUMMY_dataCache_Valid_Request);
+    dataCache.cpuAddrBus(DUMMY_dataCache_Address);
+    dataCache.cpuDataOutBus(DUMMY_dataCache_Data_IN);
+    dataCache.cpuWeBus(DUMMY_dataCache_WE);
+    dataCache.cpuValidRequest(DUMMY_dataCache_Valid_Request);
+
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(DUMMY_CPU_Data);
+    sc_core::sc_signal<bool> SC_NAMED(DUMMY_CPU_Ready);
+    dataCache.cpuDataInBus(DUMMY_CPU_Data);
+    dataCache.ready(DUMMY_CPU_Ready);
+
+    sc_core::sc_signal<std::uint32_t, sc_core::SC_MANY_WRITERS> SC_NAMED(DUMMY_dataRAM_Address);
+    sc_core::sc_signal<std::uint32_t> SC_NAMED(DUMMY_dataRAM_Data);
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(DUMMY_dataRAM_WE);
+    sc_core::sc_signal<bool, sc_core::SC_MANY_WRITERS> SC_NAMED(DUMMY_dataRAM_Valid_Request);
+    dataCache.memoryAddrBus(DUMMY_dataRAM_Address);
+    dataCache.memoryWeBus(DUMMY_dataRAM_WE);
+    dataCache.memoryDataOutBus(DUMMY_dataRAM_Data);
+    dataCache.memoryValidRequestBus(DUMMY_dataRAM_Valid_Request);
+
+    sc_core::sc_signal<sc_dt::sc_bv<128>> SC_NAMED(DUMMY_dataCache_Data_OUT);
+    sc_core::sc_signal<bool> SC_NAMED(DUMMY_dataCache_Ready);
+    dataCache.memoryReadyBus(DUMMY_dataCache_Ready);
+    dataCache.memoryDataInBus(DUMMY_dataCache_Data_OUT);
 
     return connections;
 }
