@@ -113,6 +113,7 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
 }
 
 int check_cycle_size(int longCycles, const char* progname, struct Configuration* config) {
+    // Check if --extended flag was set right or user input is too large for an int
     if ((!longCycles && !config->callExtended) && config->cycles > INT32_MAX) {
         fprintf(stderr, "Error: Overflow detected. Input for -c/--cycles is too big to be converted "
                         "to an int. Set option --lcycles to increase range.\n");
@@ -149,7 +150,8 @@ int is_power_of_two(unsigned long n) { return n && !(n & (n - 1)); }
 int is_multiple_of_sixteen(unsigned long n) { return !(n & 15); }
 
 
-int parse_arguments(int argc, char** argv, struct Configuration* config) {
+struct Configuration parse_arguments(int argc, char** argv) {
+    struct Configuration config;
 
     const char* progname = argv[0];
     if (argc == 1) {
@@ -159,17 +161,17 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
     }
 
     // Set default values for fullassociative cache and run_simulation_extended
-    config->cycles = 100000;
-    config->directMapped = 0;       // 0 => fullassociative, x => directmapped
-    config->cacheLines = 256;
-    config->cacheLineSize = 64;
-    config->cacheLatency = 2;
-    config->memoryLatency = 100;
-    config->tracefile = NULL;
+    config.cycles = 100000;
+    config.directMapped = 0;       // 0 => fullassociative, x => directmapped
+    config.cacheLines = 256;
+    config.cacheLineSize = 64;
+    config.cacheLatency = 2;
+    config.memoryLatency = 100;
+    config.tracefile = NULL;
 
-    config->policy = POLICY_LRU;    // 0 => lru, 1 => fifo, 2 => random
-    config->usingCache = 1;         // Default: true
-    config->callExtended = 0;       // Default: false
+    config.policy = POLICY_LRU;    // 0 => lru, 1 => fifo, 2 => random
+    config.usingCache = 1;         // Default: true
+    config.callExtended = 0;       // Default: false
 
 
     // Command line argument parsing
@@ -209,13 +211,13 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
         switch (opt) {
         case 'c':
             error_msg = "Cycles cannot be smaller than 1.";
-            config->cycles = check_user_input(endptr, error_msg, progname, "-c/--cycles");
+            config.cycles = check_user_input(endptr, error_msg, progname, "-c/--cycles");
             // Checked for validity later once we know the range
             break;
 
         case LONG_CYCLES:
             longCycles = 1;
-            config->callExtended = 1;
+            config.callExtended = 1;
             break;
 
         case 'h':
@@ -228,11 +230,11 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
                                 "Using default value fullassociative!\n");
                 break;
             }
-            config->directMapped = 1;
+            config.directMapped = 1;
             break;
 
         case FULLASSOCIATIVE:
-            if (config->directMapped) {
+            if (config.directMapped) {
                 fprintf(stderr, "Warning: --fullassociative and --directmapped are both set. "
                                 "Using default value fullassociative!\n");
             }
@@ -253,42 +255,42 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
                 exit(EXIT_FAILURE);
             }
 
-            config->cacheLineSize = s;
+            config.cacheLineSize = s;
             break;
 
         case CACHELINES:
             error_msg = "Number of cache-lines must be at least 1.";
             unsigned long n = check_user_input(endptr, error_msg, progname, "--cachelines");
             if (n == 0) { // Use no cache for simulation due to user input --cachelines 0
-                config->usingCache = 0;
-                config->callExtended = 1;
+                config.usingCache = 0;
+                config.callExtended = 1;
                 break;
             }
 
             if (!is_power_of_two(n)) {
                 fprintf(stderr, "Warning: Number of cachelines are usually a power of two!\n");
             }
-            config->cacheLines = n;
+            config.cacheLines = n;
             break;
 
         case CACHE_LATENCY:
             error_msg = "Cache-latency cannot be negative.";
             unsigned long l = check_user_input(endptr, error_msg, progname, "--cache-latency");
-            config->cacheLatency = l;
+            config.cacheLatency = l;
             break;
 
         case MEMORY_LATENCY:
             error_msg = "Memory-latency cannot be negative.";
             unsigned long m = check_user_input(endptr, error_msg, progname, "--memory-latency");
-            config->memoryLatency = m;
+            config.memoryLatency = m;
             break;
 
         case LEAST_RECENTLY_USED:
-            if (config->policy == POLICY_FIFO || config->policy == POLICY_RANDOM) {
+            if (config.policy == POLICY_FIFO || config.policy == POLICY_RANDOM) {
                 fprintf(stderr, "Warning: More than one policy set. "
                                 "Simulating cache using default value LRU!\n");
             }
-            config->policy = POLICY_LRU;
+            config.policy = POLICY_LRU;
             isLruSet = 1;
             break;
 
@@ -296,30 +298,30 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             if (isLruSet) {
                 fprintf(stderr, "Warning: More than one policy set. Simulating cache using default value LRU!\n");
                 break;
-            } else if (config->policy == POLICY_RANDOM) {
+            } else if (config.policy == POLICY_RANDOM) {
                 fprintf(stderr, "Error: --fifo and --random are both set. Please choose only one option!\n");
                 print_usage(progname);
                 exit(EXIT_FAILURE);
             }
-            config->policy = POLICY_FIFO;
+            config.policy = POLICY_FIFO;
             break;
 
         case RANDOM_CHOICE:
             if (isLruSet) {
                 fprintf(stderr, "Warning: More than one policy set. Simulating cache using default value LRU!\n");
                 break;
-            } else if (config->policy == POLICY_FIFO) {
+            } else if (config.policy == POLICY_FIFO) {
                 fprintf(stderr, "Error: --fifo and --random are both set. Please choose only one option!\n");
                 print_usage(progname);
                 exit(EXIT_FAILURE);
             }
 
-            config->policy = POLICY_RANDOM;
+            config.policy = POLICY_RANDOM;
             break;
 
         case USE_CACHE: // use-cache=n used for benchmarking
             if (strlen(optarg) < 3 && (strncasecmp(optarg, "n", 2) == 0 || strncasecmp(optarg, "no", 2) == 0)) {
-                config->usingCache = 0;
+                config.usingCache = 0;
                 break;
             } else if (strlen(optarg) < 4 && (strncasecmp(optarg, "y", 2) == 0 || strncasecmp(optarg, "yes", 2) == 0)) {
                 break;
@@ -340,11 +342,11 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
                 exit(EXIT_FAILURE);
             }
             check_trace_file(progname, optarg);
-            config->tracefile = optarg;
+            config.tracefile = optarg;
             break;
 
         case CALL_EXTENDED:
-            config->callExtended = 1;
+            config.callExtended = 1;
             break;
 
         case '?':
@@ -365,26 +367,26 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
         }
     }
 
-    if (config->memoryLatency < config->cacheLatency) {
+    if (config.memoryLatency < config.cacheLatency) {
         fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
-    } else if (!config->usingCache && !config->callExtended) {
+    } else if (!config.usingCache && !config.callExtended) {
         fprintf(stderr, "Error: Please use --extended when not using a cache (use-cache=n).\n");
         print_usage(progname);
         exit(EXIT_FAILURE);
     }
 
-    check_cycle_size(longCycles, progname, config);
+    check_cycle_size(longCycles, progname, &config);
 
     // Check for Positional Argument
     if (optind < argc) {
         // Check input file for valid file format and save data to requests
         FILE* file = check_file(progname, argv[optind]);
-        extract_file_data(progname, argv[optind], file, config);
+        extract_file_data(progname, argv[optind], file, &config);
     } else {
         fprintf(stderr, "Error: Positional argument is missing!\n");
         print_usage(progname);
         exit(EXIT_FAILURE);
     }
 
-    return EXIT_SUCCESS;
+    return config;
 }
