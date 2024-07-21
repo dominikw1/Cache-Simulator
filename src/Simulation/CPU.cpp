@@ -1,6 +1,7 @@
 #include "CPU.h"
 
-CPU::CPU(sc_core::sc_module_name name, Request* instructions) : sc_module{name}, instructions{instructions} {
+CPU::CPU(sc_core::sc_module_name name, Request* instructions, std::size_t numRequests)
+    : sc_module{name}, instructions{instructions}, numRequests{numRequests} {
     SC_THREAD(handleInstruction);
     sensitive << clock.pos();
 
@@ -52,6 +53,11 @@ void CPU::readInstruction() noexcept {
 
         wait(triggerNextInstructionRead);
         ++program_counter; // Increase PC after the event has been triggered to reflect a correct state of the PC
+#ifndef DEBUG_RUN_TILL_END
+        if (program_counter == numRequests) {
+            sc_core::sc_stop();
+        }
+#endif
     }
 }
 
