@@ -17,7 +17,7 @@ Voll-assoziative Caches:
 - L1 Größe: 8 KB und 64 KB
 - Verwendung: Translation Lookaside Buffer (z.B. Instruction- und Data-TLBs von [Intel® 64 und IA-32 Architekturen](https://www.intel.com/content/www/us/en/content-details/671488/intel-64-and-ia-32-architectures-optimization-reference-manual-volume-1.html))
   - L1-TLBs: Zwischen 32 und 256 Einträge
-  - L2-TBLs: bis zu 2048 Einträge
+  - L2-TLBs: bis zu 2048 Einträge
 
 [Latenz:](https://www.intel.com/content/dam/develop/external/us/en/documents/performance-analysis-guide-181827.pdf)
 - Zwischen 1 und 40 Zyklen, abhängig vom Cache-Level
