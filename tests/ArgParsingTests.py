@@ -4,6 +4,7 @@ import os
 
 CACHE_PATH = os.path.abspath(os.path.join('..', './cache'))
 FILE_PATH = ' ' + os.path.abspath(os.path.join('..', 'examples', 'merge_sort_10.csv'))
+PATH_TO_EXISTING_FILE = os.path.abspath(os.path.join('..', 'tests', 'FileProcessorTests.py'))
 
 
 def capture_stderr(cmdline_args):
@@ -26,8 +27,8 @@ class TestInvalidInput(unittest.TestCase):
         self.assertEqual(expected_output, output)
 
     def test_larger_unsigned_int(self):
-        args = ' --cycles 5000000000 ' + FILE_PATH
-        expected_output = "Invalid input: 5000000000 is too big to be converted to an unsigned int.\n" + print_usage
+        args = ' --cycles 9000000000 ' + FILE_PATH
+        expected_output = "Invalid input: 9000000000 is too big to be converted to an unsigned int.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
@@ -68,14 +69,14 @@ class TestInvalidInput(unittest.TestCase):
         self.assertEqual(expected_output, output)
 
     def test_invalid_cache_latency(self):
-        args = ' --cache-latency 0 ' + FILE_PATH
-        expected_output = "Invalid input: Cache-latency cannot be zero or negativ.\n" + print_usage
+        args = ' --cache-latency -50 ' + FILE_PATH
+        expected_output = "Invalid input: Cache-latency cannot be negative.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
     def test_invalid_memory_latency(self):
-        args = ' --memory-latency 0 ' + FILE_PATH
-        expected_output = "Invalid input: Memory-latency cannot be zero or negativ.\n" + print_usage
+        args = ' --memory-latency -50 ' + FILE_PATH
+        expected_output = "Invalid input: Memory-latency cannot be negative.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
@@ -105,10 +106,10 @@ class TestInvalidInput(unittest.TestCase):
 
     # TODO tracefile tests
 
-    def test_validate_file_format_2(self):  # TODO
-        args = ' /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/src/cache '
-        expected_output = ("Error: /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/src/cache is not a "
-                           "valid file\n") + print_usage
+    def test_existing_file(self):
+        args = FILE_PATH + ' --tf ' + PATH_TO_EXISTING_FILE
+        expected_output = "Error: File '" + PATH_TO_EXISTING_FILE + ("' already exists. Please choose a different "
+                                                                     "filename for the tracefile.\n") + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
@@ -224,6 +225,19 @@ class TestWarnings(unittest.TestCase):
         output = capture_stderr(args).decode()
         self.assertIn(expected_output, output)
 
+    def test_zero_cache_latency(self):
+        args = ' --cache-latency 0 ' + FILE_PATH
+        expected_output = "Warning: A value of 0 for --cache-latency is not realistic!\n"
+        output = capture_stderr(args).decode()
+        self.assertEqual(expected_output, output)
+
+    def test_zero_memory_latency(self):
+        args = ' --memory-latency 0 ' + FILE_PATH
+        expected_output = ("Warning: A value of 0 for --memory-latency is not realistic!\nWarning: Memory latency is "
+                           "less than cache latency.\n")
+        output = capture_stderr(args).decode()
+        self.assertEqual(expected_output, output)
+
 
 class TestOther(unittest.TestCase):
     def test_help_message(self):
@@ -260,24 +274,27 @@ class TestOther(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
-print_usage = ("usage: /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/cache [-c c/--cycles c] [--lcycles] "
-               "[--directmapped] [--fullassociative] "
-               "[--cacheline-size s] [--cachelines n] [--cache-latency l] [--memorylatency m] "
-               "[--lru] [--fifo] [--random] [--use-cache=<Y,n>] [--tf=<filename>] [--extended] [-h/--help] <filename>\n"
-               "   -c c / --cycles c       Set the number of cycles to be simulated to c. Allows inputs in range "
-               "[0,2^16-1]\n"
-               "   --lcycles               Allow input of cycles of up to 2^32-1\n"
-               "   --directmapped          Simulate a direct-mapped cache\n"
-               "   --fullassociative       Simulate a fully associative cache\n"
-               "   --cacheline-size s      Set the cache line size to s bytes\n"
-               "   --cachelines n          Set the number of cachelines to n\n"
-               "   --cache-latency l       Set the cache latency to l cycles\n"
-               "   --memory-latency m      Set the memory latency to m cycles\n"
-               "   --lru                   Use LRU as cache-replacement policy\n"
-               "   --fifo                  Use FIFO as cache-replacement policy\n"
-               "   --random                Use random cache-replacement policy\n"
-               "   --use-cache=<Y,n>       Simulates a system with cache or no cache\n"
-               "   --extended              Call extended run_simulation-method\n"
-               "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
-               "trace file will be created\n"
-               "   -h / --help             Show help message and exit\n")
+print_usage = ("usage: " + CACHE_PATH + " [-c c/--cycles c] [--lcycles] "
+                                        "[--directmapped] [--fullassociative] "
+                                        "[--cacheline-size s] [--cachelines n] [--cache-latency l] [--memorylatency m] "
+                                        "[--lru] [--fifo] [--random] [--use-cache=<Y,n>] [--tf=<filename>] [--extended]"
+                                        " [-h/--help] <filename>\n"
+                                        "   -c c / --cycles c       Set the number of cycles to be simulated to c. "
+                                        "Allows inputs in range "
+                                        "[0,2^16-1]\n"
+                                        "   --lcycles               Allow input of cycles of up to 2^32-1\n"
+                                        "   --directmapped          Simulate a direct-mapped cache\n"
+                                        "   --fullassociative       Simulate a fully associative cache\n"
+                                        "   --cacheline-size s      Set the cache line size to s bytes\n"
+                                        "   --cachelines n          Set the number of cachelines to n\n"
+                                        "   --cache-latency l       Set the cache latency to l cycles\n"
+                                        "   --memory-latency m      Set the memory latency to m cycles\n"
+                                        "   --lru                   Use LRU as cache-replacement policy\n"
+                                        "   --fifo                  Use FIFO as cache-replacement policy\n"
+                                        "   --random                Use random cache-replacement policy\n"
+                                        "   --use-cache=<Y,n>       Simulates a system with cache or no cache\n"
+                                        "   --extended              Call extended run_simulation-method\n"
+                                        "   --tf=<filename>         File name for a trace file containing all signals."
+                                        " If not set, no "
+                                        "trace file will be created\n"
+                                        "   -h / --help             Show help message and exit\n")

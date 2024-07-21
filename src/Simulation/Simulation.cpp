@@ -16,9 +16,11 @@
 
 using namespace sc_core;
 
-std::unique_ptr<ReplacementPolicy<std::uint32_t>> getReplacementPolity(CacheReplacementPolicy replacementPolicy,
-                                                                       std::uint32_t cacheSize) {
-    switch (replacementPolicy) {
+constexpr std::uint8_t instructionCacheLineSize = 128;
+constexpr std::uint8_t instructionCacheNumLines = 16;
+
+std::unique_ptr<ReplacementPolicy<std::uint32_t>> getPolicy(CacheReplacementPolicy policy, unsigned int cacheSize) {
+    switch (policy) {
     case POLICY_LRU:
         return std::make_unique<LRUPolicy<std::uint32_t>>(cacheSize);
     case POLICY_FIFO:
@@ -87,16 +89,17 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
                                unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
                                struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
                                int usingCache) {
+
     CPU cpu{"CPU", requests};
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE};
     RAM instructionRam{"Instruction_RAM", memoryLatency, cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE};
 
     Cache<mappingType> dataCache{"Data_cache", cacheLines, cacheLineSize, cacheLatency,
-                                 (mappingType == MappingType::Direct) ? nullptr
-                                                                      : getReplacementPolity(policy, cacheLines)};
+                                 (mappingType == MappingType::Direct) ? nullptr : getPolicy(policy, cacheLines)};
 
     InstructionCache instructionCache{"Instruction_Cache", instructionCacheNumLines, instructionCacheLineSize,
                                       cacheLatency, std::vector<Request>(requests, requests + numRequests)};
+
 #ifdef STRICT_INSTRUCTION_ORDER
     dataCache.setMemoryLatency(memoryLatency);
     instructionCache.setMemoryLatency(memoryLatency);

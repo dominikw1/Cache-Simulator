@@ -26,10 +26,6 @@ std::vector<std::uint64_t> makeVectorUniqueNoOrderPreserve(std::vector<std::uint
     return input;
 }
 
-Request* generateRandomRequests(std::uint64_t len){
-    return generateRandomRequests(len, UINT32_MAX, UINT32_MAX, 2);
-}
-
 Request* generateRandomRequests(std::uint64_t len, std::uint64_t addressMax, std::uint64_t dataMax, std::uint64_t weMax) {
     auto* requests = new Request[len];
     auto addresses = generateRandomVector(len, addressMax);

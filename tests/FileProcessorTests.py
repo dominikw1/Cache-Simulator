@@ -4,38 +4,37 @@ import os
 
 
 CACHE_PATH = os.path.abspath(os.path.join('..', './cache'))
-FILE_PATH = os.path.abspath(os.path.join('..', 'examples', 'merge_sort_10.csv'))
-INVALID_FILE_PATH = " /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/tests/InvalidFiles/"
+FILE_PATH = os.path.abspath('..')
+INVALID_FILE_PATH = os.path.abspath('InvalidFiles')
 
 
 def capture_stderr(cmdline_args):
     os.chdir('..')
-    capture = subprocess.run(CACHE_PATH + cmdline_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
+    capture = subprocess.run(CACHE_PATH + ' ' + cmdline_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
     return capture.stderr
 
 
 class TestCheckFile(unittest.TestCase):
     def test_validate_file_format(self):
-        args = ' /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/src/main.c '
-        expected_output = ("Error: /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/src/main.c is not a valid "
-                           "csv file!\n") + print_usage
+        args = FILE_PATH + '/src/main.c'
+        expected_output = ("Error: " + args + " is not a valid csv file!\n") + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
     def test_error_opening(self):
-        args = ' /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/src/cache '
+        args = FILE_PATH + '/src/cache'
         expected_output = "Error opening input file: No such file or directory\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
     def test_filename_is_directory(self):
-        args = ' /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/src '
+        args = FILE_PATH + '/src'
         expected_output = "Error: Filename should not be a directory.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
     def test_filename_empty_file(self):
-        args = INVALID_FILE_PATH + 'empty.csv '
+        args = INVALID_FILE_PATH + '/empty.csv'
         expected_output = "Error: Input file contains no data.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
@@ -43,32 +42,31 @@ class TestCheckFile(unittest.TestCase):
 
 class TestExtractFileData(unittest.TestCase):
     def test_error_reading_from_file(self):
-        args = INVALID_FILE_PATH + 'invalid_data.csv'
+        args = INVALID_FILE_PATH + '/invalid_data.csv'
         expected_output = "Error: Wrong file format! First column is not set right!\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
     def test_no_addres_given(self):
-        # TODO
-        args = INVALID_FILE_PATH + 'no_address.csv'
+        args = INVALID_FILE_PATH + '/no_address.csv'
         expected_output = "Error: Wrong file format! No address given.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
     def test_no_data_saved(self):
-        args = INVALID_FILE_PATH + 'no_data_saved_w.csv'
+        args = INVALID_FILE_PATH + '/no_data_saved_w.csv'
         expected_output = "Error: Wrong file format! No data saved.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
     def test_no_empty_data_when_reading(self):
-        args = INVALID_FILE_PATH + 'no_empty_data_R.csv'
+        args = INVALID_FILE_PATH + '/no_empty_data_R.csv'
         expected_output = "Error: Wrong file format! When reading from a file, data should be empty.\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
     def test_no_valid_we(self):
-        args = INVALID_FILE_PATH + 'no_valid_we.csv'
+        args = INVALID_FILE_PATH + '/no_valid_we.csv'
         expected_output = "Error: 'X' is not a valid operation in input file\n" + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
