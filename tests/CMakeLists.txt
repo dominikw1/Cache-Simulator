@@ -12,7 +12,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_definitions(-g -Wall -Wextra -pedantic)
 add_compile_definitions(CPU_DEBUG RAM_DEBUG)
 
-add_executable(tests BenchmarkSortTest.cpp LRUTests.cpp Utils.cpp CPUTests.cpp FIFOTests.cpp CacheTests.cpp MemoryTests.cpp AdapterTests.cpp)
+
+if(BUILD_INTEGRATION_TESTING)
+    add_executable(tests Utils.cpp IntegrationTests.cpp)
+else()
+    add_executable(tests BenchmarkSortTest.cpp LRUTests.cpp Utils.cpp CPUTests.cpp FIFOTests.cpp CacheTests.cpp MemoryTests.cpp AdapterTests.cpp)
+endif()
+
 target_link_libraries(tests -lubsan)
 
 target_link_libraries(tests gtest_main gtest ${SYSTEMC_HOME}/lib/libsystemc.so GRA_Cache_lib)

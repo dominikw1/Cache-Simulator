@@ -58,6 +58,11 @@ test:
 	cmake --build build  -j16
 	cd build; ctest --output-on-failure --parallel 16
 
+integration:
+	cmake -DBUILD_INTEGRATION_TESTING=ON -S . -B build
+	cmake --build build  -j16
+	cd build; ctest --output-on-failure --parallel 16
+
 benchmarks:
 	cd tools; make; python3 BenchmarkRunner.py
 
