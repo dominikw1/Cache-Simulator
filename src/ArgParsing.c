@@ -23,8 +23,6 @@
 #define RANDOM_CHOICE 138
 #define TRACEFILE 139
 
-// TODO: Tests anpassen
-
 // Taken inspiration and adapted from exercises 'Nutzereingaben' and 'File IO' from GRA Week 3
 
 const char* usage_msg =
