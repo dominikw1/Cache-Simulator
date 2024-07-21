@@ -1,6 +1,5 @@
 #include "SubRequest.h"
 
-// TODO: document why this works
 std::vector<SubRequest> splitRequestIntoSubRequests(Request request, std::uint32_t cacheLineSizeInByte) {
     std::uint32_t currAlignedAddr = (request.addr / cacheLineSizeInByte) * cacheLineSizeInByte;
     std::uint8_t remainingBits = 32ull;

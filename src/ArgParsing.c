@@ -202,7 +202,6 @@ struct Configuration parse_arguments(int argc, char** argv) {
 
         case LONG_CYCLES:
             longCycles = 1;
-            // TODO: Message --extended set
             config.callExtended = 1;
             break;
 
