@@ -19,8 +19,7 @@ Voll-assoziative Caches:
   - L1-TLBs: Zwischen 32 und 256 Einträge
   - L2-TBLs: bis zu 2048 Einträge
 
-Latenz:
-
+[Latenz:](https://www.intel.com/content/dam/develop/external/us/en/documents/performance-analysis-guide-181827.pdf)
 - Zwischen 1 und 40 Zyklen, abhängig vom Cache-Level
 - Von etwa 60 bis 150 Zyklen beim Hauptspeicher (Von-Neumann-Flaschenhals)
 
