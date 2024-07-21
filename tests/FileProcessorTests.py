@@ -10,7 +10,8 @@ INVALID_FILE_PATH = os.path.abspath('InvalidFiles')
 
 def capture_stderr(cmdline_args):
     os.chdir('..')
-    capture = subprocess.run(CACHE_PATH + ' ' + cmdline_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
+    capture = subprocess.run(CACHE_PATH + ' ' + cmdline_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE,
+                             shell=True)
     return capture.stderr
 
 
@@ -75,7 +76,7 @@ class TestExtractFileData(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
-print_usage = ("usage: /u/halle/brieg/home_at/GRA_Project/gra24cdaproject-g127/cache [-c c/--cycles c] [--lcycles] "
+print_usage = ("usage: " + CACHE_PATH + " [-c c/--cycles c] [--lcycles] "
                "[--directmapped] [--fullassociative] "
                "[--cacheline-size s] [--cachelines n] [--cache-latency l] [--memorylatency m] "
                "[--lru] [--fifo] [--random] [--use-cache=<Y,n>] [--tf=<filename>] [--extended] [-h/--help] <filename>\n"
