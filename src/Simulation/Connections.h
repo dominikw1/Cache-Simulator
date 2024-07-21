@@ -78,7 +78,7 @@ inline std::unique_ptr<Connections> connectComponentsNoCache(CPU& cpu, RAM& data
     adapter.in(connections->dataRAM_to_dataCache_Data);
     adapter.out(connections->dataCache_to_CPU_Data);
 
-    // Instruction Cache
+    // Instruction Cache - we need that for decoding
     // CPU -> Cache
     cpu.pcBus(connections->CPU_to_instrCache_PC);
     cpu.validInstrRequestBus(connections->CPU_to_instrCache_Valid_Request);
