@@ -11,8 +11,6 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_definitions(-g -Wall -Wextra -pedantic)
 
-add_compile_definitions(RAM_DEBUG DEBUG_RUN_TILL_END)
-
 if (BUILD_INTEGRATION_TESTING)
     add_executable(tests Utils.cpp IntegrationTests.cpp)
 else ()

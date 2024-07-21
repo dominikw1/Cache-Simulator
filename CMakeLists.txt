@@ -13,6 +13,11 @@ add_compile_options(${SANITIZER_COMPILE_OPTIONS})
 add_link_options(${SANITIZER_COMPILE_OPTIONS})
 
 
+add_compile_definitions(RAM_DEBUG)
+if (BUILD_INTEGRATION_TESTING) 
+    add_compile_definitions(DEBUG_RUN_TILL_END)
+endif()
+
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
