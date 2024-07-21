@@ -12,7 +12,6 @@ CFLAGS := -Wall -Wextra -pedantic  -std=c17
 CXXFLAGS := -Wall -Wextra -pedantic  -std=c++14  -I$(SCPATH)/include -L$(SCPATH)/lib -lsystemc -lm
 
 
-
 CXX := $(shell command -v g++ || command -v clang++)
 ifeq ($(strip $(CXX)),)
     $(error Neither clang++ nor g++ is available. Exiting.)
@@ -68,11 +67,12 @@ integration:
 benchmarks:
 	cd tools; make; python3 BenchmarkRunner.py
 
+# Use this to disallow reads while write-buffer is not empty
 buildWithRAMReadAfterWrite: CXXFLAGS += -DSTRICT_RAM_READ_AFTER_WRITES
 buildWithRAMReadAfterWrite: $(TARGET)
 
+# Use this to turn off the write-buffer optimisation
 buildWithStrictInstrOrder: CXXFLAGS += -DSTRICT_RAM_READ_AFTER_WRITES -DSTRICT_INSTRUCTION_ORDER
 buildWithStrictInstrOrder: $(TARGET)
-
 
 .PHONY: all debug release clean test buildWithStrictInstrOrder buildWithRAMReadAfterWrite benchmarks
