@@ -99,23 +99,9 @@ class TestInvalidInput(unittest.TestCase):
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
-    def test_missing_argument_trace_file_1(self):
+    def test_missing_argument_trace_file(self):
         args = ' --tf= ' + FILE_PATH
         expected_output = "Error: Option --tf requires an argument.\n" + print_usage
-        output = capture_stderr(args).decode()
-        self.assertEqual(expected_output, output)
-
-    def test_existing_directory_tf(self):
-        args = FILE_PATH + ' --tf ' + PATH_TO_DIRECTORY
-        expected_output = "Error: Filename '" + PATH_TO_DIRECTORY + ("' is a directory name. Please choose a different"
-                                                                     " filename for the tracefile.\n") + print_usage
-        output = capture_stderr(args).decode()
-        self.assertEqual(expected_output, output)
-
-    def test_existing_file_tf(self):
-        args = FILE_PATH + ' --tf ' + PATH_TO_EXISTING_FILE
-        expected_output = "Error: File '" + PATH_TO_EXISTING_FILE + ("' already exists. Please choose a different "
-                                                                     "filename for the tracefile.\n") + print_usage
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 

@@ -2,7 +2,6 @@ import unittest
 import subprocess
 import os
 
-
 CACHE_PATH = os.path.abspath(os.path.join('..', './cache')) + ' '
 FILE_PATH = os.path.abspath('..')
 INVALID_FILE_PATH = os.path.abspath('InvalidFiles')
@@ -72,27 +71,53 @@ class TestExtractFileData(unittest.TestCase):
         self.assertEqual(expected_output, output)
 
 
+class TestCheckTraceFile(unittest.TestCase):
+    def test_existing_directory_tf(self):
+        args = FILE_PATH + ' --tf ' + INVALID_FILE_PATH
+        expected_output = "Error: Filename '" + INVALID_FILE_PATH + ("' is a directory name. Please choose a different"
+                                                                     " filename for the tracefile.\n") + print_usage
+        output = capture_stderr(args).decode()
+        self.assertEqual(expected_output, output)
+
+    def test_existing_file_tf(self):
+        args = FILE_PATH + ' --tf ' + FILE_PATH + '/src/main.c'
+        expected_output = "Error: File '" + FILE_PATH + '/src/main.c' + ("' already exists. Please choose a different "
+                                                         "filename for the tracefile.\n") + print_usage
+        output = capture_stderr(args).decode()
+        self.assertEqual(expected_output, output)
+
+    def test_invalid_file_path_tf(self):
+        args = FILE_PATH + ' --tf ' + FILE_PATH + '/scr'
+        expected_output = "Error: Filepath '" + FILE_PATH + '/scr' + ("' does not exist. Please choose a different "
+                                                             "filename for the tracefile.\n") + print_usage
+        output = capture_stderr(args).decode()
+        self.assertEqual(expected_output, output)
+
+
 if __name__ == '__main__':
     unittest.main()
 
 print_usage = ("usage: " + CACHE_PATH + "[-c c/--cycles c] [--lcycles] "
-               "[--directmapped] [--fullassociative] "
-               "[--cacheline-size s] [--cachelines n] [--cache-latency l] [--memorylatency m] "
-               "[--lru] [--fifo] [--random] [--use-cache=<Y,n>] [--tf=<filename>] [--extended] [-h/--help] <filename>\n"
-               "   -c c / --cycles c       Set the number of cycles to be simulated to c. Allows inputs in range "
-               "[0,2^16-1]\n"
-               "   --lcycles               Allow input of cycles of up to 2^32-1\n"
-               "   --directmapped          Simulate a direct-mapped cache\n"
-               "   --fullassociative       Simulate a fully associative cache\n"
-               "   --cacheline-size s      Set the cache line size to s bytes\n"
-               "   --cachelines n          Set the number of cachelines to n\n"
-               "   --cache-latency l       Set the cache latency to l cycles\n"
-               "   --memory-latency m      Set the memory latency to m cycles\n"
-               "   --lru                   Use LRU as cache-replacement policy\n"
-               "   --fifo                  Use FIFO as cache-replacement policy\n"
-               "   --random                Use random cache-replacement policy\n"
-               "   --use-cache=<Y,n>       Simulates a system with cache or no cache\n"
-               "   --extended              Call extended run_simulation-method\n"
-               "   --tf=<filename>         File name for a trace file containing all signals. If not set, no "
-               "trace file will be created\n"
-               "   -h / --help             Show help message and exit\n")
+                                        "[--directmapped] [--fullassociative] "
+                                        "[--cacheline-size s] [--cachelines n] [--cache-latency l] [--memorylatency m] "
+                                        "[--lru] [--fifo] [--random] [--use-cache=<Y,n>] [--tf=<filename>] [--extended]"
+                                        " [-h/--help] <filename>\n"
+                                        "   -c c / --cycles c       Set the number of cycles to be simulated to c. "
+                                        "Allows inputs in range "
+                                        "[0,2^16-1]\n"
+                                        "   --lcycles               Allow input of cycles of up to 2^32-1\n"
+                                        "   --directmapped          Simulate a direct-mapped cache\n"
+                                        "   --fullassociative       Simulate a fully associative cache\n"
+                                        "   --cacheline-size s      Set the cache line size to s bytes\n"
+                                        "   --cachelines n          Set the number of cachelines to n\n"
+                                        "   --cache-latency l       Set the cache latency to l cycles\n"
+                                        "   --memory-latency m      Set the memory latency to m cycles\n"
+                                        "   --lru                   Use LRU as cache-replacement policy\n"
+                                        "   --fifo                  Use FIFO as cache-replacement policy\n"
+                                        "   --random                Use random cache-replacement policy\n"
+                                        "   --use-cache=<Y,n>       Simulates a system with cache or no cache\n"
+                                        "   --extended              Call extended run_simulation-method\n"
+                                        "   --tf=<filename>         File name for a trace file containing all signals. "
+                                        "If not set, no "
+                                        "trace file will be created\n"
+                                        "   -h / --help             Show help message and exit\n")

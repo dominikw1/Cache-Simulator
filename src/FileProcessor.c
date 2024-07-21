@@ -172,7 +172,7 @@ int check_trace_file(const char* progname, const char* optarg) {
         if (slash == NULL || slash == optarg) {
             return EXIT_SUCCESS;
         } else {
-            fprintf(stderr, "Error: Filepath '%s' does not exist."
+            fprintf(stderr, "Error: Filepath '%s' does not exist. "
                             "Please choose a different filename for the tracefile.\n", optarg);
         }
     }

@@ -1,11 +1,10 @@
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "Argparsing.h"
-#include "Request.h"
 #include "Result.h"
 #include "Simulation/Simulation.h"
+
 
 int main(int argc, char** argv) {
 
@@ -13,7 +12,7 @@ int main(int argc, char** argv) {
     struct Configuration config;
     parse_arguments(argc, argv, &config);
 
-    // Call run_simulation method depending on user input for extended method
+    // Call run_simulation by default or run_simulation_extended depending on additional flags
     struct Result result;
     if (config.callExtended) {
         result = run_simulation_extended(config.cycles, config.directMapped, config.cacheLines, config.cacheLineSize,
