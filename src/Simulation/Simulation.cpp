@@ -16,9 +16,6 @@
 
 using namespace sc_core;
 
-constexpr std::uint8_t instructionCacheLineSize = 128;
-constexpr std::uint8_t instructionCacheNumLines = 16;
-
 std::unique_ptr<ReplacementPolicy<std::uint32_t>> getPolicy(CacheReplacementPolicy policy, unsigned int cacheSize) {
     switch (policy) {
     case POLICY_LRU:
