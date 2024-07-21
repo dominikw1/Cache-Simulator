@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "Argparsing.h"
+#include "ArgParsing.h"
 #include "Result.h"
 #include "Simulation/Simulation.h"
 

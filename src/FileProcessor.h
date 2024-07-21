@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdio.h>
-#include "Argparsing.h"
+#include "ArgParsing.h"
 
 FILE* check_file(const char* progname, const char* filename);
 

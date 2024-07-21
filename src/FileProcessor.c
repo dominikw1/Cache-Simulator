@@ -6,7 +6,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "Argparsing.h"
+#include "ArgParsing.h"
 #include "FileProcessor.h"
 #include "Request.h"
 
