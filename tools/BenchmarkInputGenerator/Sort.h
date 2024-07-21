@@ -3,22 +3,23 @@
 #include <cmath>
 #include <cstdint>
 
-inline void mergeSort(std::int64_t* array, std::int64_t from, std::int64_t to) {
+inline void mergeSort(int64_t* array, int64_t from, int64_t to) {
     if (from >= to) {
         return;
     }
 
-    std::int64_t len = to - from + 1;
-    std::int64_t mid = (from + to) / 2;
+    int64_t len = to - from + 1;
+    int64_t mid = (from + to) / 2;
 
     mergeSort(array, from, mid);
     mergeSort(array, mid + 1, to);
 
-    std::int64_t mergeArray[len];
-    std::int64_t leftArrayIndex = from;
-    std::int64_t rightArrayIndex = mid + 1;
+    int64_t mergeArray[len]; // yes, this is a vla. Might not be C++ standard-conform but the c standard allows it and
+                             // our compiler can deal with it
+    int64_t leftArrayIndex = from;
+    int64_t rightArrayIndex = mid + 1;
 
-    for (std::int64_t i = 0; i < len; i++) {
+    for (int64_t i = 0; i < len; i++) {
         if (leftArrayIndex > mid) {
             mergeArray[i] = array[rightArrayIndex++];
         } else if (rightArrayIndex > to) {
@@ -30,7 +31,7 @@ inline void mergeSort(std::int64_t* array, std::int64_t from, std::int64_t to) {
         }
     }
 
-    for (std::int64_t i = 0, j = from; i < len; i++, j++) {
+    for (int64_t i = 0, j = from; i < len; i++, j++) {
         array[j] = mergeArray[i];
     }
 }
@@ -50,7 +51,7 @@ inline std::int64_t getMaxPlaces(std::int64_t* array, std::int64_t len) {
         }
     }
 
-    return (std::int64_t) log10(max) + 1;
+    return (std::int64_t)log10(max) + 1;
 }
 
 inline void radixSort(std::int64_t* array, std::int64_t len) {
@@ -61,8 +62,8 @@ inline void radixSort(std::int64_t* array, std::int64_t len) {
     std::int64_t negBucketCount[10];
 
     for (std::int64_t j = 0; j < 10; j++) {
-        posBuckets[j] = (std::int64_t*) malloc(sizeof(std::int64_t) * len);
-        negBuckets[j] = (std::int64_t*) malloc(sizeof(std::int64_t) * len);
+        posBuckets[j] = (std::int64_t*)malloc(sizeof(std::int64_t) * len);
+        negBuckets[j] = (std::int64_t*)malloc(sizeof(std::int64_t) * len);
     }
 
     for (std::int64_t i = 0; i < max; i++) {
@@ -73,10 +74,10 @@ inline void radixSort(std::int64_t* array, std::int64_t len) {
 
         for (std::int64_t j = 0; j < len; j++) {
             if (array[j] >= 0) {
-                std::int64_t index = array[j] / ((std::int64_t) pow(10, i)) % 10;
+                std::int64_t index = array[j] / ((std::int64_t)pow(10, i)) % 10;
                 posBuckets[index][posBucketCount[index]++] = array[j];
             } else {
-                std::int64_t index = (array[j] * -1) / ((std::int64_t) pow(10, i)) % 10;
+                std::int64_t index = (array[j] * -1) / ((std::int64_t)pow(10, i)) % 10;
                 negBuckets[index][negBucketCount[index]++] = array[j];
             }
         }
