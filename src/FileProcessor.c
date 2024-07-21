@@ -1,13 +1,10 @@
 #include <errno.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
 #include "Argparsing.h"
-#include "FileProcessor.h"
 #include "Request.h"
 
 int validate_file_format(const char* filename, const char* filetype) {
@@ -157,5 +154,28 @@ error:
     print_usage(progname);
     free(config->requests);
     config->requests = NULL;
+    exit(EXIT_FAILURE);
+}
+
+int check_trace_file(const char* progname, const char* optarg) {
+    struct stat file_info;
+    if (stat(optarg, &file_info) == 0) {
+        if (S_ISDIR(file_info.st_mode)) {
+            fprintf(stderr, "Error: Filename '%s' is a directory name. "
+                            "Please choose a different filename for the tracefile.\n", optarg);
+        } else {
+            fprintf(stderr,"Error: File '%s' already exists. "
+                            "Please choose a different filename for the tracefile.\n", optarg);
+        }
+    } else {
+        const char *slash = strrchr(optarg, '/');   // Check for invalid directory
+        if (slash == NULL || slash == optarg) {
+            return EXIT_SUCCESS;
+        } else {
+            fprintf(stderr, "Error: Filepath '%s' does not exist."
+                            "Please choose a different filename for the tracefile.\n", optarg);
+        }
+    }
+    print_usage(progname);
     exit(EXIT_FAILURE);
 }
