@@ -132,9 +132,7 @@ SC_MODULE(RAMMock) {
             for (std::size_t cycles = 0; cycles < latency; ++cycles) {
                 wait(clock.posedge_event());
             }
-            std::cout << "RAM: done with latency at " << sc_core::sc_time_stamp() << "performing " << weBus.read()
-                      << "\n";
-            std::cout << "at " << addressBus.read() << std::endl;
+        
             if (weBus.read()) {
                 // Writing happens in one cycle -> one able to write 32 bits
                 dataMemory[addressBus.read()] = (dataInBus.read() & ((1 << 8) - 1));

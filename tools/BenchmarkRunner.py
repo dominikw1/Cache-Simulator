@@ -75,6 +75,12 @@ def runBenchmarkForPolicy(*, cacheLineNum: int, memLatency: int, cacheLatency: i
         bs.append(BenchmarkResult(100, "merge", policy=policyI, direct_mapped=False, cacheLatency=cacheLatency, memLatency=memLatency, result=r, cacheLineNum=cacheLineNum, cacheLineSize=cacheLineSize))             
     return bs
 
+def runBenchmarkForPolicyAndCacheLineNum(*, memLatency: int, cacheLatency: int, cacheLineSize: int):
+    bs = []
+    for cachelineNum in {10, 100, 1000}:
+        bs.append(runBenchmarkForPolicy(memLatency=memLatency, cacheLineNum=cachelineNum, cacheLatency=cacheLatency, cacheLineSize=cacheLineSize))
+    return bs
+
 def runBenchmarkForMappingType(*, cacheLineNum: int, memLatency: int, cacheLatency: int, cacheLineSize: int, alg: str = "merge"):
     bs = []
     for directMapped in {True, False}:
@@ -94,6 +100,7 @@ def runBenchmarkForMappingTypeVaryingCacheLineNumAndCacheLineSize(*, memLatency:
         for cacheLineNum in {10, 100, 1000, 10000}:
             bs += runBenchmarkForMappingType(cacheLineNum=cacheLineNum, memLatency=memLatency, cacheLatency=cacheLatency, cacheLineSize=cacheLineSize)
     return bs
+
 
 def runBenchmarkForMappingTypeVaryingCacheLineSize(*, memLatency: int, cacheLatency: int, cacheLineNum: int):
     bs = []
@@ -115,37 +122,38 @@ def runBenchmarkForMappingTypeVaryingAlg(*, memLatency:int, cacheLineSize:int, c
 
 
 mergeBenches: list[BenchmarkResult] = runBenchmarkForAlg("merge", cacheLineSize=16, cacheLineNum=8, memLatency=100, cacheLatency=20)
+print("done with merge benchess")
 radixBenches: list[BenchmarkResult] = runBenchmarkForAlg("radix", cacheLineSize=16, cacheLineNum=8, memLatency=100, cacheLatency=20)
 
 benches = mergeBenches + radixBenches
 printAsCSV(["Algorithm", "Size", "Hit-%", "Cycles/M.A."], [[b.alg for b in benches] ,[b.inputSize for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "algBenchmarks.csv")
-
+print("Done with alg")
 
 benches: list[BenchmarkResult] = runBenchmarkForCacheSize(cacheLineNum=8, memLatency=100, cacheLatency=5)
 printAsCSV(["Cacheline-Size", "Hit-%", "Cycles/M.A."], [[b.cacheLineSize for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "cacheLineSizeBenchmarksFastMem.csv")
-
+print("Done with cacheline size")
 
 benches: list[BenchmarkResult] = runBenchmarkForCacheSize(cacheLineNum=8, memLatency=500, cacheLatency=5)
 printAsCSV(["Cacheline-Size", "Hit-%", "Cycles/M.A."], [[b.cacheLineSize for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "cacheLineSizeBenchmarksSlowMem.csv")
-
+print("done with cacheline size slow")
 
 
 benches: list[BenchmarkResult] = runBenchmarkForPolicy(cacheLineNum=8, cacheLineSize=16, memLatency=100, cacheLatency=5)
 printAsCSV(["Replacement-Policy", "Hit-%", "Cycles/M.A."], [[b.policy for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "policyBenchmarks.csv")
-
+print("done with replacement policy")
     
     
 benches: list[BenchmarkResult] = runBenchmarkForMappingType(cacheLineNum=8, cacheLineSize=16, memLatency=100, cacheLatency=5)
 printAsCSV(["Mapping-Type", "Hit-%", "Cycles/M.A."], [["Direct" if b.direct_mapped else "Fully-Associative"  for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "mappingBenchmarks.csv")
-
+print("done with mapping type")
     
 benches: list[BenchmarkResult] = runBenchmarkForMappingTypeVaryingCacheLineNum(cacheLineSize=16,memLatency=100, cacheLatency=5)
 printAsCSV(["Mapping-Type", "Cacheline-Size", "Hit-%", "Cycles/M.A."], [["Direct" if b.direct_mapped else "Fully-Associative"  for b in benches], [b.cacheLineNum for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "mappingBenchmarksLineNum.csv")
-
+print("done withm mapping type and cacheline size")
    
 benches: list[BenchmarkResult] = runBenchmarkForMappingTypeVaryingCacheLineSize(cacheLineNum=32,memLatency=100, cacheLatency=5)
 printAsCSV(["Mapping-Type", "Cacheline-Num", "Hit-%", "Cycles/M.A."], [["Direct" if b.direct_mapped else "Fully-Associative"  for b in benches], [b.cacheLineSize for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "mappingBenchmarksLineSize.csv")
-
+print("done with mapping type and cacheline num")
    
    
 benches: list[BenchmarkResult] = runBenchmarkForMappingTypeVaryingMemLatency(cacheLineNum=32,cacheLineSize=16, cacheLatency=5)
@@ -156,4 +164,7 @@ benches: list[BenchmarkResult] = runBenchmarkForMappingTypeVaryingAlg(memLatency
 printAsCSV(["Mapping-Type", "Alg", "Hit-%", "Cycles/M.A."], [["Direct" if b.direct_mapped else "Fully-Associative"  for b in benches], [b.alg for b in benches], [100*b.result.hits / (b.result.hits+b.result.misses) for b in benches], [b.result.cyclesNeeded  / ((b.result.hits+b.result.misses)) for b in benches]], "mappingBenchmarksAlg.csv")
 
 benches: list[BenchmarkResult] = runBenchmarkForMappingTypeVaryingCacheLineNumAndCacheLineSize(cacheLineSize=16,memLatency=100, cacheLatency=5)
-printAsCSV(["Mapping-Type", "Cacheline-Size", "Cacheline-Num", "Gates"], [["Direct" if b.direct_mapped else "Fully-Associative"  for b in benches], [b.cacheLineSize for b in benches], [b.cacheLineSize for b in benches], [b.result.gates for b in benches]], "mappingBenchmarksLineNumGates.csv")
+printAsCSV(["Mapping-Type", "Cacheline-Size", "Cacheline-Num", "Gates"], [["Direct" if b.direct_mapped else "Fully-Associative"  for b in benches], [b.cacheLineSize for b in benches], [b.cacheLineNum for b in benches], [b.result.gates for b in benches]], "mappingBenchmarksLineNumGates.csv")
+
+benches: list[BenchmarkResult] = runBenchmarkForPolicyAndCacheLineNum(memLatency=100, cacheLatency=5, cacheLineSize=16)
+printAsCSV(["Policy", "Cacheline-Num" "Gates"], [[b.policy for b in benches], [b.cacheLineNum for b in benches], [b.cacheLineSize for b in benches], [b.result.gates for b in benches]], "mappingBenchmarksLineNumGates.csv")
