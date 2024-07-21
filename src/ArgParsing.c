@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <strings.h>
 
-#include "Argparsing.h"
+#include "ArgParsing.h"
 #include "FileProcessor.h"
 #include "Simulation/Policy/Policy.h"
 
