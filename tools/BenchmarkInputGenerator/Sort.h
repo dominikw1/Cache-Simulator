@@ -14,7 +14,8 @@ inline void mergeSort(int64_t* array, int64_t from, int64_t to) {
     mergeSort(array, from, mid);
     mergeSort(array, mid + 1, to);
 
-    int64_t mergeArray[len]; // yes, this is a vla. Might not be C++ standard-conform but the c standard allows it and our compiler can deal with itF
+    int64_t mergeArray[len]; // yes, this is a vla. Might not be C++ standard-conform but the c standard allows it and
+                             // our compiler can deal with it
     int64_t leftArrayIndex = from;
     int64_t rightArrayIndex = mid + 1;
 
