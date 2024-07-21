@@ -84,8 +84,7 @@ constexpr std::uint8_t instructionCacheNumLines = 16;
 template <MappingType mappingType>
 Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, unsigned int cacheLineSize,
                                unsigned int cacheLatency, unsigned int memoryLatency, size_t numRequests,
-                               struct Request requests[], const char* tracefile, CacheReplacementPolicy policy,
-                               int usingCache) {
+                               struct Request requests[], const char* tracefile, CacheReplacementPolicy policy) {
 
     CPU cpu{"CPU", requests, numRequests};
     RAM dataRam{"Data_RAM", memoryLatency, cacheLineSize / RAM_READ_BUS_SIZE_IN_BYTE};
@@ -102,15 +101,13 @@ Result run_simulation_extended(unsigned int cycles, unsigned int cacheLines, uns
     instructionCache.setMemoryLatency(memoryLatency);
 #endif
 
-    auto connections = (usingCache) ? connectComponents(cpu, dataRam, instructionRam, dataCache, instructionCache)
-                                    : connectComponentsNoCache(cpu, dataRam, instructionRam, instructionCache, dataCache);
+    auto connections = connectComponents(cpu, dataRam, instructionRam, dataCache, instructionCache);
 
     auto tracer = setUpTracefile(tracefile, *connections, dataCache);
     sc_start(sc_time::from_value(cycles * 1000ull)); // from_value takes pico-seconds and each of our cycles is a NS
 
     return Result{connections.get()->CPU_to_instrCache_PC >= numRequests - 1 ? cpu.getElapsedCycleCount() : SIZE_MAX,
-                  usingCache ? dataCache.missCount : numRequests, usingCache ? dataCache.hitCount : 0,
-                  usingCache ? dataCache.calculateGateCount() : 0};
+                  dataCache.missCount, dataCache.hitCount, dataCache.calculateGateCount()};
 }
 
 struct Result run_simulation_extended(unsigned int cycles, int directMapped, unsigned int cacheLines,
@@ -118,13 +115,11 @@ struct Result run_simulation_extended(unsigned int cycles, int directMapped, uns
                                       size_t numRequests, struct Request requests[], const char* tracefile,
                                       CacheReplacementPolicy policy, int usingCache) {
     if (directMapped == 0) {
-        return run_simulation_extended<MappingType::Fully_Associative>(cycles, cacheLines, cacheLineSize, cacheLatency,
-                                                                       memoryLatency, numRequests, requests, tracefile,
-                                                                       policy, usingCache);
+        return run_simulation_extended<MappingType::Fully_Associative>(
+            cycles, cacheLines, cacheLineSize, cacheLatency, memoryLatency, numRequests, requests, tracefile, policy);
     } else {
         return run_simulation_extended<MappingType::Direct>(cycles, cacheLines, cacheLineSize, cacheLatency,
-                                                            memoryLatency, numRequests, requests, tracefile, policy,
-                                                            usingCache);
+                                                            memoryLatency, numRequests, requests, tracefile, policy);
     }
 }
 
