@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../src/Simulation/Memory.h"
+#include "../src/Simulation/RAM.h"
 #include <systemc>
 
 using namespace sc_core;

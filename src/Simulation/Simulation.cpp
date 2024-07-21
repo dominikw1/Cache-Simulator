@@ -3,11 +3,11 @@
 #include "Cache.h"
 #include "Connections.h"
 #include "InstructionCache.h"
-#include "Memory.h"
 #include "Policy/FIFOPolicy.h"
 #include "Policy/LRUPolicy.h"
 #include "Policy/Policy.h"
 #include "Policy/RandomPolicy.h"
+#include "RAM.h"
 
 #include <exception>
 #include <memory>
