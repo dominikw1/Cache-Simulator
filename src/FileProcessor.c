@@ -1,12 +1,10 @@
 #include <errno.h>
-#include <malloc.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #include "Argparsing.h"
 #include "FileProcessor.h"
@@ -35,7 +33,7 @@ FILE* check_file(const char* progname, const char* filename) {
         exit(EXIT_FAILURE);
     }
 
-    if (fstat(fileno(file), &file_info) != 0) {
+    if (stat(filename, &file_info) != 0) {
         perror("Error determining file size");
         goto error;
     }
@@ -69,14 +67,15 @@ error:
 }
 
 // Inspired by: https://github.com/portfoliocourses/c-example-code/blob/main/csv_to_struct_array.c
-int extract_file_data(const char* progname, FILE* file, struct Configuration* config) {
+int extract_file_data(const char* progname, const char* filename, FILE* file, struct Configuration* config) {
     struct stat file_info;
-    if (fstat(fileno(file), &file_info) != 0) {
+    if (stat(filename, &file_info) != 0) {
         perror("Error determining file size");
         fclose(file);
         print_usage(progname);
         exit(EXIT_FAILURE);
     }
+
     // Allocate heap-space for requests
     config->requests = (struct Request*)malloc(sizeof(struct Request) * file_info.st_size);
     config->numRequests = 0;
@@ -95,8 +94,8 @@ int extract_file_data(const char* progname, FILE* file, struct Configuration* co
 
     do {
         char we;
-        uint32_t addr;
-        uint32_t data;
+        int addr;
+        int data;
 
         fgets(line, sizeof(line), file);
         read_line = sscanf(line, "%c,%i,%i\n", &we, &addr, &data);
@@ -129,8 +128,8 @@ int extract_file_data(const char* progname, FILE* file, struct Configuration* co
             goto error;
         }
 
-        config->requests[config->numRequests].addr = addr;
-        config->requests[config->numRequests].data = data;
+        config->requests[config->numRequests].addr = (uint32_t) addr;
+        config->requests[config->numRequests].data = (uint32_t) data;
 
         if (we == 'R' || we == 'r') {
             config->requests[config->numRequests].we = 0;

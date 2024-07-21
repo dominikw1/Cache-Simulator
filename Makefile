@@ -8,7 +8,7 @@ TARGET := cache
 
 SCPATH = $(SYSTEMC_HOME)
 
-CFLAGS := -Wall   -Wextra -pedantic -std=c17
+CFLAGS := -Wall -Wextra -pedantic  -std=c17
 CXXFLAGS := -Wall -Wextra -pedantic  -std=c++14  -I$(SCPATH)/include -L$(SCPATH)/lib -lsystemc -lm
 
 

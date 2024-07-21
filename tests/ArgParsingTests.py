@@ -5,6 +5,7 @@ import os
 CACHE_PATH = os.path.abspath(os.path.join('..', './cache'))
 FILE_PATH = ' ' + os.path.abspath(os.path.join('..', 'examples', 'merge_sort_10.csv'))
 PATH_TO_EXISTING_FILE = os.path.abspath(os.path.join('..', 'tests', 'FileProcessorTests.py'))
+PATH_TO_DIRECTORY = os.path.abspath(os.path.join('..', 'tests'))
 
 
 def capture_stderr(cmdline_args):
@@ -104,9 +105,14 @@ class TestInvalidInput(unittest.TestCase):
         output = capture_stderr(args).decode()
         self.assertEqual(expected_output, output)
 
-    # TODO tracefile tests
+    def test_existing_directory_tf(self):
+        args = FILE_PATH + ' --tf ' + PATH_TO_DIRECTORY
+        expected_output = "Error: Filename '" + PATH_TO_DIRECTORY + ("' is a directory name. Please choose a different"
+                                                                     " filename for the tracefile.\n") + print_usage
+        output = capture_stderr(args).decode()
+        self.assertEqual(expected_output, output)
 
-    def test_existing_file(self):
+    def test_existing_file_tf(self):
         args = FILE_PATH + ' --tf ' + PATH_TO_EXISTING_FILE
         expected_output = "Error: File '" + PATH_TO_EXISTING_FILE + ("' already exists. Please choose a different "
                                                                      "filename for the tracefile.\n") + print_usage
@@ -171,7 +177,7 @@ class TestInvalidInput(unittest.TestCase):
 class TestWarnings(unittest.TestCase):
     def test_setting_useCache(self):
         args = ' --cachelines 0 ' + FILE_PATH
-        expected_output = "Warning: --cachelines must be at least 1. Setting use-cache=n."
+        expected_output = "Warning: --cachelines must be at least 1. Setting use-cache=n and --extended."
         output = capture_stderr(args).decode()
         self.assertIn(expected_output, output)
 

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/stat.h>
 
 #include "Argparsing.h"
 #include "FileProcessor.h"
@@ -121,8 +122,8 @@ int check_cycle_size(int longCycles, const char* progname, struct Configuration*
     return EXIT_SUCCESS;
 }
 
-char* get_option() {
-    switch (optopt) {
+char* get_option(int option) {
+    switch (option) {
     case 'c':
         return "-c/--cycles";
     case CACHELINE_SIZE:
@@ -340,8 +341,13 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             }
             struct stat file_info;
             if (stat(optarg, &file_info) == 0) {
-                fprintf(stderr, "Error: File '%s' already exists. "
-                                "Please choose a different filename for the tracefile.\n", optarg);
+                if (S_ISDIR(file_info.st_mode)) {
+                    fprintf(stderr, "Error: Filename '%s' is a directory name. "
+                                    "Please choose a different filename for the tracefile.\n", optarg);
+                } else {
+                    fprintf(stderr,"Error: File '%s' already exists. "
+                            "Please choose a different filename for the tracefile.\n", optarg);
+                }
                 print_usage(progname);
                 exit(EXIT_FAILURE);
             }
@@ -353,7 +359,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
             break;
 
         case '?':
-            option = get_option();
+            option = get_option(optopt);
             if (strncmp(option, "string_data", 11) != 0) { // Check if optarg is positional argument
                 fprintf(stderr, "Error: Option %s requires an argument.\n", option);
             } else if (argv[optind - 1] != NULL) {
@@ -384,7 +390,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
     if (optind < argc) {
         // Check input file for valid file format and save data to requests
         FILE* file = check_file(progname, argv[optind]);
-        extract_file_data(progname, file, config);
+        extract_file_data(progname, argv[optind], file, config);
     } else {
         fprintf(stderr, "Error: Positional argument is missing!\n");
         print_usage(progname);
