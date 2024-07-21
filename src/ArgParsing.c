@@ -1,17 +1,13 @@
 #include <errno.h>
 #include <getopt.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <sys/stat.h>
 
 #include "Argparsing.h"
 #include "FileProcessor.h"
 #include "Request.h"
-#include "Simulation/Policy/Policy.h"
 
 #define CACHE_LATENCY 128
 #define CACHELINE_SIZE 129
@@ -339,18 +335,7 @@ int parse_arguments(int argc, char** argv, struct Configuration* config) {
                 print_usage(progname);
                 exit(EXIT_FAILURE);
             }
-            struct stat file_info;
-            if (stat(optarg, &file_info) == 0) {
-                if (S_ISDIR(file_info.st_mode)) {
-                    fprintf(stderr, "Error: Filename '%s' is a directory name. "
-                                    "Please choose a different filename for the tracefile.\n", optarg);
-                } else {
-                    fprintf(stderr,"Error: File '%s' already exists. "
-                            "Please choose a different filename for the tracefile.\n", optarg);
-                }
-                print_usage(progname);
-                exit(EXIT_FAILURE);
-            }
+            check_trace_file(progname, optarg);
             config->tracefile = optarg;
             break;
 
