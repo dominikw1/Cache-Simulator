@@ -1,10 +1,10 @@
 #include <errno.h>
 #include <getopt.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 
 #include "ArgParsing.h"
 #include "FileProcessor.h"
@@ -68,14 +68,16 @@ const char* help_msg = "Positional arguments:\n"
                        "\'policy' and \'lcycles'\n"
                        "   -h / --help             Show this help message and exit\n";
 
-
 void print_usage(const char* progname) { fprintf(stderr, usage_msg, progname, progname, progname); }
 
-void print_help(const char* progname) { print_usage(progname); fprintf(stderr, "\n%s", help_msg); }
+void print_help(const char* progname) {
+    print_usage(progname);
+    fprintf(stderr, "\n%s", help_msg);
+}
 
 unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option) {
     endptr = NULL;
-    long n = strtol(optarg, &endptr, 10);   // Using datatype 'long' to check for negative input
+    long n = strtol(optarg, &endptr, 10); // Using datatype 'long' to check for negative input
     if (*endptr != '\0' || endptr == optarg) {
         fprintf(stderr, "Invalid input: '%s' is not an int.\n", optarg);
         print_usage(progname);
@@ -88,12 +90,12 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
             if (n == 0 && (strncmp(option, "--cache-latency", 15) == 0 || strncmp(option, "--memory", 8) == 0)) {
                 fprintf(stderr, "Warning: A value of 0 for %s is not realistic!\n", option);
                 return 0;
-            } else {  // Negative input
+            } else { // Negative input
                 fprintf(stderr, "Invalid input: %s\n", message);
             }
         } else if (n > UINT32_MAX) { // Input needs to fit into predefined datatypes for run_simulation method
             fprintf(stderr, "Invalid input: %ld is too big to be converted to an unsigned int.\n", n);
-        } else {    // Print errno error message
+        } else { // Print errno error message
             fprintf(stderr, "Error parsing number for option %s. %s", option, strerror(errno));
         }
         print_usage(progname);
@@ -138,7 +140,6 @@ int is_power_of_two(unsigned long n) { return n && !(n & (n - 1)); }
 
 int is_multiple_of_sixteen(unsigned long n) { return !(n & 15); }
 
-
 struct Configuration parse_arguments(int argc, char** argv) {
     struct Configuration config;
 
@@ -151,16 +152,15 @@ struct Configuration parse_arguments(int argc, char** argv) {
 
     // Set default values for fullassociative cache and run_simulation_extended
     config.cycles = 100000;
-    config.directMapped = 0;       // 0 => fullassociative, x => directmapped
+    config.directMapped = 0; // 0 => fullassociative, x => directmapped
     config.cacheLines = 256;
     config.cacheLineSize = 64;
     config.cacheLatency = 2;
     config.memoryLatency = 100;
     config.tracefile = NULL;
 
-    config.policy = POLICY_LRU;    // 0 => lru, 1 => fifo, 2 => random
-    config.callExtended = 0;       // Default: false
-
+    config.policy = POLICY_LRU; // 0 => lru, 1 => fifo, 2 => random
+    config.callExtended = 0;    // Default: false
 
     // Command line argument parsing
     int opt;
@@ -336,6 +336,14 @@ struct Configuration parse_arguments(int argc, char** argv) {
 
     if (config.memoryLatency < config.cacheLatency) {
         fprintf(stderr, "Warning: Memory latency is less than cache latency.\n");
+    }
+
+    if ((config.cacheLineSize > 0 && config.cacheLines > UINT32_MAX / config.cacheLineSize) ||
+        config.cacheLineSize * config.cacheLines > (1 << 20)) { // either overflow or simply too large
+        fprintf(stderr, "Error: Cache of %d %d byte long cache lines is too big. Max total size is 2^20\n",
+                config.cacheLineSize, config.cacheLines);
+        print_usage(progname);
+        exit(EXIT_FAILURE);
     }
 
     check_cycle_size(longCycles, progname, &config);
