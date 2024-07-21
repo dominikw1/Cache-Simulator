@@ -10,23 +10,22 @@
 int main(int argc, char** argv) {
 
     // Parse command line arguments
-    struct Configuration configuration;
-    parse_arguments(argc, argv, &configuration);
+    struct Configuration config;
+    parse_arguments(argc, argv, &config);
 
     // Call run_simulation method depending on user input for extended method
     struct Result result;
-    if (configuration.callExtended) {
-        result = run_simulation_extended(configuration.cycles, configuration.directMapped, configuration.cacheLines,
-                                         configuration.cacheLineSize, configuration.cacheLatency,
-                                         configuration.memoryLatency, configuration.numRequests, configuration.requests,
-                                         configuration.tracefile, configuration.policy, configuration.usingCache);
+    if (config.callExtended) {
+        result = run_simulation_extended(config.cycles, config.directMapped, config.cacheLines, config.cacheLineSize,
+                                         config.cacheLatency, config.memoryLatency, config.numRequests, config.requests,
+                                         config.tracefile, config.policy, config.usingCache);
     } else {
-        result = run_simulation((int)configuration.cycles, configuration.directMapped, configuration.cacheLines,
-                                configuration.cacheLineSize, configuration.cacheLatency, configuration.memoryLatency,
-                                configuration.numRequests, configuration.requests, configuration.tracefile);
+        result = run_simulation((int)config.cycles, config.directMapped, config.cacheLines, config.cacheLineSize,
+                                config.cacheLatency, config.memoryLatency, config.numRequests, config.requests,
+                                config.tracefile);
     }
-    free(configuration.requests);
-    configuration.requests = NULL;
+    free(config.requests);
+    config.requests = NULL;
 
     // Check for string_data results
     if (result.cycles == 0 && result.misses == 0 && result.hits == 0 && result.primitiveGateCount == 0) {
