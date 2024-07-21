@@ -23,7 +23,9 @@
 #define RANDOM_CHOICE 138
 #define TRACEFILE 139
 
-// Taken inspiration and adapted from exercises 'Nutzereingaben' and 'File IO' from GRA Week 3
+/**
+ * Taken inspiration and adapted from exercises 'Nutzereingaben' and 'File IO' from GRA Week 3
+ */
 
 const char* usage_msg =
     "usage: %s [-c c/--cycles c] [--lcycles] [--directmapped] [--fullassociative] "
@@ -73,6 +75,10 @@ void print_help(const char* progname) {
     fprintf(stderr, "\n%s", help_msg);
 }
 
+/**
+ * This function parses the argument of an option to an unsigned long and
+ * checks if the input is valid and in the allowed range.
+ */
 unsigned long check_user_input(char* endptr, char* message, const char* progname, char* option) {
     endptr = NULL;
     long n = strtol(optarg, &endptr, 10); // Using datatype 'long' to check for negative input
@@ -82,7 +88,6 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
         exit(EXIT_FAILURE);
     }
 
-    // Check possible error conditions
     if (n <= 0 || errno != 0 || n > UINT32_MAX) {
         if (errno == 0 && n <= 0) { // Allow certain options with value 0
             if (n == 0 && (strncmp(option, "--cache-latency", 15) == 0 || strncmp(option, "--memory", 8) == 0)) {
@@ -102,7 +107,10 @@ unsigned long check_user_input(char* endptr, char* message, const char* progname
 
     return (unsigned)n;
 }
-
+/**
+ * This function ensures that the cycle size provided by the user does not exceed
+ * the maximum allowed value (int), unless the extended cycle option is enabled.
+ */
 int check_cycle_size(int longCycles, const char* progname, struct Configuration* config) {
     // Check if --extended flag was set right or user input is too large for an int
     if ((!longCycles && !config->callExtended) && config->cycles > INT32_MAX) {
@@ -114,6 +122,10 @@ int check_cycle_size(int longCycles, const char* progname, struct Configuration*
     return EXIT_SUCCESS;
 }
 
+
+/**
+ * Retrieves the option string corresponding to the given option code.
+ */
 char* get_option(int option) {
     switch (option) {
     case 'c':
@@ -133,11 +145,18 @@ char* get_option(int option) {
     }
 }
 
-// Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
+/**
+ * Checks if a number is a power of two.
+ * Taken from: https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2
+ */
 int is_power_of_two(unsigned long n) { return n && !(n & (n - 1)); }
 
 int is_multiple_of_sixteen(unsigned long n) { return !(n & 15); }
 
+/**
+ * Parses command line arguments, sets default values and prints error messages and exits
+ * if arguments are not useful for the simulation.
+ */
 struct Configuration parse_arguments(int argc, char** argv) {
     struct Configuration config;
 
@@ -150,7 +169,7 @@ struct Configuration parse_arguments(int argc, char** argv) {
 
     // Set default values for fullassociative cache and run_simulation_extended
     config.cycles = 100000;
-    config.directMapped = 0; // 0 => fullassociative, x => directmapped
+    config.directMapped = 0;    // 0 => fullassociative, x => directmapped
     config.cacheLines = 256;
     config.cacheLineSize = 64;
     config.cacheLatency = 2;
@@ -181,7 +200,7 @@ struct Configuration parse_arguments(int argc, char** argv) {
                                            {"help", no_argument, 0, 'h'},
                                            {0, 0, 0, 0}};
 
-    // Variables needed for parsing
+    // Additional variables needed for error handling
     char* option;
     char* error_msg;
     int isLruSet = 0;
@@ -196,13 +215,12 @@ struct Configuration parse_arguments(int argc, char** argv) {
         switch (opt) {
         case 'c':
             error_msg = "Cycles cannot be smaller than 1.";
-            config.cycles = check_user_input(endptr, error_msg, progname, "-c/--cycles");
+            config.cycles = (unsigned int)check_user_input(endptr, error_msg, progname, "-c/--cycles");
             // Checked for validity later once we know the range
             break;
 
         case LONG_CYCLES:
             longCycles = 1;
-            // TODO: Message --extended set
             config.callExtended = 1;
             break;
 
@@ -241,7 +259,7 @@ struct Configuration parse_arguments(int argc, char** argv) {
                 exit(EXIT_FAILURE);
             }
 
-            config.cacheLineSize = s;
+            config.cacheLineSize = (unsigned int)s;
             break;
 
         case CACHELINES:
@@ -251,19 +269,19 @@ struct Configuration parse_arguments(int argc, char** argv) {
             if (!is_power_of_two(n)) {
                 fprintf(stderr, "Warning: Number of cachelines are usually a power of two!\n");
             }
-            config.cacheLines = n;
+            config.cacheLines = (unsigned int)n;
             break;
 
         case CACHE_LATENCY:
             error_msg = "Cache-latency cannot be negative.";
             unsigned long l = check_user_input(endptr, error_msg, progname, "--cache-latency");
-            config.cacheLatency = l;
+            config.cacheLatency = (unsigned int)l;
             break;
 
         case MEMORY_LATENCY:
             error_msg = "Memory-latency cannot be negative.";
             unsigned long m = check_user_input(endptr, error_msg, progname, "--memory-latency");
-            config.memoryLatency = m;
+            config.memoryLatency = (unsigned int)m;
             break;
 
         case LEAST_RECENTLY_USED:
