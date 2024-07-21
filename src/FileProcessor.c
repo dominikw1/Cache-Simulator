@@ -168,7 +168,6 @@ error:
     exit(EXIT_FAILURE);
 }
 
-
 /**
  * Validates trace file name and displays an error message if the file is invalid and exits the program.
  * Lines 190-193 taken and adapted from https://stackoverflow.com/questions/5309471/getting-file-extension-in-c
